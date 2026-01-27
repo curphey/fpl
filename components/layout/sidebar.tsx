@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { navItems } from './nav-items';
+import { navItems, secondaryNavItems } from './nav-items';
 import { NavIcon } from './nav-icon';
 
 export function Sidebar({
@@ -32,6 +32,31 @@ export function Sidebar({
       >
         <nav className="flex flex-col gap-1 p-3">
           {navItems.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onClose}
+                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-fpl-purple-light text-fpl-green'
+                    : 'text-fpl-muted hover:bg-fpl-purple-light/50 hover:text-foreground'
+                }`}
+              >
+                <NavIcon name={item.icon} />
+                {item.label}
+              </Link>
+            );
+          })}
+
+          {/* Separator */}
+          <div className="my-2 border-t border-fpl-border" />
+          <span className="px-3 text-[10px] font-semibold uppercase tracking-widest text-fpl-muted">
+            Analytics
+          </span>
+
+          {secondaryNavItems.map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link

@@ -33,17 +33,40 @@ export class FPLApiError extends Error {
   }
 }
 
-async function fetchFPL<T>(endpoint: string, options?: RequestInit): Promise<T> {
+// In-memory cache for responses that exceed Next.js's 2MB fetch cache limit
+const memoryCache = new Map<string, { data: unknown; expiry: number }>();
+
+function getCached<T>(key: string): T | null {
+  const entry = memoryCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiry) {
+    memoryCache.delete(key);
+    return null;
+  }
+  return entry.data as T;
+}
+
+function setCache(key: string, data: unknown, ttlMs: number) {
+  memoryCache.set(key, { data, expiry: Date.now() + ttlMs });
+}
+
+async function fetchFPL<T>(endpoint: string, options?: RequestInit & { cacheTtl?: number }): Promise<T> {
+  const { cacheTtl, ...fetchOptions } = options ?? {};
+  const ttl = cacheTtl ?? 300_000; // default 5 minutes
+
+  // Check in-memory cache first
+  const cached = getCached<T>(endpoint);
+  if (cached) return cached;
+
   const url = `${FPL_API_BASE}${endpoint}`;
 
   const response = await fetch(url, {
-    ...options,
+    ...fetchOptions,
     headers: {
       ...DEFAULT_HEADERS,
-      ...options?.headers,
+      ...fetchOptions?.headers,
     },
-    // Cache for 5 minutes by default (can be overridden)
-    next: { revalidate: 300 },
+    cache: 'no-store', // skip Next.js fetch cache; we manage our own
   });
 
   if (!response.ok) {
@@ -54,7 +77,9 @@ async function fetchFPL<T>(endpoint: string, options?: RequestInit): Promise<T> 
     );
   }
 
-  return response.json();
+  const data: T = await response.json();
+  setCache(endpoint, data, ttl);
+  return data;
 }
 
 /**
@@ -94,7 +119,7 @@ export const fplClient = {
    * Get live gameweek data (scores, bonus, etc.)
    */
   async getLiveGameweek(gameweek: number): Promise<LiveGameweek> {
-    return fetchFPL<LiveGameweek>(`/event/${gameweek}/live/`);
+    return fetchFPL<LiveGameweek>(`/event/${gameweek}/live/`, { cacheTtl: 60_000 });
   },
 
   /**

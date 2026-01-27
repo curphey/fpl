@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+:root {
+  --background: #1a0a2e;
+  --foreground: #ededed;
+  --fpl-purple: #37003c;
+  --fpl-purple-light: #5a1a5e;
+  --fpl-purple-dark: #2a0030;
+  --fpl-green: #00ff85;
+  --fpl-green-dark: #00cc6a;
+  --fpl-pink: #e90052;
+  --fpl-pink-dark: #c40045;
+  --fpl-danger: #ff4444;
+  --fpl-card: #2d1b4e;
+  --fpl-card-hover: #3a2560;
+  --fpl-border: #4a2d6e;
+  --fpl-muted: #9ca3af;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-fpl-purple: var(--fpl-purple);
+  --color-fpl-purple-light: var(--fpl-purple-light);
+  --color-fpl-purple-dark: var(--fpl-purple-dark);
+  --color-fpl-green: var(--fpl-green);
+  --color-fpl-green-dark: var(--fpl-green-dark);
+  --color-fpl-pink: var(--fpl-pink);
+  --color-fpl-pink-dark: var(--fpl-pink-dark);
+  --color-fpl-danger: var(--fpl-danger);
+  --color-fpl-card: var(--fpl-card);
+  --color-fpl-card-hover: var(--fpl-card-hover);
+  --color-fpl-border: var(--fpl-border);
+  --color-fpl-muted: var(--fpl-muted);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans, Arial, Helvetica, sans-serif);
+}
+
+/* Focus ring */
+*:focus-visible {
+  outline: 2px solid var(--fpl-green);
+  outline-offset: 2px;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--fpl-purple-dark);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--fpl-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--fpl-purple-light);
+}

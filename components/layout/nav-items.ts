@@ -1,7 +1,7 @@
 export interface NavItem {
   label: string;
   href: string;
-  icon: 'dashboard' | 'fixtures' | 'transfers' | 'captain' | 'live' | 'players' | 'chips' | 'leagues';
+  icon: 'dashboard' | 'fixtures' | 'transfers' | 'captain' | 'live' | 'players' | 'chips' | 'leagues' | 'team';
 }
 
 export const navItems: NavItem[] = [
@@ -14,6 +14,7 @@ export const navItems: NavItem[] = [
 
 /** Additional nav items shown only in the sidebar */
 export const secondaryNavItems: NavItem[] = [
+  { label: 'My Team', href: '/team', icon: 'team' },
   { label: 'Players', href: '/players', icon: 'players' },
   { label: 'Leagues', href: '/leagues', icon: 'leagues' },
   { label: 'Chips', href: '/chips', icon: 'chips' },

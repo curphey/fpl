@@ -1,7 +1,7 @@
 export interface NavItem {
   label: string;
   href: string;
-  icon: 'dashboard' | 'fixtures' | 'transfers' | 'captain' | 'live' | 'players' | 'chips' | 'leagues' | 'team';
+  icon: 'dashboard' | 'fixtures' | 'transfers' | 'captain' | 'live' | 'players' | 'chips' | 'leagues' | 'team' | 'optimize';
 }
 
 export const navItems: NavItem[] = [
@@ -18,4 +18,5 @@ export const secondaryNavItems: NavItem[] = [
   { label: 'Players', href: '/players', icon: 'players' },
   { label: 'Leagues', href: '/leagues', icon: 'leagues' },
   { label: 'Chips', href: '/chips', icon: 'chips' },
+  { label: 'AI Optimizer', href: '/optimize', icon: 'optimize' },
 ];

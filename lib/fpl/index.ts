@@ -22,6 +22,9 @@ export {
 // Utilities
 export * from './utils';
 
+// League analyzer
+export * from './league-analyzer';
+
 // Hooks (client-side only)
 export {
   useBootstrapStatic,
@@ -34,3 +37,4 @@ export {
   useManagerPicks,
   useLeagueStandings,
 } from './hooks/use-fpl';
+export { useRivalPicks } from './hooks/use-rival-picks';

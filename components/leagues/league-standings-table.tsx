@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useLeagueStandings } from '@/lib/fpl/hooks/use-fpl';
 import { useManagerContext } from '@/lib/fpl/manager-context';
 import { TableSkeleton } from '@/components/ui/loading-skeleton';
@@ -34,10 +35,16 @@ export function LeagueStandingsTable({ leagueId }: { leagueId: number }) {
 
   return (
     <div className="rounded-lg border border-fpl-border bg-fpl-card">
-      <div className="border-b border-fpl-border px-4 py-3">
+      <div className="flex items-center justify-between border-b border-fpl-border px-4 py-3">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-fpl-muted">
           {data.league.name}
         </h2>
+        <Link
+          href={`/leagues/analyze?league=${leagueId}`}
+          className="rounded-md bg-fpl-purple-light px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-fpl-border"
+        >
+          Analyze
+        </Link>
       </div>
 
       <div className="overflow-x-auto">

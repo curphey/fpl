@@ -8,6 +8,10 @@ Fantasy Premier League analytics dashboard built with Next.js.
 - **Language:** TypeScript 5 (strict mode)
 - **Styling:** Tailwind CSS v4 (PostCSS plugin, `@theme inline` for custom tokens)
 - **React:** 19
+- **Auth:** Supabase Google OAuth (optional — pages remain public)
+- **Database:** Supabase PostgreSQL (`profiles` table for cross-device manager ID sync)
+- **Hosting:** Netlify (via `@netlify/plugin-nextjs`)
+- **CI/CD:** GitHub Actions (auto-deploy on push to `main`)
 - **Linting:** ESLint 9 + Prettier
 
 ## Commands
@@ -22,6 +26,7 @@ Fantasy Premier League analytics dashboard built with Next.js.
 ```
 app/                    # Next.js App Router pages and API routes
   api/fpl/              # Proxy routes to fantasy.premierleague.com/api
+  auth/callback/        # Supabase OAuth callback route
   globals.css           # Tailwind + CSS custom properties (dark theme)
   layout.tsx            # Root layout with AppShell
   page.tsx              # Dashboard (home page)
@@ -32,7 +37,7 @@ app/                    # Next.js App Router pages and API routes
   players/page.tsx      # Players placeholder
 components/
   ui/                   # Reusable primitives (Card, Badge, DataTable, StatCard, Skeleton, ErrorState)
-  layout/               # App shell, header, sidebar, mobile nav, nav config
+  layout/               # App shell, header, sidebar, mobile nav, nav config, auth button
   dashboard/            # Dashboard sections (gameweek banner, stats, top players, fixtures, progress)
   fixtures/             # Fixture planner grid, best teams ranking
   transfers/            # Transfer recommendation table
@@ -46,7 +51,18 @@ lib/fpl/
   fixture-planner.ts    # Fixture grid builder, FDR calculations, DGW/BGW detection
   transfer-model.ts     # Transfer recommendation scoring model
   captain-model.ts      # Captain scoring model (form, fixtures, xGI, set pieces)
+  manager-context.tsx   # Manager ID context with Supabase sync
   index.ts              # Barrel exports
+lib/supabase/
+  types.ts              # Profile interface matching the profiles table
+  client.ts             # Browser-side Supabase client (createBrowserClient)
+  server.ts             # Server-side Supabase client (createServerClient with cookies)
+middleware.ts           # Refreshes Supabase auth session on every request
+supabase/
+  migrations/           # SQL migrations for Supabase (profiles table, RLS, triggers)
+.github/
+  workflows/deploy.yml  # GitHub Actions CI/CD pipeline (lint → build → deploy to Netlify)
+netlify.toml            # Netlify build config and Next.js plugin
 ```
 
 ## Conventions
@@ -57,3 +73,6 @@ lib/fpl/
 - **Theme:** Dark-only (no light/dark toggle); PL brand palette
 - **Data fetching:** Client-side hooks in `lib/fpl/hooks/use-fpl.ts`; API routes proxy to FPL API with caching
 - **No external UI libraries:** All components built from scratch with Tailwind
+- **Auth is optional:** All pages remain public. Signed-in users get cross-device manager ID persistence via Supabase.
+- **Supabase clients:** Use `@/lib/supabase/client` in client components, `@/lib/supabase/server` in server components/route handlers
+- **Environment variables:** Supabase vars use `NEXT_PUBLIC_` prefix (needed client-side). Never commit `.env*` files (covered by `.gitignore`).

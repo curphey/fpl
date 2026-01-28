@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FPL Insights
 
-## Getting Started
+Fantasy Premier League analytics dashboard built with Next.js, hosted on Netlify with Supabase authentication.
 
-First, run the development server:
+## Prerequisites
+
+- Node.js 20+
+- A [Supabase](https://supabase.com) project (for auth and profile storage)
+- A [Netlify](https://netlify.com) account (for hosting)
+- Google OAuth credentials configured in your Supabase project
+
+## Local Development
 
 ```bash
+# Install dependencies
+npm install
+
+# Copy environment template and fill in values
+cp .env.example .env.local
+
+# Start dev server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment Variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable                         | Description                     |
+| -------------------------------- | ------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`       | Supabase project URL            |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY`  | Supabase anonymous (public) key |
 
-## Learn More
+## Supabase Setup
 
-To learn more about Next.js, take a look at the following resources:
+1. Create a new Supabase project
+2. Run the migration in `supabase/migrations/00001_create_profiles.sql` via the SQL Editor
+3. Enable **Google** as an auth provider under Authentication → Providers
+4. Set the redirect URI to `https://<your-domain>/auth/callback` (and `http://localhost:3000/auth/callback` for local dev)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Netlify Deployment
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The project includes a `netlify.toml` that configures the Next.js build and the `@netlify/plugin-nextjs` plugin.
 
-## Deploy on Vercel
+1. Connect your GitHub repo to Netlify
+2. Set environment variables in Netlify's site settings:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## GitHub Actions CI/CD
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The `.github/workflows/deploy.yml` workflow auto-deploys on push to `main`. Add these secrets to your GitHub repository:
+
+| Secret                           | Description                      |
+| -------------------------------- | -------------------------------- |
+| `NETLIFY_AUTH_TOKEN`             | Netlify personal access token    |
+| `NETLIFY_SITE_ID`               | Netlify site ID                  |
+| `NEXT_PUBLIC_SUPABASE_URL`       | Supabase project URL             |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY`  | Supabase anonymous (public) key  |
+
+## Available Scripts
+
+- `npm run dev` — start dev server
+- `npm run build` — production build (validates TypeScript)
+- `npm run lint` — run ESLint
+- `npm start` — serve production build

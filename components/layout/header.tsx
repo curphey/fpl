@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { navItems } from './nav-items';
 import { ManagerInput } from './manager-input';
+import { AuthButton } from './auth-button';
 
 export function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
   const pathname = usePathname();
@@ -58,8 +59,9 @@ export function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
         })}
       </nav>
 
-      <div className="ml-auto">
+      <div className="ml-auto flex items-center gap-3">
         <ManagerInput />
+        <AuthButton />
       </div>
     </header>
   );

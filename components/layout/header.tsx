@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { navItems } from './nav-items';
+import { ManagerInput } from './manager-input';
 
 export function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
   const pathname = usePathname();
@@ -56,6 +57,10 @@ export function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
           );
         })}
       </nav>
+
+      <div className="ml-auto">
+        <ManagerInput />
+      </div>
     </header>
   );
 }

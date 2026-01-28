@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useManagerContext } from '@/lib/fpl/manager-context';
 import { useBootstrapStatic, useManagerPicks, useLiveGameweek } from '@/lib/fpl/hooks/use-fpl';
 import { buildPlayerMap, buildTeamMap } from '@/lib/fpl/utils';
@@ -10,9 +10,19 @@ import { ErrorState } from '@/components/ui/error-state';
 import { TeamHeader } from '@/components/team/team-header';
 import { PitchView } from '@/components/team/pitch-view';
 import { GameweekSummary } from '@/components/team/gameweek-summary';
+import { GameweekNav } from '@/components/team/gameweek-nav';
 
 export default function TeamPage() {
   const { managerId, manager } = useManagerContext();
+
+  const [selectedGw, setSelectedGw] = useState(manager?.current_event ?? 0);
+  const [trackedManagerId, setTrackedManagerId] = useState(manager?.id);
+
+  // Reset to current GW when manager changes (derived state during render)
+  if (manager && manager.id !== trackedManagerId) {
+    setTrackedManagerId(manager.id);
+    setSelectedGw(manager.current_event);
+  }
 
   const {
     data: bootstrap,
@@ -21,7 +31,7 @@ export default function TeamPage() {
     refetch: bsRefetch,
   } = useBootstrapStatic();
 
-  const gwId = manager?.current_event ?? 0;
+  const gwId = selectedGw;
 
   const {
     data: picksData,
@@ -62,6 +72,9 @@ export default function TeamPage() {
     return gw?.name ?? `Gameweek ${gwId}`;
   }, [bootstrap, gwId]);
 
+  const hasPrev = !!manager && selectedGw > manager.started_event;
+  const hasNext = !!manager && selectedGw < manager.current_event;
+
   // Guard: require manager connection
   if (!manager) {
     return <ConnectPrompt />;
@@ -100,10 +113,14 @@ export default function TeamPage() {
 
   return (
     <div className="space-y-6">
-      <TeamHeader
-        manager={manager}
-        entryHistory={picksData.entry_history}
+      <TeamHeader manager={manager} entryHistory={picksData.entry_history} />
+
+      <GameweekNav
         gameweekName={gameweekName}
+        onPrev={() => setSelectedGw((gw) => gw - 1)}
+        onNext={() => setSelectedGw((gw) => gw + 1)}
+        hasPrev={hasPrev}
+        hasNext={hasNext}
       />
 
       <GameweekSummary

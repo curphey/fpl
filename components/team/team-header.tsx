@@ -4,21 +4,16 @@ import { StatCard } from '@/components/ui/stat-card';
 export function TeamHeader({
   manager,
   entryHistory,
-  gameweekName,
 }: {
   manager: ManagerEntry;
   entryHistory: ManagerHistoryCurrent | null;
-  gameweekName: string;
 }) {
   const bank = entryHistory ? `\u00A3${(entryHistory.bank / 10).toFixed(1)}m` : '-';
   const value = entryHistory ? `\u00A3${(entryHistory.value / 10).toFixed(1)}m` : '-';
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-bold">{manager.name}</h1>
-        <p className="text-sm text-fpl-muted">{gameweekName}</p>
-      </div>
+      <h1 className="text-xl font-bold">{manager.name}</h1>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
         <StatCard

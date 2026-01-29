@@ -12,45 +12,97 @@ import type {
   ManagerHistory,
   ManagerPicks,
   LeagueStandings,
-} from './types';
+} from "./types";
 
-const FPL_API_BASE = 'https://fantasy.premierleague.com/api';
+const FPL_API_BASE = "https://fantasy.premierleague.com/api";
 
 // Default headers for FPL API requests
 const DEFAULT_HEADERS: HeadersInit = {
-  'User-Agent': 'Mozilla/5.0 (compatible; FPL-App/1.0)',
-  'Accept': 'application/json',
+  "User-Agent": "Mozilla/5.0 (compatible; FPL-App/1.0)",
+  Accept: "application/json",
 };
 
 export class FPLApiError extends Error {
   constructor(
     message: string,
     public statusCode: number,
-    public endpoint: string
+    public endpoint: string,
   ) {
     super(message);
-    this.name = 'FPLApiError';
+    this.name = "FPLApiError";
   }
 }
 
-// In-memory cache for responses that exceed Next.js's 2MB fetch cache limit
-const memoryCache = new Map<string, { data: unknown; expiry: number }>();
+/**
+ * LRU Cache with TTL support and size limit to prevent memory leaks.
+ * Uses Map's insertion order property - entries are moved to end on access.
+ */
+class LRUCache<T> {
+  private cache = new Map<string, { data: T; expiry: number }>();
+  private readonly maxSize: number;
+
+  constructor(maxSize: number = 100) {
+    this.maxSize = maxSize;
+  }
+
+  get(key: string): T | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+
+    // Check TTL expiration
+    if (Date.now() > entry.expiry) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    // Move to end (most recently used) by re-inserting
+    this.cache.delete(key);
+    this.cache.set(key, entry);
+
+    return entry.data;
+  }
+
+  set(key: string, data: T, ttlMs: number): void {
+    // If key exists, delete first to update position
+    if (this.cache.has(key)) {
+      this.cache.delete(key);
+    }
+
+    // Evict oldest entries if at capacity
+    while (this.cache.size >= this.maxSize) {
+      const oldestKey = this.cache.keys().next().value;
+      if (oldestKey !== undefined) {
+        this.cache.delete(oldestKey);
+      }
+    }
+
+    this.cache.set(key, { data, expiry: Date.now() + ttlMs });
+  }
+
+  get size(): number {
+    return this.cache.size;
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+}
+
+// LRU cache with 100 entry limit (prevents unbounded memory growth)
+const memoryCache = new LRUCache<unknown>(100);
 
 function getCached<T>(key: string): T | null {
-  const entry = memoryCache.get(key);
-  if (!entry) return null;
-  if (Date.now() > entry.expiry) {
-    memoryCache.delete(key);
-    return null;
-  }
-  return entry.data as T;
+  return memoryCache.get(key) as T | null;
 }
 
 function setCache(key: string, data: unknown, ttlMs: number) {
-  memoryCache.set(key, { data, expiry: Date.now() + ttlMs });
+  memoryCache.set(key, data, ttlMs);
 }
 
-async function fetchFPL<T>(endpoint: string, options?: RequestInit & { cacheTtl?: number }): Promise<T> {
+async function fetchFPL<T>(
+  endpoint: string,
+  options?: RequestInit & { cacheTtl?: number },
+): Promise<T> {
   const { cacheTtl, ...fetchOptions } = options ?? {};
   const ttl = cacheTtl ?? 300_000; // default 5 minutes
 
@@ -66,14 +118,14 @@ async function fetchFPL<T>(endpoint: string, options?: RequestInit & { cacheTtl?
       ...DEFAULT_HEADERS,
       ...fetchOptions?.headers,
     },
-    cache: 'no-store', // skip Next.js fetch cache; we manage our own
+    cache: "no-store", // skip Next.js fetch cache; we manage our own
   });
 
   if (!response.ok) {
     throw new FPLApiError(
       `FPL API error: ${response.status} ${response.statusText}`,
       response.status,
-      endpoint
+      endpoint,
     );
   }
 
@@ -91,14 +143,14 @@ export const fplClient = {
    * This is the main endpoint for bootstrap data
    */
   async getBootstrapStatic(): Promise<BootstrapStatic> {
-    return fetchFPL<BootstrapStatic>('/bootstrap-static/');
+    return fetchFPL<BootstrapStatic>("/bootstrap-static/");
   },
 
   /**
    * Get all fixtures
    */
   async getFixtures(): Promise<Fixture[]> {
-    return fetchFPL<Fixture[]>('/fixtures/');
+    return fetchFPL<Fixture[]>("/fixtures/");
   },
 
   /**
@@ -119,7 +171,9 @@ export const fplClient = {
    * Get live gameweek data (scores, bonus, etc.)
    */
   async getLiveGameweek(gameweek: number): Promise<LiveGameweek> {
-    return fetchFPL<LiveGameweek>(`/event/${gameweek}/live/`, { cacheTtl: 60_000 });
+    return fetchFPL<LiveGameweek>(`/event/${gameweek}/live/`, {
+      cacheTtl: 60_000,
+    });
   },
 
   /**
@@ -139,15 +193,25 @@ export const fplClient = {
   /**
    * Get manager's picks for a specific gameweek
    */
-  async getManagerPicks(managerId: number, gameweek: number): Promise<ManagerPicks> {
-    return fetchFPL<ManagerPicks>(`/entry/${managerId}/event/${gameweek}/picks/`);
+  async getManagerPicks(
+    managerId: number,
+    gameweek: number,
+  ): Promise<ManagerPicks> {
+    return fetchFPL<ManagerPicks>(
+      `/entry/${managerId}/event/${gameweek}/picks/`,
+    );
   },
 
   /**
    * Get classic league standings
    */
-  async getLeagueStandings(leagueId: number, page: number = 1): Promise<LeagueStandings> {
-    return fetchFPL<LeagueStandings>(`/leagues-classic/${leagueId}/standings/?page_standings=${page}`);
+  async getLeagueStandings(
+    leagueId: number,
+    page: number = 1,
+  ): Promise<LeagueStandings> {
+    return fetchFPL<LeagueStandings>(
+      `/leagues-classic/${leagueId}/standings/?page_standings=${page}`,
+    );
   },
 };
 
@@ -195,7 +259,10 @@ export function getPlayersByTeam(data: BootstrapStatic, teamId: number) {
 /**
  * Get players by position
  */
-export function getPlayersByPosition(data: BootstrapStatic, position: 1 | 2 | 3 | 4) {
+export function getPlayersByPosition(
+  data: BootstrapStatic,
+  position: 1 | 2 | 3 | 4,
+) {
   return data.elements.filter((p) => p.element_type === position);
 }
 
@@ -218,13 +285,13 @@ export function parsePrice(price: number): number {
  */
 export function getDifficultyLabel(difficulty: number): string {
   const labels: Record<number, string> = {
-    1: 'Very Easy',
-    2: 'Easy',
-    3: 'Medium',
-    4: 'Hard',
-    5: 'Very Hard',
+    1: "Very Easy",
+    2: "Easy",
+    3: "Medium",
+    4: "Hard",
+    5: "Very Hard",
   };
-  return labels[difficulty] || 'Unknown';
+  return labels[difficulty] || "Unknown";
 }
 
 /**
@@ -232,13 +299,13 @@ export function getDifficultyLabel(difficulty: number): string {
  */
 export function getDifficultyColor(difficulty: number): string {
   const colors: Record<number, string> = {
-    1: 'bg-green-600',
-    2: 'bg-green-400',
-    3: 'bg-gray-400',
-    4: 'bg-red-400',
-    5: 'bg-red-600',
+    1: "bg-green-600",
+    2: "bg-green-400",
+    3: "bg-gray-400",
+    4: "bg-red-400",
+    5: "bg-red-600",
   };
-  return colors[difficulty] || 'bg-gray-300';
+  return colors[difficulty] || "bg-gray-300";
 }
 
 export default fplClient;

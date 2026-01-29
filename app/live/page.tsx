@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useCallback } from "react";
 import {
   useBootstrapStatic,
   useGameweekFixtures,
@@ -12,6 +12,7 @@ import { ErrorState } from "@/components/ui/error-state";
 import { MatchScores } from "@/components/live/match-scores";
 import { TopPerformers } from "@/components/live/top-performers";
 import { BPSTracker } from "@/components/live/bps-tracker";
+import { PullToRefresh } from "@/components/pwa/pull-to-refresh";
 
 export default function LivePage() {
   const {
@@ -49,6 +50,10 @@ export default function LivePage() {
     }, 60_000);
     return () => clearInterval(interval);
   }, [gwId, fxRefetch, liveRefetch]);
+
+  const handleRefresh = useCallback(async () => {
+    await Promise.all([bsRefetch(), fxRefetch(), liveRefetch()]);
+  }, [bsRefetch, fxRefetch, liveRefetch]);
 
   const teamMap = useMemo(
     () => (bootstrap ? buildTeamMap(bootstrap.teams) : new Map()),
@@ -94,44 +99,46 @@ export default function LivePage() {
   const anyLive = fixtures?.some((f) => f.started && !f.finished);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold">Live Tracker</h1>
-          <p className="text-sm text-fpl-muted">
-            {currentGw.name}
-            {anyLive && " — matches in progress"}
-          </p>
+    <PullToRefresh onRefresh={handleRefresh}>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold">Live Tracker</h1>
+            <p className="text-sm text-fpl-muted">
+              {currentGw.name}
+              {anyLive && " — matches in progress"}
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              fxRefetch();
+              liveRefetch();
+            }}
+            className="rounded-lg bg-fpl-card px-3 py-1.5 text-xs font-medium text-fpl-muted transition-colors hover:bg-fpl-card-hover hover:text-foreground"
+          >
+            Refresh
+          </button>
         </div>
-        <button
-          onClick={() => {
-            fxRefetch();
-            liveRefetch();
-          }}
-          className="rounded-lg bg-fpl-card px-3 py-1.5 text-xs font-medium text-fpl-muted transition-colors hover:bg-fpl-card-hover hover:text-foreground"
-        >
-          Refresh
-        </button>
-      </div>
 
-      {/* Match scores */}
-      {fixtures && <MatchScores fixtures={fixtures} teamMap={teamMap} />}
+        {/* Match scores */}
+        {fixtures && <MatchScores fixtures={fixtures} teamMap={teamMap} />}
 
-      {/* Live data sections */}
-      <div className="grid gap-6 xl:grid-cols-2">
-        {liveData && (
-          <TopPerformers elements={liveData.elements} playerMap={playerMap} />
-        )}
-        {fixtures && liveData && (
-          <BPSTracker
-            fixtures={fixtures}
-            elements={liveData.elements}
-            playerMap={playerMap}
-            teamMap={teamMap}
-          />
-        )}
+        {/* Live data sections */}
+        <div className="grid gap-6 xl:grid-cols-2">
+          {liveData && (
+            <TopPerformers elements={liveData.elements} playerMap={playerMap} />
+          )}
+          {fixtures && liveData && (
+            <BPSTracker
+              fixtures={fixtures}
+              elements={liveData.elements}
+              playerMap={playerMap}
+              teamMap={teamMap}
+            />
+          )}
+        </div>
       </div>
-    </div>
+    </PullToRefresh>
   );
 }

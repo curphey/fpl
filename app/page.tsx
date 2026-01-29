@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { useBootstrapStatic, useFixtures } from "@/lib/fpl/hooks/use-fpl";
 import {
   getCurrentGameweek,
@@ -14,6 +14,7 @@ import { KeyStatsOverview } from "@/components/dashboard/key-stats-overview";
 import { TopPlayersTable } from "@/components/dashboard/top-players-table";
 import { UpcomingFixtures } from "@/components/dashboard/upcoming-fixtures";
 import { SeasonProgress } from "@/components/dashboard/season-progress";
+import { PullToRefresh } from "@/components/pwa/pull-to-refresh";
 
 export default function DashboardPage() {
   const {
@@ -28,6 +29,10 @@ export default function DashboardPage() {
     error: fxError,
     refetch: fxRefetch,
   } = useFixtures();
+
+  const handleRefresh = useCallback(async () => {
+    await Promise.all([bsRefetch(), fxRefetch()]);
+  }, [bsRefetch, fxRefetch]);
 
   // Memoize expensive enrichPlayers computation (~700 players)
   // Must be called before early returns to satisfy React hooks rules
@@ -65,20 +70,22 @@ export default function DashboardPage() {
   const fixtureGwId = nextGw?.id ?? currentGw?.id ?? 1;
 
   return (
-    <div className="space-y-6">
-      {displayGw && <GameweekBanner gameweek={displayGw} />}
-      <KeyStatsOverview data={bootstrap} />
-      <div className="grid gap-6 xl:grid-cols-2">
-        <TopPlayersTable players={enriched} />
-        {fixtures && (
-          <UpcomingFixtures
-            fixtures={fixtures}
-            teams={bootstrap.teams}
-            gameweekId={fixtureGwId}
-          />
-        )}
+    <PullToRefresh onRefresh={handleRefresh}>
+      <div className="space-y-6">
+        {displayGw && <GameweekBanner gameweek={displayGw} />}
+        <KeyStatsOverview data={bootstrap} />
+        <div className="grid gap-6 xl:grid-cols-2">
+          <TopPlayersTable players={enriched} />
+          {fixtures && (
+            <UpcomingFixtures
+              fixtures={fixtures}
+              teams={bootstrap.teams}
+              gameweekId={fixtureGwId}
+            />
+          )}
+        </div>
+        <SeasonProgress events={bootstrap.events} />
       </div>
-      <SeasonProgress events={bootstrap.events} />
-    </div>
+    </PullToRefresh>
   );
 }

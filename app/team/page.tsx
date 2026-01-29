@@ -1,22 +1,30 @@
-'use client';
+"use client";
 
-import { useMemo, useState } from 'react';
-import { useManagerContext } from '@/lib/fpl/manager-context';
-import { useBootstrapStatic, useManagerPicks, useLiveGameweek } from '@/lib/fpl/hooks/use-fpl';
-import { buildPlayerMap, buildTeamMap } from '@/lib/fpl/utils';
-import { ConnectPrompt } from '@/components/leagues/connect-prompt';
-import { DashboardSkeleton } from '@/components/ui/loading-skeleton';
-import { ErrorState } from '@/components/ui/error-state';
-import { TeamHeader } from '@/components/team/team-header';
-import { PitchView } from '@/components/team/pitch-view';
-import { GameweekSummary } from '@/components/team/gameweek-summary';
-import { GameweekNav } from '@/components/team/gameweek-nav';
+import { useMemo, useState } from "react";
+import { useManagerContext } from "@/lib/fpl/manager-context";
+import {
+  useBootstrapStatic,
+  useManagerPicks,
+  useLiveGameweek,
+  useManagerHistory,
+} from "@/lib/fpl/hooks/use-fpl";
+import { buildPlayerMap, buildTeamMap } from "@/lib/fpl/utils";
+import { calculateSquadValue, buildValueHistory } from "@/lib/fpl/squad-value";
+import { ConnectPrompt } from "@/components/leagues/connect-prompt";
+import { DashboardSkeleton } from "@/components/ui/loading-skeleton";
+import { ErrorState } from "@/components/ui/error-state";
+import { TeamHeader } from "@/components/team/team-header";
+import { PitchView } from "@/components/team/pitch-view";
+import { GameweekSummary } from "@/components/team/gameweek-summary";
+import { GameweekNav } from "@/components/team/gameweek-nav";
+import { SquadValueCard } from "@/components/team/squad-value";
 
 export default function TeamPage() {
   const { managerId, manager } = useManagerContext();
 
   const [selectedGw, setSelectedGw] = useState(manager?.current_event ?? 0);
   const [trackedManagerId, setTrackedManagerId] = useState(manager?.id);
+  const [showValue, setShowValue] = useState(false);
 
   // Reset to current GW when manager changes (derived state during render)
   if (manager && manager.id !== trackedManagerId) {
@@ -47,6 +55,8 @@ export default function TeamPage() {
     refetch: liveRefetch,
   } = useLiveGameweek(gwId);
 
+  const { data: historyData } = useManagerHistory(managerId);
+
   const playerMap = useMemo(
     () => (bootstrap ? buildPlayerMap(bootstrap.elements) : new Map()),
     [bootstrap],
@@ -67,10 +77,28 @@ export default function TeamPage() {
   }, [liveData]);
 
   const gameweekName = useMemo(() => {
-    if (!bootstrap || !gwId) return '';
+    if (!bootstrap || !gwId) return "";
     const gw = bootstrap.events.find((e) => e.id === gwId);
     return gw?.name ?? `Gameweek ${gwId}`;
   }, [bootstrap, gwId]);
+
+  // Squad value calculation
+  const squadValueSummary = useMemo(() => {
+    if (!picksData?.picks || !bootstrap || !picksData.entry_history)
+      return null;
+    return calculateSquadValue(
+      picksData.picks,
+      bootstrap.elements,
+      bootstrap.teams,
+      picksData.entry_history,
+    );
+  }, [picksData, bootstrap]);
+
+  const historyCurrentData = historyData?.current;
+  const valueHistory = useMemo(() => {
+    if (!historyCurrentData) return [];
+    return buildValueHistory(historyCurrentData);
+  }, [historyCurrentData]);
 
   const hasPrev = !!manager && selectedGw > manager.started_event;
   const hasNext = !!manager && selectedGw < manager.current_event;
@@ -128,13 +156,43 @@ export default function TeamPage() {
         activeChip={picksData.active_chip}
       />
 
-      <PitchView
-        picks={picksData.picks}
-        playerMap={playerMap}
-        teamMap={teamMap}
-        livePointsMap={livePointsMap}
-        autoSubs={picksData.automatic_subs}
-      />
+      {/* Toggle between Pitch and Value view */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setShowValue(false)}
+          className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+            !showValue
+              ? "bg-fpl-green/20 text-fpl-green"
+              : "bg-fpl-card text-fpl-muted hover:text-foreground"
+          }`}
+        >
+          Pitch View
+        </button>
+        <button
+          onClick={() => setShowValue(true)}
+          className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+            showValue
+              ? "bg-fpl-green/20 text-fpl-green"
+              : "bg-fpl-card text-fpl-muted hover:text-foreground"
+          }`}
+        >
+          Squad Value
+        </button>
+      </div>
+
+      {!showValue ? (
+        <PitchView
+          picks={picksData.picks}
+          playerMap={playerMap}
+          teamMap={teamMap}
+          livePointsMap={livePointsMap}
+          autoSubs={picksData.automatic_subs}
+        />
+      ) : (
+        squadValueSummary && (
+          <SquadValueCard summary={squadValueSummary} history={valueHistory} />
+        )
+      )}
     </div>
   );
 }

@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import {
   useBootstrapStatic,
   useFixtures,
   useManagerHistory,
+  useManagerPicks,
 } from "@/lib/fpl/hooks/use-fpl";
 import {
   getNextGameweek,
@@ -13,6 +14,7 @@ import {
 } from "@/lib/fpl/utils";
 import {
   analyzeChipStrategies,
+  analyzeChipTiming,
   type ChipRecommendation,
 } from "@/lib/fpl/chip-model";
 import { CHIPS, getAvailableChips } from "@/lib/fpl/rules-engine";
@@ -21,6 +23,9 @@ import { DashboardSkeleton } from "@/components/ui/loading-skeleton";
 import { ErrorState } from "@/components/ui/error-state";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ChipTimingGrid } from "@/components/chips/chip-timing";
+
+type Tab = "overview" | "timing";
 
 const chipIcons: Record<string, string> = {
   wildcard: "WC",
@@ -116,13 +121,18 @@ export default function ChipsPage() {
   const { data: history, isLoading: histLoading } =
     useManagerHistory(managerId);
 
+  const [tab, setTab] = useState<Tab>("overview");
+
   const nextGw = bootstrap ? getNextGameweek(bootstrap.events) : undefined;
   const currentGw = bootstrap
     ? getCurrentGameweek(bootstrap.events)
     : undefined;
   const targetGw = nextGw ?? currentGw;
 
-  const usedChips = history?.chips ?? [];
+  // Fetch manager picks for squad-aware analysis
+  const { data: managerPicks } = useManagerPicks(managerId, currentGw?.id ?? 1);
+
+  const usedChips = useMemo(() => history?.chips ?? [], [history?.chips]);
 
   const availableChips = useMemo(() => {
     if (!targetGw) return [];
@@ -143,6 +153,22 @@ export default function ChipsPage() {
       availableChips,
     );
   }, [bootstrap, fixtures, targetGw, availableChips]);
+
+  const timingAnalyses = useMemo(() => {
+    if (!bootstrap || !fixtures || !targetGw || availableChips.length === 0)
+      return [];
+
+    const enriched = enrichPlayers(bootstrap);
+
+    return analyzeChipTiming(
+      enriched,
+      fixtures,
+      bootstrap.events,
+      targetGw.id,
+      availableChips,
+      managerPicks?.picks,
+    );
+  }, [bootstrap, fixtures, targetGw, availableChips, managerPicks]);
 
   const isLoading =
     bsLoading || fxLoading || (managerId !== null && histLoading);
@@ -180,7 +206,7 @@ export default function ChipsPage() {
               Connect your FPL account
             </span>{" "}
             to see personalized chip recommendations based on your remaining
-            chips.
+            chips and squad.
           </p>
         </div>
       )}
@@ -203,20 +229,65 @@ export default function ChipsPage() {
         </div>
       )}
 
-      {recommendations.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2">
-          {recommendations.map((rec) => (
-            <ChipCard key={rec.chip} rec={rec} />
-          ))}
-        </div>
-      ) : (
+      {/* Tabs */}
+      <div className="flex items-center gap-1 border-b border-fpl-border">
+        {[
+          { key: "overview" as Tab, label: "Overview" },
+          { key: "timing" as Tab, label: "Timing Optimizer" },
+        ].map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+              tab === t.key
+                ? "border-fpl-green text-fpl-green"
+                : "border-transparent text-fpl-muted hover:text-foreground"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "overview" && (
+        <>
+          {recommendations.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              {recommendations.map((rec) => (
+                <ChipCard key={rec.chip} rec={rec} />
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent>
+                <p className="py-4 text-center text-sm text-fpl-muted">
+                  {managerId && usedChips.length === 4
+                    ? "All chips have been used this season."
+                    : "Unable to generate chip recommendations."}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+
+      {tab === "timing" && (
         <Card>
-          <CardContent>
-            <p className="py-4 text-center text-sm text-fpl-muted">
-              {managerId && usedChips.length === 4
-                ? "All chips have been used this season."
-                : "Unable to generate chip recommendations."}
+          <CardHeader>
+            <CardTitle>Chip Timing Analysis</CardTitle>
+            <p className="text-xs text-fpl-muted">
+              Score each gameweek for optimal chip usage. Higher scores indicate
+              better opportunities.
+              {managerPicks?.picks && (
+                <span className="text-fpl-green">
+                  {" "}
+                  Using your squad data for personalized analysis.
+                </span>
+              )}
             </p>
+          </CardHeader>
+          <CardContent>
+            <ChipTimingGrid analyses={timingAnalyses} />
           </CardContent>
         </Card>
       )}

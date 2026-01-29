@@ -17,6 +17,10 @@ import {
   predictPriceChanges,
   getSquadPriceAlerts,
 } from "@/lib/fpl/price-model";
+import {
+  findReturningPlayers,
+  getInjuryWatchlist,
+} from "@/lib/fpl/injury-tracker";
 import type { PlayerPosition } from "@/lib/fpl/types";
 import { DashboardSkeleton } from "@/components/ui/loading-skeleton";
 import { ErrorState } from "@/components/ui/error-state";
@@ -25,8 +29,9 @@ import { Badge } from "@/components/ui/badge";
 import { TransferTable } from "@/components/transfers/transfer-table";
 import { PriceChangesTable } from "@/components/transfers/price-changes";
 import { PriceAlertBanner } from "@/components/transfers/price-alert-banner";
+import { InjuryReturnsSection } from "@/components/transfers/injury-returns";
 
-type Tab = "recommendations" | "prices";
+type Tab = "recommendations" | "prices" | "injuries";
 type PositionFilter = "all" | PlayerPosition;
 
 const positionFilters: { key: PositionFilter; label: string }[] = [
@@ -113,6 +118,17 @@ export default function TransfersPage() {
     return getSquadPriceAlerts(managerPicks.picks, priceChanges);
   }, [managerPicks, priceChanges]);
 
+  // Injury returns analysis
+  const returningPlayers = useMemo(() => {
+    if (!enriched.length || !fixtures) return [];
+    return findReturningPlayers(enriched, fixtures, nextGwId);
+  }, [enriched, fixtures, nextGwId]);
+
+  const injuryWatchlist = useMemo(() => {
+    if (!enriched.length) return [];
+    return getInjuryWatchlist(enriched);
+  }, [enriched]);
+
   const isLoading = bsLoading || fxLoading;
   const error = bsError || fxError;
 
@@ -137,7 +153,7 @@ export default function TransfersPage() {
       <div>
         <h1 className="text-xl font-bold">Transfer Hub</h1>
         <p className="text-sm text-fpl-muted">
-          Transfer targets and price change predictions
+          Transfer targets, price changes, and injury returns
         </p>
       </div>
 
@@ -151,6 +167,7 @@ export default function TransfersPage() {
         {[
           { key: "recommendations" as Tab, label: "Recommendations" },
           { key: "prices" as Tab, label: "Price Changes" },
+          { key: "injuries" as Tab, label: "Injury Returns" },
         ].map((t) => (
           <button
             key={t.key}
@@ -162,6 +179,11 @@ export default function TransfersPage() {
             }`}
           >
             {t.label}
+            {t.key === "injuries" && returningPlayers.length > 0 && (
+              <span className="ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-fpl-green/20 text-[10px] text-fpl-green">
+                {returningPlayers.length}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -246,6 +268,13 @@ export default function TransfersPage() {
             />
           </CardContent>
         </Card>
+      )}
+
+      {tab === "injuries" && (
+        <InjuryReturnsSection
+          returning={returningPlayers}
+          watchlist={injuryWatchlist}
+        />
       )}
     </div>
   );

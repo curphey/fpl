@@ -1,6 +1,39 @@
-import type { Fixture } from './types';
-import type { EnrichedPlayer } from './utils';
-import { getPlayerForm, getPlayerXGI } from './utils';
+import type { Fixture } from "./types";
+import type { EnrichedPlayer } from "./utils";
+import { getPlayerForm, getPlayerXGI } from "./utils";
+
+// =============================================================================
+// Scoring Constants
+// =============================================================================
+
+/** Weights for captain scoring model (must sum to 1.0) */
+const CAPTAIN_WEIGHTS = {
+  FORM: 0.35, // Recent performance
+  FIXTURE: 0.25, // Fixture difficulty (easier = better)
+  XGI: 0.2, // Expected goal involvement
+  HOME_ADVANTAGE: 0.1, // Home players get a bump
+  SET_PIECES: 0.1, // Penalty/FK/corner takers
+} as const;
+
+/** Points for set piece duties */
+const SET_PIECE_POINTS = {
+  PRIMARY_PENALTY: 5,
+  SECONDARY_PENALTY: 2,
+  DIRECT_FREEKICK: 2,
+  CORNERS: 1,
+} as const;
+
+/** Maximum possible set piece score (used for normalization) */
+const MAX_SET_PIECE_SCORE =
+  SET_PIECE_POINTS.PRIMARY_PENALTY +
+  SET_PIECE_POINTS.DIRECT_FREEKICK +
+  SET_PIECE_POINTS.CORNERS;
+
+/** Minimum minutes to consider a player for captaincy */
+const MIN_MINUTES_THRESHOLD = 90;
+
+/** Ownership threshold for safe vs differential */
+const SAFE_OWNERSHIP_THRESHOLD = 15;
 
 export interface CaptainPick {
   player: EnrichedPlayer;
@@ -13,7 +46,7 @@ export interface CaptainPick {
   isHome: boolean;
   opponentShortName: string;
   difficulty: number;
-  category: 'safe' | 'differential';
+  category: "safe" | "differential";
 }
 
 /**
@@ -25,8 +58,7 @@ function getNextFixture(
   gwId: number,
 ): { difficulty: number; isHome: boolean; opponentId: number } | null {
   const match = fixtures.find(
-    (f) =>
-      f.event === gwId && (f.team_h === teamId || f.team_a === teamId),
+    (f) => f.event === gwId && (f.team_h === teamId || f.team_a === teamId),
   );
   if (!match) return null;
 
@@ -50,22 +82,29 @@ function getNextFixture(
  */
 function getSetPieceScore(player: EnrichedPlayer): number {
   let score = 0;
-  if (player.penalties_order !== null && player.penalties_order <= 1) score += 5;
-  else if (player.penalties_order !== null && player.penalties_order <= 2) score += 2;
-  if (player.direct_freekicks_order !== null && player.direct_freekicks_order <= 1) score += 2;
-  if (player.corners_and_indirect_freekicks_order !== null && player.corners_and_indirect_freekicks_order <= 1) score += 1;
+  if (player.penalties_order !== null && player.penalties_order <= 1) {
+    score += SET_PIECE_POINTS.PRIMARY_PENALTY;
+  } else if (player.penalties_order !== null && player.penalties_order <= 2) {
+    score += SET_PIECE_POINTS.SECONDARY_PENALTY;
+  }
+  if (
+    player.direct_freekicks_order !== null &&
+    player.direct_freekicks_order <= 1
+  ) {
+    score += SET_PIECE_POINTS.DIRECT_FREEKICK;
+  }
+  if (
+    player.corners_and_indirect_freekicks_order !== null &&
+    player.corners_and_indirect_freekicks_order <= 1
+  ) {
+    score += SET_PIECE_POINTS.CORNERS;
+  }
   return score;
 }
 
 /**
  * Build captain recommendations for a given gameweek.
- *
- * Model weights:
- *   - Form (35%): recent performance
- *   - Fixture (25%): easier = better
- *   - xGI (20%): expected goal involvement
- *   - Home advantage (10%): home players get a bump
- *   - Set pieces (10%): penalty/FK takers
+ * See CAPTAIN_WEIGHTS for model weight configuration.
  */
 export function scoreCaptainOptions(
   players: EnrichedPlayer[],
@@ -75,10 +114,9 @@ export function scoreCaptainOptions(
 ): CaptainPick[] {
   const maxForm = Math.max(...players.map((p) => getPlayerForm(p)), 1);
   const maxXGI = Math.max(...players.map((p) => getPlayerXGI(p)), 0.1);
-  const maxSetPiece = 8; // max possible: pen(5) + fk(2) + corner(1)
 
   return players
-    .filter((p) => p.minutes > 90) // must have meaningful minutes
+    .filter((p) => p.minutes > MIN_MINUTES_THRESHOLD)
     .map((player) => {
       const fix = getNextFixture(player.team, fixtures, gwId);
       if (!fix) return null;
@@ -88,18 +126,20 @@ export function scoreCaptainOptions(
       const xgi = getPlayerXGI(player);
       const setPiece = getSetPieceScore(player);
 
+      // Normalize scores to 0-10 scale
       const formScore = (form / maxForm) * 10;
       const fixtureScore = ((5 - fix.difficulty) / 4) * 10;
       const xgiScore = (xgi / maxXGI) * 10;
       const homeBonus = fix.isHome ? 10 : 0;
-      const setPieceScore = (setPiece / maxSetPiece) * 10;
+      const setPieceScore = (setPiece / MAX_SET_PIECE_SCORE) * 10;
 
+      // Apply weights
       const score =
-        formScore * 0.35 +
-        fixtureScore * 0.25 +
-        xgiScore * 0.2 +
-        homeBonus * 0.1 +
-        setPieceScore * 0.1;
+        formScore * CAPTAIN_WEIGHTS.FORM +
+        fixtureScore * CAPTAIN_WEIGHTS.FIXTURE +
+        xgiScore * CAPTAIN_WEIGHTS.XGI +
+        homeBonus * CAPTAIN_WEIGHTS.HOME_ADVANTAGE +
+        setPieceScore * CAPTAIN_WEIGHTS.SET_PIECES;
 
       const ownership = parseFloat(player.selected_by_percent) || 0;
 
@@ -112,9 +152,11 @@ export function scoreCaptainOptions(
         homeBonus,
         setPieceScore,
         isHome: fix.isHome,
-        opponentShortName: opponent?.short_name ?? '???',
+        opponentShortName: opponent?.short_name ?? "???",
         difficulty: fix.difficulty,
-        category: (ownership >= 15 ? 'safe' : 'differential') as 'safe' | 'differential',
+        category: (ownership >= SAFE_OWNERSHIP_THRESHOLD
+          ? "safe"
+          : "differential") as "safe" | "differential",
       };
     })
     .filter((x): x is CaptainPick => x !== null)

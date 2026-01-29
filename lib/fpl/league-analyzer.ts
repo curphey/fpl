@@ -6,7 +6,7 @@ import type {
   Pick,
   ManagerChip,
 } from "./types";
-import { getPlayerForm } from "./utils";
+import { getPlayerForm, getPositionShortName } from "./utils";
 
 // =============================================================================
 // Types
@@ -432,9 +432,12 @@ export function analyzeLeague(
 // Helpers
 // =============================================================================
 
+// Use getPositionShortName from utils.ts (handles type safety)
 function getPositionShort(elementType: number): string {
-  const map: Record<number, string> = { 1: "GK", 2: "DEF", 3: "MID", 4: "FWD" };
-  return map[elementType] ?? "???";
+  if (elementType >= 1 && elementType <= 4) {
+    return getPositionShortName(elementType as 1 | 2 | 3 | 4);
+  }
+  return "???";
 }
 
 // =============================================================================

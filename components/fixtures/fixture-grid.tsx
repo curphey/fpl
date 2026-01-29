@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import type { TeamFixtureRow, FixtureCell } from '@/lib/fpl/fixture-planner';
-import { getFDRColorClass } from '@/lib/fpl/fixture-planner';
+import type { TeamFixtureRow, FixtureCell } from "@/lib/fpl/fixture-planner";
+import { getFDRColorClass } from "@/lib/fpl/fixture-planner";
 
 function CellContent({ cells }: { cells: FixtureCell[] | undefined }) {
   if (!cells || cells.length === 0) {
@@ -14,14 +14,14 @@ function CellContent({ cells }: { cells: FixtureCell[] | undefined }) {
 
   return (
     <div className="flex h-full flex-col gap-0.5">
-      {cells.map((cell, i) => (
+      {cells.map((cell) => (
         <div
-          key={i}
+          key={`${cell.fixture.id}-${cell.opponent.id}`}
           className={`flex flex-1 items-center justify-center rounded text-xs font-semibold ${getFDRColorClass(cell.difficulty)}`}
         >
           {cell.opponent.short_name}
           <span className="ml-0.5 text-[10px] font-normal opacity-75">
-            ({cell.isHome ? 'H' : 'A'})
+            ({cell.isHome ? "H" : "A"})
           </span>
         </div>
       ))}
@@ -38,7 +38,10 @@ export function FixtureGrid({
   gwStart: number;
   gwEnd: number;
 }) {
-  const gwRange = Array.from({ length: gwEnd - gwStart + 1 }, (_, i) => gwStart + i);
+  const gwRange = Array.from(
+    { length: gwEnd - gwStart + 1 },
+    (_, i) => gwStart + i,
+  );
 
   return (
     <div className="overflow-x-auto rounded-lg border border-fpl-border">

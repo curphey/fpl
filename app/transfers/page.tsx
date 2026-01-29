@@ -1,48 +1,77 @@
-'use client';
+"use client";
 
-import { useState, useMemo } from 'react';
-import { useBootstrapStatic, useFixtures } from '@/lib/fpl/hooks/use-fpl';
-import { getNextGameweek, getCurrentGameweek, enrichPlayers } from '@/lib/fpl/utils';
-import { scoreTransferTargets } from '@/lib/fpl/transfer-model';
-import { predictPriceChanges } from '@/lib/fpl/price-model';
-import type { PlayerPosition } from '@/lib/fpl/types';
-import { DashboardSkeleton } from '@/components/ui/loading-skeleton';
-import { ErrorState } from '@/components/ui/error-state';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { TransferTable } from '@/components/transfers/transfer-table';
-import { PriceChangesTable } from '@/components/transfers/price-changes';
+import { useState, useMemo } from "react";
+import {
+  useBootstrapStatic,
+  useFixtures,
+  useManagerPicks,
+} from "@/lib/fpl/hooks/use-fpl";
+import { useManagerContext } from "@/lib/fpl/manager-context";
+import {
+  getNextGameweek,
+  getCurrentGameweek,
+  enrichPlayers,
+} from "@/lib/fpl/utils";
+import { scoreTransferTargets } from "@/lib/fpl/transfer-model";
+import {
+  predictPriceChanges,
+  getSquadPriceAlerts,
+} from "@/lib/fpl/price-model";
+import type { PlayerPosition } from "@/lib/fpl/types";
+import { DashboardSkeleton } from "@/components/ui/loading-skeleton";
+import { ErrorState } from "@/components/ui/error-state";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { TransferTable } from "@/components/transfers/transfer-table";
+import { PriceChangesTable } from "@/components/transfers/price-changes";
+import { PriceAlertBanner } from "@/components/transfers/price-alert-banner";
 
-type Tab = 'recommendations' | 'prices';
-type PositionFilter = 'all' | PlayerPosition;
+type Tab = "recommendations" | "prices";
+type PositionFilter = "all" | PlayerPosition;
 
 const positionFilters: { key: PositionFilter; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 1, label: 'GK' },
-  { key: 2, label: 'DEF' },
-  { key: 3, label: 'MID' },
-  { key: 4, label: 'FWD' },
+  { key: "all", label: "All" },
+  { key: 1, label: "GK" },
+  { key: 2, label: "DEF" },
+  { key: 3, label: "MID" },
+  { key: 4, label: "FWD" },
 ];
 
 const priceRanges = [
-  { label: 'All prices', min: 0, max: 20 },
-  { label: 'Budget (<6.0)', min: 0, max: 5.9 },
-  { label: 'Mid (6.0-9.0)', min: 6.0, max: 9.0 },
-  { label: 'Premium (>9.0)', min: 9.1, max: 20 },
+  { label: "All prices", min: 0, max: 20 },
+  { label: "Budget (<6.0)", min: 0, max: 5.9 },
+  { label: "Mid (6.0-9.0)", min: 6.0, max: 9.0 },
+  { label: "Premium (>9.0)", min: 9.1, max: 20 },
 ];
 
 export default function TransfersPage() {
-  const { data: bootstrap, isLoading: bsLoading, error: bsError, refetch: bsRefetch } = useBootstrapStatic();
-  const { data: fixtures, isLoading: fxLoading, error: fxError, refetch: fxRefetch } = useFixtures();
+  const {
+    data: bootstrap,
+    isLoading: bsLoading,
+    error: bsError,
+    refetch: bsRefetch,
+  } = useBootstrapStatic();
+  const {
+    data: fixtures,
+    isLoading: fxLoading,
+    error: fxError,
+    refetch: fxRefetch,
+  } = useFixtures();
+  const { managerId } = useManagerContext();
 
-  const [tab, setTab] = useState<Tab>('recommendations');
-  const [posFilter, setPosFilter] = useState<PositionFilter>('all');
+  const [tab, setTab] = useState<Tab>("recommendations");
+  const [posFilter, setPosFilter] = useState<PositionFilter>("all");
   const [priceIdx, setPriceIdx] = useState(0);
   const [showDifferentials, setShowDifferentials] = useState(false);
 
   const nextGw = bootstrap ? getNextGameweek(bootstrap.events) : undefined;
-  const currentGw = bootstrap ? getCurrentGameweek(bootstrap.events) : undefined;
+  const currentGw = bootstrap
+    ? getCurrentGameweek(bootstrap.events)
+    : undefined;
   const nextGwId = nextGw?.id ?? currentGw?.id ?? 1;
+
+  // Fetch manager picks if logged in
+  const { data: managerPicks } = useManagerPicks(managerId, currentGw?.id ?? 1);
 
   const enriched = useMemo(() => {
     if (!bootstrap) return [];
@@ -54,7 +83,7 @@ export default function TransfersPage() {
 
     let players = enriched;
 
-    if (posFilter !== 'all') {
+    if (posFilter !== "all") {
       players = players.filter((p) => p.element_type === posFilter);
     }
 
@@ -76,6 +105,14 @@ export default function TransfersPage() {
     return predictPriceChanges(enriched);
   }, [enriched]);
 
+  // Get squad price alerts if manager has picks
+  const squadAlerts = useMemo(() => {
+    if (!managerPicks?.picks || priceChanges.fallers.length === 0) {
+      return { fallers: [], atRisk: 0 };
+    }
+    return getSquadPriceAlerts(managerPicks.picks, priceChanges);
+  }, [managerPicks, priceChanges]);
+
   const isLoading = bsLoading || fxLoading;
   const error = bsError || fxError;
 
@@ -87,7 +124,10 @@ export default function TransfersPage() {
     return (
       <ErrorState
         message={error.message}
-        onRetry={() => { bsRefetch(); fxRefetch(); }}
+        onRetry={() => {
+          bsRefetch();
+          fxRefetch();
+        }}
       />
     );
   }
@@ -101,19 +141,24 @@ export default function TransfersPage() {
         </p>
       </div>
 
+      {/* Price Alert Banner - shown when manager has squad players likely to fall */}
+      {squadAlerts.atRisk > 0 && (
+        <PriceAlertBanner fallers={squadAlerts.fallers} />
+      )}
+
       {/* Tabs */}
       <div className="flex items-center gap-1 border-b border-fpl-border">
-        {([
-          { key: 'recommendations' as Tab, label: 'Recommendations' },
-          { key: 'prices' as Tab, label: 'Price Changes' },
-        ]).map((t) => (
+        {[
+          { key: "recommendations" as Tab, label: "Recommendations" },
+          { key: "prices" as Tab, label: "Price Changes" },
+        ].map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
             className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
               tab === t.key
-                ? 'border-fpl-green text-fpl-green'
-                : 'border-transparent text-fpl-muted hover:text-foreground'
+                ? "border-fpl-green text-fpl-green"
+                : "border-transparent text-fpl-muted hover:text-foreground"
             }`}
           >
             {t.label}
@@ -121,7 +166,7 @@ export default function TransfersPage() {
         ))}
       </div>
 
-      {tab === 'recommendations' && (
+      {tab === "recommendations" && (
         <>
           {/* Filters */}
           <div className="flex flex-wrap items-center gap-4">
@@ -132,8 +177,8 @@ export default function TransfersPage() {
                   onClick={() => setPosFilter(f.key)}
                   className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
                     posFilter === f.key
-                      ? 'bg-fpl-green/20 text-fpl-green'
-                      : 'bg-fpl-card text-fpl-muted hover:text-foreground'
+                      ? "bg-fpl-green/20 text-fpl-green"
+                      : "bg-fpl-card text-fpl-muted hover:text-foreground"
                   }`}
                 >
                   {f.label}
@@ -148,8 +193,8 @@ export default function TransfersPage() {
                   onClick={() => setPriceIdx(i)}
                   className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
                     priceIdx === i
-                      ? 'bg-fpl-green/20 text-fpl-green'
-                      : 'bg-fpl-card text-fpl-muted hover:text-foreground'
+                      ? "bg-fpl-green/20 text-fpl-green"
+                      : "bg-fpl-card text-fpl-muted hover:text-foreground"
                   }`}
                 >
                   {r.label}
@@ -161,8 +206,8 @@ export default function TransfersPage() {
               onClick={() => setShowDifferentials((d) => !d)}
               className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
                 showDifferentials
-                  ? 'bg-fpl-pink/20 text-fpl-pink'
-                  : 'bg-fpl-card text-fpl-muted hover:text-foreground'
+                  ? "bg-fpl-pink/20 text-fpl-pink"
+                  : "bg-fpl-card text-fpl-muted hover:text-foreground"
               }`}
             >
               Differentials (&lt;10%)
@@ -189,7 +234,7 @@ export default function TransfersPage() {
         </>
       )}
 
-      {tab === 'prices' && (
+      {tab === "prices" && (
         <Card>
           <CardHeader>
             <CardTitle>Predicted Price Changes</CardTitle>

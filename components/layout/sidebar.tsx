@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { navItems, secondaryNavItems } from './nav-items';
-import { NavIcon } from './nav-icon';
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { navItems, secondaryNavItems } from "./nav-items";
+import { NavIcon } from "./nav-icon";
 
 export function Sidebar({
   open,
@@ -26,8 +26,8 @@ export function Sidebar({
 
       {/* Sidebar panel */}
       <aside
-        className={`fixed top-14 bottom-0 left-0 z-50 w-60 border-r border-fpl-border bg-fpl-purple-dark transition-transform lg:translate-x-0 ${
-          open ? 'translate-x-0' : '-translate-x-full'
+        className={`fixed bottom-0 left-0 top-14 z-50 w-60 border-r border-fpl-border bg-fpl-purple-dark transition-transform lg:translate-x-0 ${
+          open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <nav className="flex flex-col gap-1 p-3">
@@ -38,10 +38,10 @@ export function Sidebar({
                 key={item.href}
                 href={item.href}
                 onClick={onClose}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                className={`flex min-h-[44px] items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors active:scale-[0.98] ${
                   isActive
-                    ? 'bg-fpl-purple-light text-fpl-green'
-                    : 'text-fpl-muted hover:bg-fpl-purple-light/50 hover:text-foreground'
+                    ? "bg-fpl-purple-light text-fpl-green"
+                    : "text-fpl-muted hover:bg-fpl-purple-light/50 hover:text-foreground"
                 }`}
               >
                 <NavIcon name={item.icon} />
@@ -63,10 +63,10 @@ export function Sidebar({
                 key={item.href}
                 href={item.href}
                 onClick={onClose}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                className={`flex min-h-[44px] items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors active:scale-[0.98] ${
                   isActive
-                    ? 'bg-fpl-purple-light text-fpl-green'
-                    : 'text-fpl-muted hover:bg-fpl-purple-light/50 hover:text-foreground'
+                    ? "bg-fpl-purple-light text-fpl-green"
+                    : "text-fpl-muted hover:bg-fpl-purple-light/50 hover:text-foreground"
                 }`}
               >
                 <NavIcon name={item.icon} />

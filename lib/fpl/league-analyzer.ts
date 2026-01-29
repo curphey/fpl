@@ -1,5 +1,12 @@
-import type { Player, Team, StandingsResult, ManagerPicks, Pick } from './types';
-import { getPlayerForm } from './utils';
+import type {
+  Player,
+  Team,
+  StandingsResult,
+  ManagerPicks,
+  Pick,
+  ManagerChip,
+} from "./types";
+import { getPlayerForm } from "./utils";
 
 // =============================================================================
 // Types
@@ -27,7 +34,7 @@ export interface EffectiveOwnership {
   captainEO: number; // % who captain
   ownerCount: number;
   totalManagers: number; // user + rivals
-  userStatus: 'captain' | 'own' | 'bench' | 'dont_own';
+  userStatus: "captain" | "own" | "bench" | "dont_own";
 }
 
 export interface Differential {
@@ -40,7 +47,7 @@ export interface Differential {
   rivalsOwning: number;
   totalRivals: number;
   riskScore: number; // 0-100
-  type: 'attack' | 'cover';
+  type: "attack" | "cover";
 }
 
 export interface RivalComparison {
@@ -90,7 +97,8 @@ export function selectRivals(
   count: number,
 ): StandingsResult[] {
   const user = standings.find((s) => s.entry === userEntry);
-  if (!user) return standings.filter((s) => s.entry !== userEntry).slice(0, count);
+  if (!user)
+    return standings.filter((s) => s.entry !== userEntry).slice(0, count);
 
   const others = standings
     .filter((s) => s.entry !== userEntry)
@@ -172,18 +180,18 @@ export function calculateEffectiveOwnership(
         }
       }
 
-      let userStatus: EffectiveOwnership['userStatus'] = 'dont_own';
+      let userStatus: EffectiveOwnership["userStatus"] = "dont_own";
       if (userPick) {
-        if (userPick.is_captain) userStatus = 'captain';
-        else if (userPick.multiplier > 0) userStatus = 'own';
-        else userStatus = 'bench';
+        if (userPick.is_captain) userStatus = "captain";
+        else if (userPick.multiplier > 0) userStatus = "own";
+        else userStatus = "bench";
       }
 
       return {
         playerId,
         playerName: player.web_name,
         position: getPositionShort(player.element_type),
-        teamShortName: team?.short_name ?? '???',
+        teamShortName: team?.short_name ?? "???",
         globalOwnership: parseFloat(player.selected_by_percent) || 0,
         leagueEO: (eoWeight / totalManagers) * 100,
         captainEO: (captainWeight / totalManagers) * 100,
@@ -213,7 +221,10 @@ export function identifyDifferentials(
   const rivalOwnership = new Map<number, number>();
   for (const rival of rivals) {
     for (const pick of rival.activePicks) {
-      rivalOwnership.set(pick.element, (rivalOwnership.get(pick.element) ?? 0) + 1);
+      rivalOwnership.set(
+        pick.element,
+        (rivalOwnership.get(pick.element) ?? 0) + 1,
+      );
     }
   }
 
@@ -232,13 +243,13 @@ export function identifyDifferentials(
         playerId: id,
         playerName: player.web_name,
         position: getPositionShort(player.element_type),
-        teamShortName: team?.short_name ?? '???',
+        teamShortName: team?.short_name ?? "???",
         form,
-        expectedPoints: parseFloat(player.ep_next ?? '0') || form,
+        expectedPoints: parseFloat(player.ep_next ?? "0") || form,
         rivalsOwning: 0,
         totalRivals,
         riskScore: 0,
-        type: 'attack',
+        type: "attack",
       });
     }
   }
@@ -257,13 +268,13 @@ export function identifyDifferentials(
         playerId: id,
         playerName: player.web_name,
         position: getPositionShort(player.element_type),
-        teamShortName: team?.short_name ?? '???',
+        teamShortName: team?.short_name ?? "???",
         form,
-        expectedPoints: parseFloat(player.ep_next ?? '0') || form,
+        expectedPoints: parseFloat(player.ep_next ?? "0") || form,
         rivalsOwning: count,
         totalRivals,
         riskScore,
-        type: 'cover',
+        type: "cover",
       });
     }
   }
@@ -352,7 +363,7 @@ export function generateSwingScenarios(
       playerId,
       playerName: player.web_name,
       position: getPositionShort(player.element_type),
-      teamShortName: team?.short_name ?? '???',
+      teamShortName: team?.short_name ?? "???",
       rivalsOwning,
       totalRivals,
       netImpact2: Math.round(-2 * fraction * 10) / 10,
@@ -380,16 +391,29 @@ export function analyzeLeague(
   teamMap: Map<number, Team>,
 ): LeagueAnalysis {
   const eo = calculateEffectiveOwnership(userPicks, rivals, playerMap, teamMap);
-  const { attack, cover } = identifyDifferentials(userPicks, rivals, playerMap, teamMap);
-  const swingScenarios = generateSwingScenarios(userPicks, rivals, playerMap, teamMap);
+  const { attack, cover } = identifyDifferentials(
+    userPicks,
+    rivals,
+    playerMap,
+    teamMap,
+  );
+  const swingScenarios = generateSwingScenarios(
+    userPicks,
+    rivals,
+    playerMap,
+    teamMap,
+  );
 
   // Unique player count (user active picks not owned by any rival)
   const uniquePlayerCount = attack.length;
 
   // EO coverage: % of high-EO players (>50% EO) that user owns
   const highEO = eo.filter((e) => e.leagueEO >= 50);
-  const highEOOwned = highEO.filter((e) => e.userStatus !== 'dont_own');
-  const eoCoverage = highEO.length > 0 ? Math.round((highEOOwned.length / highEO.length) * 100) : 100;
+  const highEOOwned = highEO.filter((e) => e.userStatus !== "dont_own");
+  const eoCoverage =
+    highEO.length > 0
+      ? Math.round((highEOOwned.length / highEO.length) * 100)
+      : 100;
 
   return {
     effectiveOwnership: eo,
@@ -409,6 +433,139 @@ export function analyzeLeague(
 // =============================================================================
 
 function getPositionShort(elementType: number): string {
-  const map: Record<number, string> = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-  return map[elementType] ?? '???';
+  const map: Record<number, string> = { 1: "GK", 2: "DEF", 3: "MID", 4: "FWD" };
+  return map[elementType] ?? "???";
+}
+
+// =============================================================================
+// Rival Chip Tracking
+// =============================================================================
+
+export interface RivalChipStatus {
+  entry: number;
+  name: string;
+  playerName: string;
+  rank: number;
+  pointsGap: number;
+  chipsUsed: ManagerChip[];
+  chipsRemaining: string[];
+  hasWildcard: boolean;
+  hasFreehit: boolean;
+  hasTripleCaptain: boolean;
+  hasBenchBoost: boolean;
+}
+
+export interface ChipAdvantage {
+  chip: string;
+  label: string;
+  userHas: boolean;
+  rivalsWithout: number;
+  rivalsWithoutNames: string[];
+}
+
+export interface RivalChipAnalysis {
+  rivals: RivalChipStatus[];
+  chipAdvantages: ChipAdvantage[];
+  activeChipAlerts: { rivalName: string; chip: string; gw: number }[];
+  summary: string;
+}
+
+const ALL_CHIPS = ["wildcard", "freehit", "3xc", "bboost"];
+const CHIP_LABELS: Record<string, string> = {
+  wildcard: "Wildcard",
+  freehit: "Free Hit",
+  "3xc": "Triple Captain",
+  bboost: "Bench Boost",
+};
+
+/**
+ * Analyze chip status for rivals in a mini-league.
+ */
+export function analyzeRivalChips(
+  userChipsUsed: ManagerChip[],
+  rivals: {
+    entry: number;
+    name: string;
+    playerName: string;
+    rank: number;
+    total: number;
+  }[],
+  rivalChipHistories: Map<number, ManagerChip[]>,
+  userTotal: number,
+  currentGwId: number,
+): RivalChipAnalysis {
+  const userChipNames = new Set(userChipsUsed.map((c) => c.name));
+  const userRemainingChips = ALL_CHIPS.filter((c) => !userChipNames.has(c));
+
+  const rivalStatuses: RivalChipStatus[] = [];
+  const activeChipAlerts: { rivalName: string; chip: string; gw: number }[] =
+    [];
+
+  for (const rival of rivals) {
+    const chipsUsed = rivalChipHistories.get(rival.entry) ?? [];
+    const chipNamesUsed = new Set(chipsUsed.map((c) => c.name));
+    const chipsRemaining = ALL_CHIPS.filter((c) => !chipNamesUsed.has(c));
+
+    // Check if rival used a chip in current GW
+    const currentGwChip = chipsUsed.find((c) => c.event === currentGwId);
+    if (currentGwChip) {
+      activeChipAlerts.push({
+        rivalName: rival.playerName,
+        chip: CHIP_LABELS[currentGwChip.name] ?? currentGwChip.name,
+        gw: currentGwId,
+      });
+    }
+
+    rivalStatuses.push({
+      entry: rival.entry,
+      name: rival.name,
+      playerName: rival.playerName,
+      rank: rival.rank,
+      pointsGap: rival.total - userTotal,
+      chipsUsed,
+      chipsRemaining,
+      hasWildcard: chipsRemaining.includes("wildcard"),
+      hasFreehit: chipsRemaining.includes("freehit"),
+      hasTripleCaptain: chipsRemaining.includes("3xc"),
+      hasBenchBoost: chipsRemaining.includes("bboost"),
+    });
+  }
+
+  // Calculate chip advantages
+  const chipAdvantages: ChipAdvantage[] = ALL_CHIPS.map((chip) => {
+    const userHas = userRemainingChips.includes(chip);
+    const rivalsWithout = rivalStatuses.filter(
+      (r) => !r.chipsRemaining.includes(chip),
+    );
+
+    return {
+      chip,
+      label: CHIP_LABELS[chip] ?? chip,
+      userHas,
+      rivalsWithout: rivalsWithout.length,
+      rivalsWithoutNames: rivalsWithout.map((r) => r.playerName),
+    };
+  });
+
+  // Generate summary
+  const highImpactChips = ["3xc", "bboost"];
+  const rivalsWithHighImpact = rivalStatuses.filter((r) =>
+    highImpactChips.some((c) => r.chipsRemaining.includes(c)),
+  );
+
+  let summary = "";
+  if (activeChipAlerts.length > 0) {
+    summary = `${activeChipAlerts.length} rival(s) playing chips this GW!`;
+  } else if (rivalsWithHighImpact.length > 0) {
+    summary = `${rivalsWithHighImpact.length} rival(s) have TC or BB remaining`;
+  } else {
+    summary = "Most rivals have used their high-impact chips";
+  }
+
+  return {
+    rivals: rivalStatuses,
+    chipAdvantages,
+    activeChipAlerts,
+    summary,
+  };
 }

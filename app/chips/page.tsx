@@ -17,6 +17,7 @@ import {
   analyzeChipTiming,
   type ChipRecommendation,
 } from "@/lib/fpl/chip-model";
+import { analyzeChipHistory } from "@/lib/fpl/chip-history";
 import { CHIPS, getAvailableChips } from "@/lib/fpl/rules-engine";
 import { useManagerContext } from "@/lib/fpl/manager-context";
 import { DashboardSkeleton } from "@/components/ui/loading-skeleton";
@@ -24,8 +25,9 @@ import { ErrorState } from "@/components/ui/error-state";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChipTimingGrid } from "@/components/chips/chip-timing";
+import { ChipHistorySection } from "@/components/chips/chip-history";
 
-type Tab = "overview" | "timing";
+type Tab = "overview" | "timing" | "history";
 
 const chipIcons: Record<string, string> = {
   wildcard: "WC",
@@ -170,6 +172,13 @@ export default function ChipsPage() {
     );
   }, [bootstrap, fixtures, targetGw, availableChips, managerPicks]);
 
+  const historyCurrentData = history?.current;
+  const chipHistoryAnalysis = useMemo(() => {
+    if (!bootstrap || !historyCurrentData || usedChips.length === 0)
+      return null;
+    return analyzeChipHistory(usedChips, historyCurrentData, bootstrap.events);
+  }, [bootstrap, historyCurrentData, usedChips]);
+
   const isLoading =
     bsLoading || fxLoading || (managerId !== null && histLoading);
   const error = bsError || fxError;
@@ -234,6 +243,7 @@ export default function ChipsPage() {
         {[
           { key: "overview" as Tab, label: "Overview" },
           { key: "timing" as Tab, label: "Timing Optimizer" },
+          { key: "history" as Tab, label: "Performance History" },
         ].map((t) => (
           <button
             key={t.key}
@@ -290,6 +300,32 @@ export default function ChipsPage() {
             <ChipTimingGrid analyses={timingAnalyses} />
           </CardContent>
         </Card>
+      )}
+
+      {tab === "history" && (
+        <>
+          {!managerId ? (
+            <Card>
+              <CardContent>
+                <p className="py-8 text-center text-sm text-fpl-muted">
+                  Connect your FPL account to see your chip performance history.
+                </p>
+              </CardContent>
+            </Card>
+          ) : chipHistoryAnalysis ? (
+            <ChipHistorySection analysis={chipHistoryAnalysis} />
+          ) : (
+            <Card>
+              <CardContent>
+                <p className="py-8 text-center text-sm text-fpl-muted">
+                  {usedChips.length === 0
+                    ? "No chips used yet this season."
+                    : "Loading chip history..."}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
     </div>
   );

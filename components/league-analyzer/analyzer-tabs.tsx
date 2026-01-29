@@ -1,12 +1,13 @@
-'use client';
+"use client";
 
-export type AnalyzerTab = 'eo' | 'differentials' | 'rival' | 'swing';
+export type AnalyzerTab = "eo" | "differentials" | "rival" | "swing" | "chips";
 
 const tabs: { key: AnalyzerTab; label: string }[] = [
-  { key: 'eo', label: 'Effective Ownership' },
-  { key: 'differentials', label: 'Differentials' },
-  { key: 'rival', label: 'Rival Comparison' },
-  { key: 'swing', label: 'Swing Scenarios' },
+  { key: "eo", label: "Effective Ownership" },
+  { key: "differentials", label: "Differentials" },
+  { key: "rival", label: "Rival Comparison" },
+  { key: "swing", label: "Swing Scenarios" },
+  { key: "chips", label: "Rival Chips" },
 ];
 
 export function AnalyzerTabs({
@@ -24,8 +25,8 @@ export function AnalyzerTabs({
           onClick={() => onTabChange(t.key)}
           className={`whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
             activeTab === t.key
-              ? 'bg-fpl-green/20 text-fpl-green'
-              : 'bg-fpl-card text-fpl-muted hover:text-foreground'
+              ? "bg-fpl-green/20 text-fpl-green"
+              : "bg-fpl-card text-fpl-muted hover:text-foreground"
           }`}
         >
           {t.label}

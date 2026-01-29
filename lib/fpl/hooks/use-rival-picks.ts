@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import type { ManagerPicks } from '../types';
+import { useState, useEffect, useCallback, useRef } from "react";
+import type { ManagerPicks } from "../types";
 
 interface UseRivalPicksResult {
   data: Map<number, ManagerPicks>;
@@ -11,10 +11,13 @@ interface UseRivalPicksResult {
   refetch: () => void;
 }
 
-const DELAY_MS = 200;
+const BATCH_SIZE = 4; // Concurrent requests per batch
+const DELAY_BETWEEN_BATCHES_MS = 150; // Delay between batches to respect rate limits
 
 /**
- * Sequentially fetch picks for multiple managers with delays to respect rate limits.
+ * Fetch picks for multiple managers using parallel batching.
+ * Fetches BATCH_SIZE requests concurrently, then waits before the next batch.
+ * This is faster than sequential fetching while still respecting rate limits.
  */
 export function useRivalPicks(
   managerIds: number[],
@@ -47,42 +50,59 @@ export function useRivalPicks(
     setProgress({ loaded: 0, total });
     setData(new Map());
 
+    async function fetchOne(
+      id: number,
+    ): Promise<{ id: number; picks: ManagerPicks | null }> {
+      try {
+        const res = await fetch(
+          `/api/fpl/entry/${id}/event/${gameweek}/picks`,
+          { signal: controller.signal },
+        );
+        if (!res.ok) throw new Error(`Failed to fetch picks for manager ${id}`);
+        const picks: ManagerPicks = await res.json();
+        return { id, picks };
+      } catch (err) {
+        if (controller.signal.aborted) throw err;
+        console.warn(`Failed to load picks for manager ${id}:`, err);
+        return { id, picks: null };
+      }
+    }
+
     async function fetchAll() {
       const results = new Map<number, ManagerPicks>();
+      let loaded = 0;
 
-      for (let i = 0; i < managerIds.length; i++) {
+      // Process in batches
+      for (let i = 0; i < managerIds.length; i += BATCH_SIZE) {
         if (controller.signal.aborted) return;
 
-        const id = managerIds[i];
-        try {
-          const res = await fetch(
-            `/api/fpl/entry/${id}/event/${gameweek}/picks`,
-            { signal: controller.signal },
-          );
-          if (!res.ok) throw new Error(`Failed to fetch picks for manager ${id}`);
-          const picks: ManagerPicks = await res.json();
-          results.set(id, picks);
+        const batch = managerIds.slice(i, i + BATCH_SIZE);
+        const batchResults = await Promise.all(batch.map(fetchOne));
 
-          if (!controller.signal.aborted) {
-            setData(new Map(results));
-            setProgress({ loaded: i + 1, total });
+        if (controller.signal.aborted) return;
+
+        // Process batch results
+        for (const result of batchResults) {
+          if (result.picks) {
+            results.set(result.id, result.picks);
           }
-        } catch (err) {
-          if (controller.signal.aborted) return;
-          // Skip individual failures, continue with others
-          console.warn(`Failed to load picks for manager ${id}:`, err);
+          loaded++;
         }
 
-        // Rate-limit delay between requests
-        if (i < managerIds.length - 1 && !controller.signal.aborted) {
-          await new Promise((r) => setTimeout(r, DELAY_MS));
+        // Update state after each batch
+        setData(new Map(results));
+        setProgress({ loaded, total });
+
+        // Delay between batches (not after the last batch)
+        if (i + BATCH_SIZE < managerIds.length && !controller.signal.aborted) {
+          await new Promise((r) => setTimeout(r, DELAY_BETWEEN_BATCHES_MS));
         }
       }
 
       if (!controller.signal.aborted) {
         setIsLoading(false);
         if (results.size === 0 && managerIds.length > 0) {
-          setError(new Error('Failed to load any rival picks'));
+          setError(new Error("Failed to load any rival picks"));
         }
       }
     }
@@ -93,7 +113,7 @@ export function useRivalPicks(
       controller.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, gameweek, managerIds.join(','), fetchKey]);
+  }, [enabled, gameweek, managerIds.join(","), fetchKey]);
 
   return { data, isLoading, progress, error, refetch };
 }

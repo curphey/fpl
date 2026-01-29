@@ -1,21 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { fplClient, FPLApiError } from '@/lib/fpl/client';
+import { NextRequest, NextResponse } from "next/server";
+import { fplClient, FPLApiError } from "@/lib/fpl/client";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 export const revalidate = 300;
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
     const managerId = parseInt(id, 10);
 
-    if (isNaN(managerId)) {
+    if (isNaN(managerId) || managerId <= 0 || managerId > 100_000_000) {
       return NextResponse.json(
-        { error: 'Invalid manager ID' },
-        { status: 400 }
+        { error: "Invalid manager ID" },
+        { status: 400 },
       );
     }
 
@@ -25,12 +25,12 @@ export async function GET(
     if (error instanceof FPLApiError) {
       return NextResponse.json(
         { error: error.message },
-        { status: error.statusCode }
+        { status: error.statusCode },
       );
     }
     return NextResponse.json(
-      { error: 'Failed to fetch manager data' },
-      { status: 500 }
+      { error: "Failed to fetch manager data" },
+      { status: 500 },
     );
   }
 }

@@ -468,5 +468,58 @@ describe("Price Model", () => {
 
       expect(adviceHigh.urgencyScore).toBeGreaterThan(adviceLow.urgencyScore);
     });
+
+    it("recommends wait for low probability risers (<30%)", () => {
+      const candidate: PriceChangeCandidate = {
+        player: createMockEnrichedPlayer({ now_cost: 100 }),
+        direction: "rise",
+        probability: 0.2,
+        netTransfers: 10000,
+        transferRatio: 0.01,
+        costChangeMomentum: 0,
+      };
+
+      const advice = calculateTransferTiming(candidate);
+
+      expect(advice.recommendation).toBe("wait");
+      expect(advice.reasoning).toContain("Low probability");
+      expect(advice.reasoning).toContain("Safe to wait");
+    });
+
+    it("returns neutral for moderate probability fallers (30-50%)", () => {
+      const candidate: PriceChangeCandidate = {
+        player: createMockEnrichedPlayer({ now_cost: 100 }),
+        direction: "fall",
+        probability: 0.4,
+        netTransfers: -30000,
+        transferRatio: -0.03,
+        costChangeMomentum: 0,
+      };
+
+      const advice = calculateTransferTiming(candidate);
+
+      expect(advice.recommendation).toBe("neutral");
+      expect(advice.reasoning).toContain("Moderate chance");
+      expect(advice.reasoning).toContain("Could wait for discount");
+      expect(advice.urgencyScore).toBe(20);
+    });
+
+    it("returns neutral for low probability fallers (<30%)", () => {
+      const candidate: PriceChangeCandidate = {
+        player: createMockEnrichedPlayer({ now_cost: 100 }),
+        direction: "fall",
+        probability: 0.15,
+        netTransfers: -5000,
+        transferRatio: -0.005,
+        costChangeMomentum: 0,
+      };
+
+      const advice = calculateTransferTiming(candidate);
+
+      expect(advice.recommendation).toBe("neutral");
+      expect(advice.reasoning).toContain("Low probability");
+      expect(advice.reasoning).toContain("Price likely stable");
+      expect(advice.urgencyScore).toBe(30);
+    });
   });
 });

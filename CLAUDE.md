@@ -12,7 +12,9 @@ Fantasy Premier League analytics dashboard built with Next.js.
 - **Database:** Supabase PostgreSQL (`profiles` table for cross-device manager ID sync, `notification_preferences` and `notification_history` for notifications)
 - **Hosting:** Netlify (via `@netlify/plugin-nextjs`)
 - **CI/CD:** GitHub Actions (auto-deploy on push to `main`)
-- **Testing:** Vitest with 107+ tests, 84% coverage
+- **Testing:** Vitest with 159+ tests
+- **AI:** Claude API (Sonnet for news search, extended thinking for optimization)
+- **PWA:** Service worker, offline support, push notifications
 - **Linting:** ESLint 9 + Prettier + lint-staged + Husky
 
 ## Commands
@@ -40,7 +42,13 @@ app/                    # Next.js App Router pages and API routes
       entry/[id]/event/[gw]/picks/ # Manager picks for gameweek
       leagues-classic/[id]/standings/ # League standings
     optimize/           # Claude AI optimization endpoint
+    news/               # Claude-powered FPL news search
+      injuries/         # Injury updates endpoint
+      team/[team]/      # Team news endpoint
+    notifications/send/ # Push notification sending endpoint
   auth/callback/        # Supabase OAuth callback route
+  news/page.tsx         # News feed with search and filters
+  offline/page.tsx      # Offline fallback page (PWA)
   globals.css           # Tailwind + CSS custom properties (dark theme)
   layout.tsx            # Root layout with AppShell
   page.tsx              # Dashboard (home page)
@@ -70,6 +78,8 @@ components/
   team/                 # Team header, pitch view, gameweek summary/nav, squad value tracker
   optimize/             # Optimize form, thinking display, recommendations display
   notifications/        # Notification preferences form, notification history list
+  news/                 # News feed, injury tracker components
+  pwa/                  # Service worker registration, pull-to-refresh
 lib/fpl/
   types.ts              # TypeScript interfaces for FPL API (691 lines)
   client.ts             # Server-side FPL API client with caching
@@ -97,9 +107,12 @@ lib/claude/
   types.ts              # Optimization request/response types
   client.ts             # Claude API client with extended thinking
   prompts.ts            # Prompt builders for transfer optimization
+  news-types.ts         # News item, category, injury update types
+  news-client.ts        # Claude web search for FPL news (searchFPLNews, getInjuryUpdates, getTeamNews)
+  hooks.ts              # React hooks for news (useNews, useInjuryUpdates, useTeamNews)
 lib/notifications/
   types.ts              # Notification preference and history types
-  hooks.ts              # useNotificationPreferences, useNotificationHistory, usePushNotificationStatus
+  hooks.ts              # useNotificationPreferences, useNotificationHistory, usePushNotificationStatus, subscribeToPushNotifications
 lib/supabase/
   types.ts              # Profile interface matching the profiles table
   client.ts             # Browser-side Supabase client
@@ -107,10 +120,17 @@ lib/supabase/
 middleware.ts           # Refreshes Supabase auth session on every request
 supabase/
   migrations/           # SQL migrations (profiles, notification_preferences, notification_history)
+public/
+  manifest.json         # PWA manifest
+  sw.js                 # Service worker (caching, push notifications)
+  icons/                # PWA icons (192, 512, apple-touch-icon, favicons)
+scripts/
+  generate-icons.mjs    # Generate PWA icons from SVG using Sharp
 .github/
   workflows/deploy.yml  # GitHub Actions CI/CD pipeline (lint → test → build → deploy)
 netlify.toml            # Netlify build config and Next.js plugin
 vitest.config.ts        # Vitest configuration
+next.config.ts          # Next.js config (image optimization, PWA headers)
 ```
 
 ## Conventions

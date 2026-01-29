@@ -27,13 +27,11 @@ import {
   getCurrentGameweek,
   getNextGameweek,
   getGameweekById,
-  formatDeadline,
   getTimeUntilDeadline,
   formatTimeUntilDeadline,
   sortPlayersByPoints,
   sortPlayersByForm,
   sortPlayersByPrice,
-  sortPlayersByValue,
   sortPlayersByOwnership,
   filterPlayersByPosition,
   filterPlayersByTeam,
@@ -41,7 +39,6 @@ import {
   filterAvailablePlayers,
   searchPlayers,
   enrichPlayer,
-  enrichPlayers,
 } from "../utils";
 
 // Mock player factory

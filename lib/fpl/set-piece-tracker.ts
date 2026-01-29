@@ -1,4 +1,3 @@
-import type { Player } from "./types";
 import type { EnrichedPlayer } from "./utils";
 
 export type SetPieceType = "penalties" | "corners" | "direct_freekicks";

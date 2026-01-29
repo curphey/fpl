@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 import type { TeamSetPieces, SetPieceAsset } from "@/lib/fpl/set-piece-tracker";
-import { formatSetPieceDuties } from "@/lib/fpl/set-piece-tracker";
 import { getPlayerDisplayName, getPlayerPrice } from "@/lib/fpl/utils";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge, PositionBadge } from "@/components/ui/badge";
 
 type ViewMode = "top-assets" | "by-team";

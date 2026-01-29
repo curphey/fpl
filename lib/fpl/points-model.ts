@@ -1,11 +1,11 @@
-import type { Fixture } from './types';
-import type { EnrichedPlayer } from './utils';
-import { getPlayerForm, getPlayerPointsPerGame, getPlayerXGI } from './utils';
+import type { Fixture } from "./types";
+import type { EnrichedPlayer } from "./utils";
+import { getPlayerForm, getPlayerPointsPerGame } from "./utils";
 
 export interface PointsPrediction {
   player: EnrichedPlayer;
   predictedPoints: number;
-  confidence: 'high' | 'medium' | 'low';
+  confidence: "high" | "medium" | "low";
   breakdown: {
     base: number;
     formAdj: number;
@@ -20,7 +20,7 @@ export interface PointsPrediction {
  * Returns 0-1.
  */
 function getMinutesProbability(player: EnrichedPlayer): number {
-  if (player.status !== 'a') return player.status === 'd' ? 0.25 : 0;
+  if (player.status !== "a") return player.status === "d" ? 0.25 : 0;
   if (player.minutes === 0) return 0.1;
   const starts = player.starts;
   // finished GWs so far — approximate from total minutes
@@ -86,15 +86,18 @@ export function predictPoints(
       const homeAdj = fix?.isHome ? 0.3 : 0;
 
       const raw = base + formAdj + fixtureAdj + homeAdj;
-      const predictedPoints = Math.max(Math.round(raw * minutesProb * 10) / 10, 0);
+      const predictedPoints = Math.max(
+        Math.round(raw * minutesProb * 10) / 10,
+        0,
+      );
 
       // Confidence based on sample size and form stability
       const startRate = player.starts / Math.max(player.minutes / 90, 1);
-      let confidence: 'high' | 'medium' | 'low' = 'low';
+      let confidence: "high" | "medium" | "low" = "low";
       if (startRate > 0.7 && form > 3 && player.minutes > 270) {
-        confidence = 'high';
+        confidence = "high";
       } else if (startRate > 0.4 && player.minutes > 90) {
-        confidence = 'medium';
+        confidence = "medium";
       }
 
       return {

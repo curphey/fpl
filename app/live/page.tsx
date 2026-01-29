@@ -1,17 +1,17 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from "react";
 import {
   useBootstrapStatic,
   useGameweekFixtures,
   useLiveGameweek,
-} from '@/lib/fpl/hooks/use-fpl';
-import { getCurrentGameweek, buildTeamMap, buildPlayerMap } from '@/lib/fpl/utils';
-import { DashboardSkeleton } from '@/components/ui/loading-skeleton';
-import { ErrorState } from '@/components/ui/error-state';
-import { MatchScores } from '@/components/live/match-scores';
-import { TopPerformers } from '@/components/live/top-performers';
-import { BPSTracker } from '@/components/live/bps-tracker';
+} from "@/lib/fpl/hooks/use-fpl";
+import { buildTeamMap, buildPlayerMap } from "@/lib/fpl/utils";
+import { DashboardSkeleton } from "@/components/ui/loading-skeleton";
+import { ErrorState } from "@/components/ui/error-state";
+import { MatchScores } from "@/components/live/match-scores";
+import { TopPerformers } from "@/components/live/top-performers";
+import { BPSTracker } from "@/components/live/bps-tracker";
 
 export default function LivePage() {
   const {
@@ -101,7 +101,7 @@ export default function LivePage() {
           <h1 className="text-xl font-bold">Live Tracker</h1>
           <p className="text-sm text-fpl-muted">
             {currentGw.name}
-            {anyLive && ' — matches in progress'}
+            {anyLive && " — matches in progress"}
           </p>
         </div>
         <button

@@ -1,6 +1,6 @@
-import type { Fixture, Team, Gameweek } from './types';
-import type { EnrichedPlayer } from './utils';
-import { getPlayerForm, getPlayerValueScore, getPlayerXGI } from './utils';
+import type { Fixture } from "./types";
+import type { EnrichedPlayer } from "./utils";
+import { getPlayerForm, getPlayerValueScore, getPlayerXGI } from "./utils";
 
 export interface TransferRecommendation {
   player: EnrichedPlayer;

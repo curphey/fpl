@@ -254,3 +254,89 @@ export function usePushNotificationStatus() {
 
   return { isSupported, permission, requestPermission };
 }
+
+/**
+ * Subscribe to push notifications and return the subscription object.
+ * This requires the service worker to be registered and push permission granted.
+ */
+export async function subscribeToPushNotifications(): Promise<PushSubscription | null> {
+  if (typeof window === "undefined") return null;
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    console.warn("Push notifications not supported");
+    return null;
+  }
+
+  try {
+    // Wait for service worker to be ready
+    const registration = await navigator.serviceWorker.ready;
+
+    // Check for existing subscription
+    const existingSubscription =
+      await registration.pushManager.getSubscription();
+    if (existingSubscription) {
+      return existingSubscription;
+    }
+
+    // Get VAPID public key from environment
+    const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    if (!vapidPublicKey) {
+      console.warn("VAPID public key not configured");
+      return null;
+    }
+
+    // Convert VAPID key to Uint8Array
+    const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
+
+    // Subscribe to push
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: applicationServerKey as BufferSource,
+    });
+
+    return subscription;
+  } catch (error) {
+    console.error("Failed to subscribe to push notifications:", error);
+    return null;
+  }
+}
+
+/**
+ * Unsubscribe from push notifications
+ */
+export async function unsubscribeFromPushNotifications(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  if (!("serviceWorker" in navigator)) return false;
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+
+    if (subscription) {
+      await subscription.unsubscribe();
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error("Failed to unsubscribe from push notifications:", error);
+    return false;
+  }
+}
+
+/**
+ * Convert a base64 URL-safe string to Uint8Array for VAPID key
+ */
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+// Re-export PushSubscriptionJSON type for external use
+import type { PushSubscriptionJSON } from "./types";

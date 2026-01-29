@@ -4,6 +4,8 @@ import { useState } from "react";
 import {
   useNotificationPreferences,
   usePushNotificationStatus,
+  subscribeToPushNotifications,
+  unsubscribeFromPushNotifications,
 } from "@/lib/notifications/hooks";
 import type { NotificationPreferencesUpdate } from "@/lib/notifications/types";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -115,17 +117,66 @@ export function NotificationPreferencesForm() {
   };
 
   const handleEnablePush = async () => {
-    if (permission !== "granted") {
-      const result = await requestPermission();
-      if (result !== "granted") {
-        setSaveError("Push notification permission denied");
+    setSaving(true);
+    setSaveError(null);
+
+    try {
+      // Request permission if not already granted
+      if (permission !== "granted") {
+        const result = await requestPermission();
+        if (result !== "granted") {
+          setSaveError("Push notification permission denied");
+          setSaving(false);
+          return;
+        }
+      }
+
+      // Subscribe to push notifications
+      const subscription = await subscribeToPushNotifications();
+      if (!subscription) {
+        setSaveError(
+          "Failed to subscribe to push notifications. Make sure VAPID keys are configured.",
+        );
+        setSaving(false);
         return;
       }
-    }
 
-    // In a real implementation, we would register a service worker and get the subscription
-    // For now, just enable the preference
-    await handleUpdate({ push_enabled: true });
+      // Save subscription to preferences
+      const subscriptionJSON = subscription.toJSON();
+      await updatePreferences({
+        push_enabled: true,
+        push_subscription: subscriptionJSON as {
+          endpoint: string;
+          expirationTime: number | null;
+          keys: { p256dh: string; auth: string };
+        },
+      });
+    } catch (err) {
+      setSaveError(
+        err instanceof Error ? err.message : "Failed to enable push",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDisablePush = async () => {
+    setSaving(true);
+    setSaveError(null);
+
+    try {
+      await unsubscribeFromPushNotifications();
+      await updatePreferences({
+        push_enabled: false,
+        push_subscription: null,
+      });
+    } catch (err) {
+      setSaveError(
+        err instanceof Error ? err.message : "Failed to disable push",
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (isLoading) {
@@ -269,14 +320,18 @@ export function NotificationPreferencesForm() {
               prefs.push_enabled ? (
                 <Toggle
                   enabled={prefs.push_enabled}
-                  onChange={(v) => handleUpdate({ push_enabled: v })}
+                  onChange={(v) =>
+                    v ? handleEnablePush() : handleDisablePush()
+                  }
+                  disabled={saving}
                 />
               ) : (
                 <button
                   onClick={handleEnablePush}
-                  className="rounded-md bg-fpl-green px-3 py-1.5 text-sm font-medium text-white"
+                  disabled={saving}
+                  className="rounded-md bg-fpl-green px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
                 >
-                  Enable
+                  {saving ? "Enabling..." : "Enable"}
                 </button>
               )
             ) : null}

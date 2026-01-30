@@ -1,9 +1,16 @@
-import type { TransferRecommendation } from '@/lib/fpl/transfer-model';
-import { getPlayerDisplayName, getPlayerPrice } from '@/lib/fpl/utils';
-import { PositionBadge } from '@/components/ui/badge';
-import { DataTable, type Column } from '@/components/ui/data-table';
+import { memo } from "react";
+import type { TransferRecommendation } from "@/lib/fpl/transfer-model";
+import { getPlayerDisplayName, getPlayerPrice } from "@/lib/fpl/utils";
+import { PositionBadge } from "@/components/ui/badge";
+import { DataTable, type Column } from "@/components/ui/data-table";
 
-function ScoreBar({ value, max = 10 }: { value: number; max?: number }) {
+const ScoreBar = memo(function ScoreBar({
+  value,
+  max = 10,
+}: {
+  value: number;
+  max?: number;
+}) {
   const pct = Math.min((value / max) * 100, 100);
   return (
     <div className="flex items-center gap-2">
@@ -16,23 +23,23 @@ function ScoreBar({ value, max = 10 }: { value: number; max?: number }) {
       <span className="text-xs text-fpl-muted">{value.toFixed(1)}</span>
     </div>
   );
-}
+});
 
-export function TransferTable({
+export const TransferTable = memo(function TransferTable({
   recommendations,
 }: {
   recommendations: TransferRecommendation[];
 }) {
   const columns: Column<TransferRecommendation>[] = [
     {
-      key: 'rank',
-      header: '#',
-      className: 'w-8',
+      key: "rank",
+      header: "#",
+      className: "w-8",
       render: (_, i) => <span className="text-fpl-muted">{i + 1}</span>,
     },
     {
-      key: 'player',
-      header: 'Player',
+      key: "player",
+      header: "Player",
       render: (r) => (
         <div>
           <span className="font-medium">{getPlayerDisplayName(r.player)}</span>
@@ -43,9 +50,9 @@ export function TransferTable({
       ),
     },
     {
-      key: 'pos',
-      header: 'Pos',
-      className: 'w-12',
+      key: "pos",
+      header: "Pos",
+      className: "w-12",
       render: (r) => (
         <PositionBadge
           position={r.player.element_type}
@@ -54,29 +61,29 @@ export function TransferTable({
       ),
     },
     {
-      key: 'price',
-      header: 'Price',
-      className: 'w-16 text-right',
+      key: "price",
+      header: "Price",
+      className: "w-16 text-right",
       render: (r) => (
         <span className="text-fpl-muted">{getPlayerPrice(r.player)}</span>
       ),
     },
     {
-      key: 'form',
-      header: 'Form',
-      className: 'w-28',
+      key: "form",
+      header: "Form",
+      className: "w-28",
       render: (r) => <ScoreBar value={r.formScore} />,
     },
     {
-      key: 'fixtures',
-      header: 'Fixtures',
-      className: 'w-28',
+      key: "fixtures",
+      header: "Fixtures",
+      className: "w-28",
       render: (r) => <ScoreBar value={r.fixtureScore} />,
     },
     {
-      key: 'score',
-      header: 'Score',
-      className: 'w-14 text-right',
+      key: "score",
+      header: "Score",
+      className: "w-14 text-right",
       render: (r) => (
         <span className="font-semibold text-fpl-green">
           {r.score.toFixed(1)}
@@ -92,4 +99,4 @@ export function TransferTable({
       keyExtractor={(r) => r.player.id}
     />
   );
-}
+});

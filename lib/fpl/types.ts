@@ -1,48 +1,107 @@
 /**
  * FPL API Type Definitions
  * Based on https://fantasy.premierleague.com/api/
+ *
+ * Note on pricing: All `cost` and `now_cost` values are in tenths.
+ * For example, `now_cost: 100` means £10.0m.
+ * Use `formatPrice(cost)` to convert to display string.
+ *
+ * @see https://fantasy.premierleague.com/api/bootstrap-static/
  */
 
 // =============================================================================
 // Bootstrap Static Types (GET /bootstrap-static/)
 // =============================================================================
 
+/**
+ * Root response from the FPL bootstrap-static endpoint.
+ * Contains all static data needed to render the app.
+ *
+ * @example
+ * const data = await fplClient.getBootstrapStatic();
+ * const currentGw = data.events.find(e => e.is_current);
+ * const players = data.elements;
+ */
 export interface BootstrapStatic {
+  /** All gameweeks/events for the season */
   events: Gameweek[];
+  /** FPL game rules and settings */
   game_settings: GameSettings;
+  /** Season phases (Overall, Aug-Sep, etc.) */
   phases: Phase[];
+  /** All 20 Premier League teams */
   teams: Team[];
+  /** Total number of FPL managers globally */
   total_players: number;
+  /** All players (called "elements" in FPL API) */
   elements: Player[];
+  /** Available stat types for players */
   element_stats: ElementStat[];
+  /** Player position types (GK, DEF, MID, FWD) */
   element_types: ElementType[];
 }
 
+/**
+ * Gameweek/Event data. Each season has 38 gameweeks.
+ *
+ * @example
+ * // Find current gameweek
+ * const current = events.find(e => e.is_current);
+ *
+ * // Find next deadline
+ * const next = events.find(e => e.is_next);
+ * console.log(new Date(next.deadline_time));
+ */
 export interface Gameweek {
+  /** Gameweek number (1-38) */
   id: number;
+  /** Display name, e.g., "Gameweek 1" */
   name: string;
+  /** ISO 8601 deadline timestamp */
   deadline_time: string;
+  /** Unix timestamp of deadline */
   deadline_time_epoch: number;
+  /** Offset from kickoff to deadline in seconds */
   deadline_time_game_offset: number;
+  /** When points were released (null if not yet) */
   release_time: string | null;
+  /** Average points scored by all managers */
   average_entry_score: number;
+  /** Whether all fixtures have finished */
   finished: boolean;
+  /** Whether bonus points have been calculated */
   data_checked: boolean;
+  /** Manager ID with highest score (null until finished) */
   highest_scoring_entry: number | null;
+  /** Highest points scored this GW (null until finished) */
   highest_score: number | null;
+  /** True if this is the previous gameweek */
   is_previous: boolean;
+  /** True if this is the current active gameweek */
   is_current: boolean;
+  /** True if this is the next upcoming gameweek */
   is_next: boolean;
+  /** Whether cup leagues have been created */
   cup_leagues_created: boolean;
+  /** Whether H2H knockout matches created */
   h2h_ko_matches_created: boolean;
+  /** Number of managers with complete squads */
   ranked_count: number;
+  /** Chip usage stats for this gameweek */
   chip_plays: ChipPlay[];
+  /** Player ID of most selected player */
   most_selected: number | null;
+  /** Player ID of most transferred in */
   most_transferred_in: number | null;
+  /** Player ID of top scorer */
   top_element: number | null;
+  /** Points info for top scorer */
   top_element_info: TopElementInfo | null;
+  /** Total transfers made this gameweek */
   transfers_made: number;
+  /** Most captained player ID */
   most_captained: number | null;
+  /** Most vice-captained player ID */
   most_vice_captained: number | null;
 }
 
@@ -98,125 +157,271 @@ export interface Phase {
   highest_score: number | null;
 }
 
+/**
+ * Premier League team data.
+ *
+ * @example
+ * // Find team by ID
+ * const team = teams.find(t => t.id === player.team);
+ * console.log(team.name); // "Manchester City"
+ * console.log(team.short_name); // "MCI"
+ */
 export interface Team {
+  /** Internal team code */
   code: number;
+  /** Season draws count */
   draw: number;
+  /** Recent form string (e.g., "WWDLW") or null */
   form: string | null;
+  /** Team ID (1-20, referenced by player.team) */
   id: number;
+  /** Season losses count */
   loss: number;
+  /** Full team name, e.g., "Manchester City" */
   name: string;
+  /** Games played */
   played: number;
+  /** League points */
   points: number;
+  /** League table position */
   position: number;
+  /** 3-letter abbreviation, e.g., "MCI" */
   short_name: string;
+  /** Overall strength rating (1-5) */
   strength: number;
+  /** Division (null for PL teams) */
   team_division: number | null;
+  /** Whether team is unavailable */
   unavailable: boolean;
+  /** Season wins count */
   win: number;
+  /** Home overall strength (1000-1500 scale) */
   strength_overall_home: number;
+  /** Away overall strength (1000-1500 scale) */
   strength_overall_away: number;
+  /** Home attacking strength (1000-1500 scale) */
   strength_attack_home: number;
+  /** Away attacking strength (1000-1500 scale) */
   strength_attack_away: number;
+  /** Home defensive strength (1000-1500 scale) */
   strength_defence_home: number;
+  /** Away defensive strength (1000-1500 scale) */
   strength_defence_away: number;
+  /** External Pulse ID for media */
   pulse_id: number;
 }
 
+/**
+ * FPL player ("element") data.
+ *
+ * Note: All cost values are in tenths (100 = £10.0m).
+ *
+ * @example
+ * // Get player price in millions
+ * const priceInMillions = player.now_cost / 10; // e.g., 12.5
+ *
+ * // Check if player is injured
+ * const isInjured = player.chance_of_playing_next_round !== null &&
+ *                   player.chance_of_playing_next_round < 100;
+ *
+ * // Get expected points
+ * const expectedPts = parseFloat(player.ep_next || '0');
+ */
 export interface Player {
+  /** Probability of playing next GW (0-100, null = 100%) */
   chance_of_playing_next_round: number | null;
+  /** Probability of playing this GW (0-100, null = 100%) */
   chance_of_playing_this_round: number | null;
+  /** Internal player code */
   code: number;
+  /** Price change this gameweek (in tenths, positive = rise) */
   cost_change_event: number;
+  /** Price falls this gameweek (in tenths) */
   cost_change_event_fall: number;
+  /** Price change since season start (in tenths) */
   cost_change_start: number;
+  /** Price falls since season start (in tenths) */
   cost_change_start_fall: number;
+  /** Times selected for Dream Team */
   dreamteam_count: number;
+  /** Position: 1=GK, 2=DEF, 3=MID, 4=FWD */
   element_type: PlayerPosition;
+  /** Expected points next gameweek (string, parse to float) */
   ep_next: string | null;
+  /** Expected points this gameweek (string, parse to float) */
   ep_this: string | null;
+  /** Points scored this gameweek */
   event_points: number;
+  /** Player's first name */
   first_name: string;
+  /** Recent form (points per game, string, parse to float) */
   form: string;
+  /** Player ID (unique identifier) */
   id: number;
+  /** Whether in current Dream Team */
   in_dreamteam: boolean;
+  /** Injury/suspension news text */
   news: string;
+  /** When news was added (ISO timestamp, null if no news) */
   news_added: string | null;
+  /** Current price in tenths (100 = £10.0m) */
   now_cost: number;
+  /** Photo filename */
   photo: string;
+  /** Points per game (string, parse to float) */
   points_per_game: string;
+  /** Player's last name */
   second_name: string;
+  /** Ownership percentage (string, e.g., "45.2") */
   selected_by_percent: string;
+  /** Whether player has special status */
   special: boolean;
+  /** Squad number (null if unassigned) */
   squad_number: number | null;
+  /** Availability status: a=available, d=doubtful, i=injured, s=suspended, u=unavailable, n=not in squad */
   status: PlayerStatus;
+  /** Team ID (references Team.id) */
   team: number;
+  /** Team code (internal) */
   team_code: number;
+  /** Total FPL points this season */
   total_points: number;
+  /** Total transfers in this season */
   transfers_in: number;
+  /** Transfers in this gameweek */
   transfers_in_event: number;
+  /** Total transfers out this season */
   transfers_out: number;
+  /** Transfers out this gameweek */
   transfers_out_event: number;
+  /** Value based on recent form (string, parse to float) */
   value_form: string;
+  /** Value based on season performance (string, parse to float) */
   value_season: string;
+  /** Display name (shirt name), e.g., "Haaland" */
   web_name: string;
+  /** Total minutes played */
   minutes: number;
+  /** Goals scored */
   goals_scored: number;
+  /** Assists */
   assists: number;
+  /** Clean sheets (DEF/GK) */
   clean_sheets: number;
+  /** Goals conceded (DEF/GK) */
   goals_conceded: number;
+  /** Own goals */
   own_goals: number;
+  /** Penalties saved (GK) */
   penalties_saved: number;
+  /** Penalties missed */
   penalties_missed: number;
+  /** Yellow cards */
   yellow_cards: number;
+  /** Red cards */
   red_cards: number;
+  /** Saves (GK) */
   saves: number;
+  /** Bonus points earned */
   bonus: number;
+  /** Bonus Points System score */
   bps: number;
+  /** ICT influence score (string, parse to float) */
   influence: string;
+  /** ICT creativity score (string, parse to float) */
   creativity: string;
+  /** ICT threat score (string, parse to float) */
   threat: string;
+  /** Combined ICT index (string, parse to float) */
   ict_index: string;
+  /** Number of starts */
   starts: number;
+  /** Expected goals (xG) (string, parse to float) */
   expected_goals: string;
+  /** Expected assists (xA) (string, parse to float) */
   expected_assists: string;
+  /** Expected goal involvements (xGI = xG + xA) (string, parse to float) */
   expected_goal_involvements: string;
+  /** Expected goals conceded (xGC) (string, parse to float) */
   expected_goals_conceded: string;
+  /** Influence rank overall */
   influence_rank: number;
+  /** Influence rank within position */
   influence_rank_type: number;
+  /** Creativity rank overall */
   creativity_rank: number;
+  /** Creativity rank within position */
   creativity_rank_type: number;
+  /** Threat rank overall */
   threat_rank: number;
+  /** Threat rank within position */
   threat_rank_type: number;
+  /** ICT index rank overall */
   ict_index_rank: number;
+  /** ICT index rank within position */
   ict_index_rank_type: number;
+  /** Corner/indirect FK order (1 = first choice, null = not on duty) */
   corners_and_indirect_freekicks_order: number | null;
+  /** Corner duty text description */
   corners_and_indirect_freekicks_text: string;
+  /** Direct FK order (1 = first choice, null = not on duty) */
   direct_freekicks_order: number | null;
+  /** Direct FK duty text description */
   direct_freekicks_text: string;
+  /** Penalty order (1 = first choice, null = not on duty) */
   penalties_order: number | null;
+  /** Penalty duty text description */
   penalties_text: string;
+  /** Expected goals per 90 minutes */
   expected_goals_per_90: number;
+  /** Saves per 90 minutes (GK) */
   saves_per_90: number;
+  /** Expected assists per 90 minutes */
   expected_assists_per_90: number;
+  /** Expected goal involvements per 90 minutes */
   expected_goal_involvements_per_90: number;
+  /** Expected goals conceded per 90 minutes */
   expected_goals_conceded_per_90: number;
+  /** Goals conceded per 90 minutes */
   goals_conceded_per_90: number;
+  /** Price rank overall */
   now_cost_rank: number;
+  /** Price rank within position */
   now_cost_rank_type: number;
+  /** Form rank overall */
   form_rank: number;
+  /** Form rank within position */
   form_rank_type: number;
+  /** Points per game rank overall */
   points_per_game_rank: number;
+  /** Points per game rank within position */
   points_per_game_rank_type: number;
+  /** Selection rank overall */
   selected_rank: number;
+  /** Selection rank within position */
   selected_rank_type: number;
+  /** Starts per 90 minutes */
   starts_per_90: number;
+  /** Clean sheets per 90 minutes */
   clean_sheets_per_90: number;
 }
 
-export type PlayerPosition = 1 | 2 | 3 | 4; // 1=GK, 2=DEF, 3=MID, 4=FWD
+/**
+ * Player position type.
+ * 1=Goalkeeper, 2=Defender, 3=Midfielder, 4=Forward
+ */
+export type PlayerPosition = 1 | 2 | 3 | 4;
 
-export type PlayerStatus = 'a' | 'd' | 'i' | 's' | 'u' | 'n';
-// a = available, d = doubtful, i = injured, s = suspended, u = unavailable, n = not in squad
+/**
+ * Player availability status.
+ * - 'a' = Available
+ * - 'd' = Doubtful (25-75% chance)
+ * - 'i' = Injured (0% chance)
+ * - 's' = Suspended
+ * - 'u' = Unavailable
+ * - 'n' = Not in squad
+ */
+export type PlayerStatus = "a" | "d" | "i" | "s" | "u" | "n";
 
 export interface ElementStat {
   label: string;
@@ -243,23 +448,53 @@ export interface ElementType {
 // Fixtures Types (GET /fixtures/)
 // =============================================================================
 
+/**
+ * Premier League fixture/match data.
+ *
+ * @example
+ * // Get home team name
+ * const homeTeam = teams.find(t => t.id === fixture.team_h);
+ *
+ * // Check fixture difficulty for home team
+ * const isHardFixture = fixture.team_h_difficulty >= 4;
+ *
+ * // Check if match is in a specific gameweek
+ * const gw5Fixtures = fixtures.filter(f => f.event === 5);
+ */
 export interface Fixture {
+  /** Internal fixture code */
   code: number;
+  /** Gameweek number (null if unscheduled, e.g., postponed) */
   event: number | null;
+  /** Whether match has finished */
   finished: boolean;
+  /** Provisional finished status */
   finished_provisional: boolean;
+  /** Fixture ID */
   id: number;
+  /** Kickoff time (ISO 8601, null if TBC) */
   kickoff_time: string | null;
+  /** Minutes played (0-90+) */
   minutes: number;
+  /** Whether kickoff time is provisional */
   provisional_start_time: boolean;
+  /** Whether match has started (null if not yet) */
   started: boolean | null;
+  /** Away team ID (references Team.id) */
   team_a: number;
+  /** Away team score (null if not started) */
   team_a_score: number | null;
+  /** Home team ID (references Team.id) */
   team_h: number;
+  /** Home team score (null if not started) */
   team_h_score: number | null;
+  /** Live stats (goals, assists, etc.) */
   stats: FixtureStat[];
+  /** Fixture Difficulty Rating for home team (1-5, 1=easiest) */
   team_h_difficulty: number;
+  /** Fixture Difficulty Rating for away team (1-5, 1=easiest) */
   team_a_difficulty: number;
+  /** External Pulse ID */
   pulse_id: number;
 }
 
@@ -663,7 +898,7 @@ export interface StandingsResult {
 // Utility Types
 // =============================================================================
 
-export type ChipName = 'wildcard' | 'freehit' | '3xc' | 'bboost';
+export type ChipName = "wildcard" | "freehit" | "3xc" | "bboost";
 
 export interface PositionInfo {
   id: PlayerPosition;
@@ -674,17 +909,44 @@ export interface PositionInfo {
 }
 
 export const POSITIONS: Record<PlayerPosition, PositionInfo> = {
-  1: { id: 1, singular: 'Goalkeeper', plural: 'Goalkeepers', shortSingular: 'GK', shortPlural: 'GKs' },
-  2: { id: 2, singular: 'Defender', plural: 'Defenders', shortSingular: 'DEF', shortPlural: 'DEFs' },
-  3: { id: 3, singular: 'Midfielder', plural: 'Midfielders', shortSingular: 'MID', shortPlural: 'MIDs' },
-  4: { id: 4, singular: 'Forward', plural: 'Forwards', shortSingular: 'FWD', shortPlural: 'FWDs' },
+  1: {
+    id: 1,
+    singular: "Goalkeeper",
+    plural: "Goalkeepers",
+    shortSingular: "GK",
+    shortPlural: "GKs",
+  },
+  2: {
+    id: 2,
+    singular: "Defender",
+    plural: "Defenders",
+    shortSingular: "DEF",
+    shortPlural: "DEFs",
+  },
+  3: {
+    id: 3,
+    singular: "Midfielder",
+    plural: "Midfielders",
+    shortSingular: "MID",
+    shortPlural: "MIDs",
+  },
+  4: {
+    id: 4,
+    singular: "Forward",
+    plural: "Forwards",
+    shortSingular: "FWD",
+    shortPlural: "FWDs",
+  },
 };
 
-export const PLAYER_STATUS_MAP: Record<PlayerStatus, { label: string; color: string }> = {
-  a: { label: 'Available', color: 'green' },
-  d: { label: 'Doubtful', color: 'yellow' },
-  i: { label: 'Injured', color: 'red' },
-  s: { label: 'Suspended', color: 'red' },
-  u: { label: 'Unavailable', color: 'red' },
-  n: { label: 'Not in squad', color: 'gray' },
+export const PLAYER_STATUS_MAP: Record<
+  PlayerStatus,
+  { label: string; color: string }
+> = {
+  a: { label: "Available", color: "green" },
+  d: { label: "Doubtful", color: "yellow" },
+  i: { label: "Injured", color: "red" },
+  s: { label: "Suspended", color: "red" },
+  u: { label: "Unavailable", color: "red" },
+  n: { label: "Not in squad", color: "gray" },
 };

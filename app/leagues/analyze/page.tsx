@@ -23,7 +23,7 @@ import {
   analyzeRivalChips,
 } from "@/lib/fpl/league-analyzer";
 import { ConnectPrompt } from "@/components/leagues/connect-prompt";
-import { DashboardSkeleton } from "@/components/ui/loading-skeleton";
+import { LeagueStandingsSkeleton } from "@/components/ui/loading-skeleton";
 import { ErrorState } from "@/components/ui/error-state";
 import { AnalyzerHeader } from "@/components/league-analyzer/analyzer-header";
 import { AnalyzerStats } from "@/components/league-analyzer/analyzer-stats";
@@ -41,7 +41,7 @@ type RivalCount = 5 | 10 | 20;
 
 export default function AnalyzePage() {
   return (
-    <Suspense fallback={<DashboardSkeleton />}>
+    <Suspense fallback={<LeagueStandingsSkeleton />}>
       <AnalyzeContent />
     </Suspense>
   );
@@ -202,13 +202,14 @@ function AnalyzeContent() {
   const error = bsError || stError || upError || rpError;
 
   if (isInitialLoading) {
-    return <DashboardSkeleton />;
+    return <LeagueStandingsSkeleton />;
   }
 
   if (error) {
     return (
       <ErrorState
         message={error.message}
+        context="league"
         onRetry={() => {
           bsRefetch();
           stRefetch();

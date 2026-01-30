@@ -7,7 +7,7 @@ import { getPlayerForm, getPlayerXGI } from "./utils";
 // =============================================================================
 
 /** Weights for captain scoring model (must sum to 1.0) */
-const CAPTAIN_WEIGHTS = {
+export const CAPTAIN_WEIGHTS = {
   FORM: 0.35, // Recent performance
   FIXTURE: 0.25, // Fixture difficulty (easier = better)
   XGI: 0.2, // Expected goal involvement
@@ -16,7 +16,7 @@ const CAPTAIN_WEIGHTS = {
 } as const;
 
 /** Points for set piece duties */
-const SET_PIECE_POINTS = {
+export const SET_PIECE_POINTS = {
   PRIMARY_PENALTY: 5,
   SECONDARY_PENALTY: 2,
   DIRECT_FREEKICK: 2,
@@ -24,16 +24,16 @@ const SET_PIECE_POINTS = {
 } as const;
 
 /** Maximum possible set piece score (used for normalization) */
-const MAX_SET_PIECE_SCORE =
+export const MAX_SET_PIECE_SCORE =
   SET_PIECE_POINTS.PRIMARY_PENALTY +
   SET_PIECE_POINTS.DIRECT_FREEKICK +
   SET_PIECE_POINTS.CORNERS;
 
 /** Minimum minutes to consider a player for captaincy */
-const MIN_MINUTES_THRESHOLD = 90;
+export const MIN_MINUTES_THRESHOLD = 90;
 
 /** Ownership threshold for safe vs differential */
-const SAFE_OWNERSHIP_THRESHOLD = 15;
+export const SAFE_OWNERSHIP_THRESHOLD = 15;
 
 export interface CaptainPick {
   player: EnrichedPlayer;

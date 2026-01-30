@@ -2,7 +2,7 @@
  * Claude API client with extended thinking support
  */
 
-import Anthropic from '@anthropic-ai/sdk';
+import Anthropic from "@anthropic-ai/sdk";
 import type {
   OptimizeRequest,
   OptimizeResponse,
@@ -12,17 +12,25 @@ import type {
   TransferRecommendation,
   ChipRecommendation,
   WildcardRecommendation,
-} from './types';
+} from "./types";
 import {
   buildTransferPrompt,
   buildChipPrompt,
   buildWildcardPrompt,
   buildSystemPrompt,
-} from './prompts';
+} from "./prompts";
 
-const THINKING_BUDGET = 10000; // tokens for extended thinking
-const MAX_OUTPUT_TOKENS = 16000;
-const MODEL = 'claude-sonnet-4-20250514';
+/**
+ * Claude API configuration constants for optimization requests.
+ */
+export const CLAUDE_CONFIG = {
+  /** Token budget for extended thinking (reasoning) */
+  THINKING_BUDGET: 10000,
+  /** Maximum output tokens for the response */
+  MAX_OUTPUT_TOKENS: 16000,
+  /** Claude model to use for optimization */
+  MODEL: "claude-sonnet-4-20250514",
+} as const;
 
 interface PlayerData {
   name: string;
@@ -37,7 +45,12 @@ interface PlayerData {
 
 interface FixtureData {
   team: string;
-  fixtures: { gw: number; opponent: string; difficulty: number; home: boolean }[];
+  fixtures: {
+    gw: number;
+    opponent: string;
+    difficulty: number;
+    home: boolean;
+  }[];
 }
 
 export async function runOptimization(
@@ -49,7 +62,7 @@ export async function runOptimization(
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    throw new Error('ANTHROPIC_API_KEY not configured');
+    throw new Error("ANTHROPIC_API_KEY not configured");
   }
 
   const client = new Anthropic({ apiKey });
@@ -61,7 +74,7 @@ export async function runOptimization(
   // Build appropriate prompt based on type
   let prompt: string;
   switch (request.type) {
-    case 'transfer':
+    case "transfer":
       prompt = buildTransferPrompt(
         request.query,
         request.constraints as TransferConstraints,
@@ -71,7 +84,7 @@ export async function runOptimization(
         fixtureDataStr,
       );
       break;
-    case 'chip':
+    case "chip":
       prompt = buildChipPrompt(
         request.query,
         request.constraints as ChipConstraints,
@@ -80,7 +93,7 @@ export async function runOptimization(
         fixtureDataStr,
       );
       break;
-    case 'wildcard':
+    case "wildcard":
       prompt = buildWildcardPrompt(
         request.query,
         request.constraints as WildcardConstraints,
@@ -95,24 +108,24 @@ export async function runOptimization(
 
   // Call Claude with extended thinking
   const response = await client.messages.create({
-    model: MODEL,
-    max_tokens: MAX_OUTPUT_TOKENS,
+    model: CLAUDE_CONFIG.MODEL,
+    max_tokens: CLAUDE_CONFIG.MAX_OUTPUT_TOKENS,
     thinking: {
-      type: 'enabled',
-      budget_tokens: THINKING_BUDGET,
+      type: "enabled",
+      budget_tokens: CLAUDE_CONFIG.THINKING_BUDGET,
     },
     system: buildSystemPrompt(),
-    messages: [{ role: 'user', content: prompt }],
+    messages: [{ role: "user", content: prompt }],
   });
 
   // Extract thinking and text from response
-  let thinking = '';
-  let text = '';
+  let thinking = "";
+  let text = "";
 
   for (const block of response.content) {
-    if (block.type === 'thinking') {
+    if (block.type === "thinking") {
       thinking = block.thinking;
-    } else if (block.type === 'text') {
+    } else if (block.type === "text") {
       text = block.text;
     }
   }
@@ -132,7 +145,12 @@ export async function runOptimization(
 
 function formatPlayerData(players: PlayerData[]): string {
   // Group by position and format
-  const byPosition: Record<string, PlayerData[]> = { GK: [], DEF: [], MID: [], FWD: [] };
+  const byPosition: Record<string, PlayerData[]> = {
+    GK: [],
+    DEF: [],
+    MID: [],
+    FWD: [],
+  };
 
   for (const p of players) {
     const pos = p.position.toUpperCase();
@@ -151,10 +169,10 @@ function formatPlayerData(players: PlayerData[]): string {
         `- ${p.name} (${p.team}) £${p.price}m | Form: ${p.form} | Pts: ${p.totalPoints} | Own: ${p.ownership}% | xPts: ${p.expectedPoints}`,
       );
     }
-    lines.push('');
+    lines.push("");
   }
 
-  return lines.join('\n');
+  return lines.join("\n");
 }
 
 function formatFixtureData(fixtures: FixtureData[]): string {
@@ -163,12 +181,14 @@ function formatFixtureData(fixtures: FixtureData[]): string {
   for (const team of fixtures.slice(0, 20)) {
     const fixtureStr = team.fixtures
       .slice(0, 5)
-      .map((f) => `GW${f.gw}: ${f.home ? '' : '@'}${f.opponent}(${f.difficulty})`)
-      .join(', ');
+      .map(
+        (f) => `GW${f.gw}: ${f.home ? "" : "@"}${f.opponent}(${f.difficulty})`,
+      )
+      .join(", ");
     lines.push(`${team.team}: ${fixtureStr}`);
   }
 
-  return lines.join('\n');
+  return lines.join("\n");
 }
 
 function parseJsonResponse(
@@ -176,7 +196,10 @@ function parseJsonResponse(
   type: string,
 ): {
   summary: string;
-  recommendations: TransferRecommendation[] | ChipRecommendation | WildcardRecommendation;
+  recommendations:
+    | TransferRecommendation[]
+    | ChipRecommendation
+    | WildcardRecommendation;
   warnings?: string[];
 } {
   // Extract JSON from response (may be wrapped in markdown code blocks)
@@ -186,21 +209,21 @@ function parseJsonResponse(
   try {
     const parsed = JSON.parse(jsonStr);
 
-    if (type === 'transfer') {
+    if (type === "transfer") {
       return {
-        summary: parsed.summary || 'Transfer recommendations',
+        summary: parsed.summary || "Transfer recommendations",
         recommendations: parsed.recommendations || [],
         warnings: parsed.warnings,
       };
-    } else if (type === 'chip') {
+    } else if (type === "chip") {
       return {
-        summary: parsed.summary || 'Chip recommendation',
+        summary: parsed.summary || "Chip recommendation",
         recommendations: parsed.recommendation || parsed.recommendations,
         warnings: parsed.warnings,
       };
     } else {
       return {
-        summary: parsed.summary || 'Wildcard recommendation',
+        summary: parsed.summary || "Wildcard recommendation",
         recommendations: parsed.recommendation || parsed.recommendations,
         warnings: parsed.warnings,
       };
@@ -208,9 +231,11 @@ function parseJsonResponse(
   } catch {
     // If JSON parsing fails, return a fallback
     return {
-      summary: 'Unable to parse structured response',
-      recommendations: type === 'transfer' ? [] : ({} as ChipRecommendation),
-      warnings: ['Response parsing failed. Raw response available in thinking.'],
+      summary: "Unable to parse structured response",
+      recommendations: type === "transfer" ? [] : ({} as ChipRecommendation),
+      warnings: [
+        "Response parsing failed. Raw response available in thinking.",
+      ],
     };
   }
 }

@@ -1,10 +1,17 @@
-import type { CaptainPick } from '@/lib/fpl/captain-model';
-import { getPlayerDisplayName, getPlayerPrice } from '@/lib/fpl/utils';
-import { PositionBadge } from '@/components/ui/badge';
-import { Badge } from '@/components/ui/badge';
-import { getFDRColorClass } from '@/lib/fpl/fixture-planner';
+import { memo } from "react";
+import type { CaptainPick } from "@/lib/fpl/captain-model";
+import { getPlayerDisplayName, getPlayerPrice } from "@/lib/fpl/utils";
+import { PositionBadge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
+import { getFDRColorClass } from "@/lib/fpl/fixture-planner";
 
-function MiniBar({ value, label }: { value: number; label: string }) {
+const MiniBar = memo(function MiniBar({
+  value,
+  label,
+}: {
+  value: number;
+  label: string;
+}) {
   const pct = Math.min((value / 10) * 100, 100);
   return (
     <div className="flex items-center gap-2">
@@ -20,9 +27,9 @@ function MiniBar({ value, label }: { value: number; label: string }) {
       </span>
     </div>
   );
-}
+});
 
-export function CaptainCard({
+export const CaptainCard = memo(function CaptainCard({
   pick,
   rank,
 }: {
@@ -59,8 +66,8 @@ export function CaptainCard({
           <p className="text-2xl font-bold text-fpl-green">
             {pick.score.toFixed(1)}
           </p>
-          <Badge variant={pick.category === 'safe' ? 'green' : 'pink'}>
-            {pick.category === 'safe' ? 'Safe' : 'Differential'}
+          <Badge variant={pick.category === "safe" ? "green" : "pink"}>
+            {pick.category === "safe" ? "Safe" : "Differential"}
           </Badge>
         </div>
       </div>
@@ -70,7 +77,7 @@ export function CaptainCard({
         <span
           className={`rounded px-2 py-0.5 text-xs font-semibold ${getFDRColorClass(pick.difficulty)}`}
         >
-          {pick.opponentShortName} ({pick.isHome ? 'H' : 'A'})
+          {pick.opponentShortName} ({pick.isHome ? "H" : "A"})
         </span>
       </div>
 
@@ -83,4 +90,4 @@ export function CaptainCard({
       </div>
     </div>
   );
-}
+});

@@ -5,7 +5,7 @@ import { useBootstrapStatic, useFixtures } from "@/lib/fpl/hooks/use-fpl";
 import { getCurrentGameweek, getNextGameweek } from "@/lib/fpl/utils";
 import { buildFixtureGrid } from "@/lib/fpl/fixture-planner";
 import { analyzeFixtureSwings } from "@/lib/fpl/fixture-swing";
-import { DashboardSkeleton } from "@/components/ui/loading-skeleton";
+import { FixtureGridSkeleton } from "@/components/ui/loading-skeleton";
 import { ErrorState } from "@/components/ui/error-state";
 import { FixtureGrid } from "@/components/fixtures/fixture-grid";
 import { BestTeamsRanking } from "@/components/fixtures/best-teams-ranking";
@@ -52,7 +52,7 @@ export default function FixturesPage() {
   const error = bsError || fxError;
 
   if (isLoading && !bootstrap) {
-    return <DashboardSkeleton />;
+    return <FixtureGridSkeleton />;
   }
 
   if (error) {

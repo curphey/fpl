@@ -18,15 +18,15 @@ export interface NavItem {
 
 export const navItems: NavItem[] = [
   { label: "Dashboard", href: "/", icon: "dashboard" },
-  { label: "Fixtures", href: "/fixtures", icon: "fixtures" },
+  { label: "My Team", href: "/team", icon: "team" },
   { label: "Transfers", href: "/transfers", icon: "transfers" },
-  { label: "Captain", href: "/captain", icon: "captain" },
   { label: "Live", href: "/live", icon: "live" },
+  { label: "Fixtures", href: "/fixtures", icon: "fixtures" },
 ];
 
 /** Additional nav items shown only in the sidebar */
 export const secondaryNavItems: NavItem[] = [
-  { label: "My Team", href: "/team", icon: "team" },
+  { label: "Captain", href: "/captain", icon: "captain" },
   { label: "Expected Pts", href: "/expected-points", icon: "expected" },
   { label: "Players", href: "/players", icon: "players" },
   { label: "Leagues", href: "/leagues", icon: "leagues" },

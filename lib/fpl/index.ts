@@ -3,10 +3,10 @@
  */
 
 // Types
-export * from './types';
+export * from "./types";
 
 // Server-side client
-export { fplClient, FPLApiError } from './client';
+export { fplClient, FPLApiError } from "./client";
 export {
   getCurrentGameweek,
   getTeamById,
@@ -17,13 +17,32 @@ export {
   parsePrice,
   getDifficultyLabel,
   getDifficultyColor,
-} from './client';
+} from "./client";
 
 // Utilities
-export * from './utils';
+export * from "./utils";
 
 // League analyzer
-export * from './league-analyzer';
+export * from "./league-analyzer";
+
+// Transfer model
+export {
+  scoreTransferTargets,
+  TRANSFER_WEIGHTS,
+  TRANSFER_CONFIG,
+} from "./transfer-model";
+export type { TransferRecommendation } from "./transfer-model";
+
+// Captain model
+export {
+  scoreCaptainOptions,
+  CAPTAIN_WEIGHTS,
+  SET_PIECE_POINTS,
+  MAX_SET_PIECE_SCORE,
+  MIN_MINUTES_THRESHOLD,
+  SAFE_OWNERSHIP_THRESHOLD,
+} from "./captain-model";
+export type { CaptainPick } from "./captain-model";
 
 // Hooks (client-side only)
 export {
@@ -36,5 +55,5 @@ export {
   useManagerHistory,
   useManagerPicks,
   useLeagueStandings,
-} from './hooks/use-fpl';
-export { useRivalPicks } from './hooks/use-rival-picks';
+} from "./hooks/use-fpl";
+export { useRivalPicks } from "./hooks/use-rival-picks";

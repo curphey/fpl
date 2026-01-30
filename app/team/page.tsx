@@ -11,7 +11,7 @@ import {
 import { buildPlayerMap, buildTeamMap } from "@/lib/fpl/utils";
 import { calculateSquadValue, buildValueHistory } from "@/lib/fpl/squad-value";
 import { ConnectPrompt } from "@/components/leagues/connect-prompt";
-import { DashboardSkeleton } from "@/components/ui/loading-skeleton";
+import { PitchSkeleton } from "@/components/ui/loading-skeleton";
 import { ErrorState } from "@/components/ui/error-state";
 import { TeamHeader } from "@/components/team/team-header";
 import { PitchView } from "@/components/team/pitch-view";
@@ -112,13 +112,14 @@ export default function TeamPage() {
   const error = bsError || picksError || liveError;
 
   if (isLoading && !picksData) {
-    return <DashboardSkeleton />;
+    return <PitchSkeleton />;
   }
 
   if (error) {
     return (
       <ErrorState
         message={error.message}
+        context="manager"
         onRetry={() => {
           bsRefetch();
           picksRefetch();

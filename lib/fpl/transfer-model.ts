@@ -2,6 +2,35 @@ import type { Fixture } from "./types";
 import type { EnrichedPlayer } from "./utils";
 import { getPlayerForm, getPlayerValueScore, getPlayerXGI } from "./utils";
 
+/**
+ * Transfer model weight configuration.
+ * Weights must sum to 1.0.
+ */
+export const TRANSFER_WEIGHTS = {
+  /** Weight for recent form (points per match) */
+  FORM: 0.3,
+  /** Weight for fixture difficulty (easier = higher score) */
+  FIXTURE: 0.25,
+  /** Weight for value (points per million) */
+  VALUE: 0.25,
+  /** Weight for expected goals + assists */
+  XGI: 0.2,
+} as const;
+
+/**
+ * Transfer model configuration constants.
+ */
+export const TRANSFER_CONFIG = {
+  /** Default number of gameweeks to look ahead for fixtures */
+  DEFAULT_LOOK_AHEAD: 5,
+  /** Neutral difficulty when no fixtures found (1-5 scale) */
+  NEUTRAL_DIFFICULTY: 3,
+  /** Maximum normalized score value */
+  MAX_NORMALIZED_SCORE: 10,
+  /** Difficulty range for normalization (5-1 = 4) */
+  DIFFICULTY_RANGE: 4,
+} as const;
+
 export interface TransferRecommendation {
   player: EnrichedPlayer;
   score: number;
@@ -31,7 +60,7 @@ function getUpcomingFixtureDifficulty(
       (f.team_h === teamId || f.team_a === teamId),
   );
 
-  if (relevant.length === 0) return 3; // neutral fallback
+  if (relevant.length === 0) return TRANSFER_CONFIG.NEUTRAL_DIFFICULTY;
 
   const totalDifficulty = relevant.reduce((sum, f) => {
     if (f.team_h === teamId) return sum + f.team_h_difficulty;
@@ -55,7 +84,7 @@ export function scoreTransferTargets(
   players: EnrichedPlayer[],
   fixtures: Fixture[],
   nextGwId: number,
-  lookAhead: number = 5,
+  lookAhead: number = TRANSFER_CONFIG.DEFAULT_LOOK_AHEAD,
 ): TransferRecommendation[] {
   // Normalise ranges for consistent scoring
   const maxForm = Math.max(...players.map((p) => getPlayerForm(p)), 1);
@@ -76,16 +105,20 @@ export function scoreTransferTargets(
       );
 
       // Normalise 0-10
-      const formScore = (form / maxForm) * 10;
-      const fixtureScore = ((5 - avgDifficulty) / 4) * 10; // invert: easy=high
-      const valueScore = (value / maxValue) * 10;
-      const xgiScore = (xgi / maxXGI) * 10;
+      const formScore = (form / maxForm) * TRANSFER_CONFIG.MAX_NORMALIZED_SCORE;
+      // Invert difficulty: easy (1) = high score, hard (5) = low score
+      const fixtureScore =
+        ((5 - avgDifficulty) / TRANSFER_CONFIG.DIFFICULTY_RANGE) *
+        TRANSFER_CONFIG.MAX_NORMALIZED_SCORE;
+      const valueScore =
+        (value / maxValue) * TRANSFER_CONFIG.MAX_NORMALIZED_SCORE;
+      const xgiScore = (xgi / maxXGI) * TRANSFER_CONFIG.MAX_NORMALIZED_SCORE;
 
       const score =
-        formScore * 0.3 +
-        fixtureScore * 0.25 +
-        valueScore * 0.25 +
-        xgiScore * 0.2;
+        formScore * TRANSFER_WEIGHTS.FORM +
+        fixtureScore * TRANSFER_WEIGHTS.FIXTURE +
+        valueScore * TRANSFER_WEIGHTS.VALUE +
+        xgiScore * TRANSFER_WEIGHTS.XGI;
 
       return {
         player,

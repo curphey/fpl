@@ -1,13 +1,14 @@
-import type { Player, PlayerPosition } from '@/lib/fpl/types';
+import { memo } from "react";
+import type { Player, PlayerPosition } from "@/lib/fpl/types";
 
 const positionColors: Record<PlayerPosition, string> = {
-  1: 'bg-yellow-500',
-  2: 'bg-blue-500',
-  3: 'bg-green-500',
-  4: 'bg-red-500',
+  1: "bg-yellow-500",
+  2: "bg-blue-500",
+  3: "bg-green-500",
+  4: "bg-red-500",
 };
 
-export function PlayerCard({
+export const PlayerCard = memo(function PlayerCard({
   player,
   teamShortName,
   points,
@@ -22,19 +23,19 @@ export function PlayerCard({
   isCaptain: boolean;
   isViceCaptain: boolean;
   isBench: boolean;
-  autoSub?: 'in' | 'out';
+  autoSub?: "in" | "out";
 }) {
   const statusDot =
-    player.status === 'd'
-      ? 'bg-yellow-400'
-      : player.status === 'i' || player.status === 's' || player.status === 'u'
-        ? 'bg-red-500'
+    player.status === "d"
+      ? "bg-yellow-400"
+      : player.status === "i" || player.status === "s" || player.status === "u"
+        ? "bg-red-500"
         : null;
 
   return (
     <div
       className={`relative flex w-[72px] flex-col items-center rounded-lg border border-fpl-border bg-fpl-card px-1.5 py-2 text-center ${
-        isBench ? 'opacity-50' : ''
+        isBench ? "opacity-50" : ""
       }`}
     >
       {/* Position color bar */}
@@ -53,10 +54,10 @@ export function PlayerCard({
       {autoSub && (
         <span
           className={`absolute top-1.5 left-1.5 text-[10px] leading-none font-bold ${
-            autoSub === 'in' ? 'text-green-400' : 'text-red-400'
+            autoSub === "in" ? "text-green-400" : "text-red-400"
           }`}
         >
-          {autoSub === 'in' ? '\u25B2' : '\u25BC'}
+          {autoSub === "in" ? "\u25B2" : "\u25BC"}
         </span>
       )}
 
@@ -66,19 +67,21 @@ export function PlayerCard({
       </p>
 
       {/* Team short name */}
-      <p className="text-[10px] leading-tight text-fpl-muted">{teamShortName}</p>
+      <p className="text-[10px] leading-tight text-fpl-muted">
+        {teamShortName}
+      </p>
 
       {/* Points */}
       <p className="mt-0.5 text-sm font-bold text-fpl-green">
-        {points !== null ? points : '-'}
+        {points !== null ? points : "-"}
       </p>
 
       {/* Captain / Vice-captain badge */}
       {(isCaptain || isViceCaptain) && (
         <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-fpl-green text-[9px] font-bold text-fpl-purple">
-          {isCaptain ? 'C' : 'V'}
+          {isCaptain ? "C" : "V"}
         </span>
       )}
     </div>
   );
-}
+});

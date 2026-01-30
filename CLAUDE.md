@@ -159,3 +159,5 @@ next.config.ts          # Next.js config (image optimization, PWA headers)
 - **Environment variables:** Supabase vars use `NEXT_PUBLIC_` prefix (needed client-side). `ANTHROPIC_API_KEY` for Claude AI. `NOTIFICATIONS_API_KEY` for scheduled functions. `RESEND_API_KEY` for email notifications. `NEXT_PUBLIC_APP_URL` for email links. Never commit `.env*` files.
 - **Testing:** Unit tests in `__tests__/` directories adjacent to source files. Use Vitest with mock factories.
 - **Pre-commit hooks:** lint-staged runs ESLint and Prettier on staged files, then runs tests.
+- **Null/undefined handling:** Use `null` for "no value" in API responses and data that explicitly has no value. Use `undefined` for optional parameters and omitted fields. This provides clearer semantics between "value is explicitly empty" vs "value was not provided."
+- **API validation:** All API routes use Zod schemas from `lib/api/validation.ts` for runtime input validation. Use `validationErrorResponse()` for consistent error formatting.

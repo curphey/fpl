@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useBootstrapStatic, useFixtures } from "@/lib/fpl/hooks/use-fpl";
 import {
   getNextGameweek,
@@ -14,6 +14,7 @@ import {
   getTopSetPieceAssets,
   getSetPieceTakersByTeam,
 } from "@/lib/fpl/set-piece-tracker";
+import { usePlayerComparison } from "@/lib/fpl/hooks/use-player-comparison";
 import type { PlayerPosition } from "@/lib/fpl/types";
 import { DashboardSkeleton } from "@/components/ui/loading-skeleton";
 import { ErrorState } from "@/components/ui/error-state";
@@ -21,6 +22,8 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge, PositionBadge } from "@/components/ui/badge";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { SetPieceTakersSection } from "@/components/players/set-piece-takers";
+import { PlayerCompareModal } from "@/components/players/player-compare-modal";
+import { CompareButton } from "@/components/players/compare-button";
 
 type Tab = "predictions" | "set-pieces";
 type PosFilter = "all" | PlayerPosition;
@@ -48,6 +51,23 @@ export default function PlayersPage() {
   const [tab, setTab] = useState<Tab>("predictions");
   const [posFilter, setPosFilter] = useState<PosFilter>("all");
   const [search, setSearch] = useState("");
+  const [showCompareModal, setShowCompareModal] = useState(false);
+
+  const {
+    selectedPlayers,
+    togglePlayer,
+    clearSelection,
+    isSelected,
+    canCompare,
+  } = usePlayerComparison();
+
+  const handleCompare = useCallback(() => {
+    setShowCompareModal(true);
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    setShowCompareModal(false);
+  }, []);
 
   const nextGw = bootstrap ? getNextGameweek(bootstrap.events) : undefined;
   const currentGw = bootstrap
@@ -92,6 +112,45 @@ export default function PlayersPage() {
   }, [enriched]);
 
   const columns: Column<PointsPrediction>[] = [
+    {
+      key: "compare",
+      header: "",
+      className: "w-8",
+      render: (r) => (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            togglePlayer(r.player);
+          }}
+          className={`flex h-5 w-5 items-center justify-center rounded border transition-colors ${
+            isSelected(r.player.id)
+              ? "border-fpl-green bg-fpl-green text-fpl-purple"
+              : "border-fpl-border hover:border-fpl-green"
+          }`}
+          aria-label={
+            isSelected(r.player.id)
+              ? "Deselect player"
+              : "Select player for comparison"
+          }
+        >
+          {isSelected(r.player.id) && (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          )}
+        </button>
+      ),
+    },
     {
       key: "rank",
       header: "#",
@@ -283,6 +342,22 @@ export default function PlayersPage() {
             />
           </CardContent>
         </Card>
+      )}
+
+      {/* Compare Button */}
+      <CompareButton
+        selectedPlayers={selectedPlayers}
+        canCompare={canCompare}
+        onCompare={handleCompare}
+        onClear={clearSelection}
+      />
+
+      {/* Compare Modal */}
+      {showCompareModal && canCompare && (
+        <PlayerCompareModal
+          players={selectedPlayers}
+          onClose={handleCloseModal}
+        />
       )}
     </div>
   );

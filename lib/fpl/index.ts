@@ -83,3 +83,4 @@ export {
   useLeagueAnalysis,
   type RivalCount,
 } from "./hooks/use-league-analysis";
+export { usePlayerComparison } from "./hooks/use-player-comparison";

@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { EnrichedPlayer } from "@/lib/fpl/utils";
 import { getPlayerDisplayName, getPlayerPrice } from "@/lib/fpl/utils";
 import { PositionBadge } from "@/components/ui/badge";
@@ -8,7 +9,7 @@ export interface ExpectedPointsPlayer extends EnrichedPlayer {
   differential_score: number;
 }
 
-function OwnershipBar({ value }: { value: number }) {
+const OwnershipBar = memo(function OwnershipBar({ value }: { value: number }) {
   const pct = Math.min(value, 100);
   const color =
     value < 10 ? "bg-fpl-pink" : value < 25 ? "bg-fpl-cyan" : "bg-fpl-purple";
@@ -23,9 +24,13 @@ function OwnershipBar({ value }: { value: number }) {
       <span className="text-xs text-fpl-muted">{value.toFixed(1)}%</span>
     </div>
   );
-}
+});
 
-function DifferentialBadge({ score }: { score: number }) {
+const DifferentialBadge = memo(function DifferentialBadge({
+  score,
+}: {
+  score: number;
+}) {
   // High differential score = high EP, low ownership
   if (score >= 2) {
     return (
@@ -42,7 +47,7 @@ function DifferentialBadge({ score }: { score: number }) {
     );
   }
   return null;
-}
+});
 
 export function ExpectedPointsTable({
   players,

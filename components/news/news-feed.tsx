@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { useNews } from "@/lib/claude/hooks";
 import type { NewsCategory, NewsItem } from "@/lib/claude/news-types";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -44,7 +44,7 @@ function formatTimeAgo(dateString: string): string {
   return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
-function NewsItemCard({ item }: { item: NewsItem }) {
+const NewsItemCard = memo(function NewsItemCard({ item }: { item: NewsItem }) {
   const categoryInfo = categoryLabels[item.category];
 
   return (
@@ -106,7 +106,7 @@ function NewsItemCard({ item }: { item: NewsItem }) {
       </div>
     </div>
   );
-}
+});
 
 interface NewsFeedProps {
   initialQuery?: string;

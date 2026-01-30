@@ -1,9 +1,9 @@
 "use client";
 
+import { memo } from "react";
 import { useInjuryUpdates } from "@/lib/claude/hooks";
 import type { InjuryUpdate } from "@/lib/claude/news-types";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 
 const statusColors = {
   injured: "bg-fpl-danger/20 text-fpl-danger",
@@ -21,7 +21,11 @@ const statusLabels = {
   unknown: "Unknown",
 };
 
-function InjuryCard({ injury }: { injury: InjuryUpdate }) {
+const InjuryCard = memo(function InjuryCard({
+  injury,
+}: {
+  injury: InjuryUpdate;
+}) {
   return (
     <div className="rounded-lg border border-fpl-border bg-fpl-card p-4">
       <div className="mb-2 flex items-center justify-between">
@@ -53,7 +57,7 @@ function InjuryCard({ injury }: { injury: InjuryUpdate }) {
       </div>
     </div>
   );
-}
+});
 
 interface InjuryTrackerProps {
   players?: string[];

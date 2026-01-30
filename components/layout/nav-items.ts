@@ -12,7 +12,8 @@ export interface NavItem {
     | "leagues"
     | "team"
     | "optimize"
-    | "notifications";
+    | "notifications"
+    | "expected";
 }
 
 export const navItems: NavItem[] = [
@@ -26,6 +27,7 @@ export const navItems: NavItem[] = [
 /** Additional nav items shown only in the sidebar */
 export const secondaryNavItems: NavItem[] = [
   { label: "My Team", href: "/team", icon: "team" },
+  { label: "Expected Pts", href: "/expected-points", icon: "expected" },
   { label: "Players", href: "/players", icon: "players" },
   { label: "Leagues", href: "/leagues", icon: "leagues" },
   { label: "Chips", href: "/chips", icon: "chips" },

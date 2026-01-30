@@ -4,6 +4,8 @@ import { useEffect } from "react";
 
 export function ServiceWorkerRegister() {
   useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null;
+
     if (
       typeof window !== "undefined" &&
       "serviceWorker" in navigator &&
@@ -15,7 +17,7 @@ export function ServiceWorkerRegister() {
           console.log("SW registered:", registration.scope);
 
           // Check for updates periodically
-          setInterval(
+          intervalId = setInterval(
             () => {
               registration.update();
             },
@@ -26,6 +28,13 @@ export function ServiceWorkerRegister() {
           console.error("SW registration failed:", error);
         });
     }
+
+    // Cleanup interval on unmount to prevent memory leak
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
   }, []);
 
   return null;

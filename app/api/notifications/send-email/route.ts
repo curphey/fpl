@@ -9,6 +9,7 @@ import {
   isInQuietHours,
   shouldRespectQuietHours,
 } from "@/lib/notifications/quiet-hours";
+import { timingSafeCompare } from "@/lib/utils/timing-safe";
 
 let db: SupabaseClient | null = null;
 
@@ -44,9 +45,9 @@ interface SendEmailRequest {
  * Protected by API key for server-to-server calls.
  */
 export async function POST(request: NextRequest) {
-  // Validate API key
+  // Validate API key using constant-time comparison to prevent timing attacks
   const apiKey = request.headers.get("x-api-key");
-  if (apiKey !== process.env.NOTIFICATIONS_API_KEY) {
+  if (!timingSafeCompare(apiKey, process.env.NOTIFICATIONS_API_KEY)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

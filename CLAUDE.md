@@ -26,6 +26,7 @@ Fantasy Premier League analytics dashboard built with Next.js.
 - `npm run test:watch` — run tests in watch mode
 - `npm run test:coverage` — run tests with coverage report
 - `npm start` — serve production build
+- `npm run mcp:start` — run MCP server for Claude Code FPL data access
 
 ## Project Structure
 
@@ -113,6 +114,10 @@ lib/claude/
 lib/notifications/
   types.ts              # Notification preference and history types
   hooks.ts              # useNotificationPreferences, useNotificationHistory, usePushNotificationStatus, subscribeToPushNotifications
+  email-client.ts       # Resend email service with HTML templates for all notification types
+  quiet-hours.ts        # Quiet hours enforcement with timezone support
+lib/utils/
+  timing-safe.ts        # Constant-time string comparison for API key validation
 lib/supabase/
   types.ts              # Profile interface matching the profiles table
   client.ts             # Browser-side Supabase client
@@ -128,7 +133,15 @@ scripts/
   generate-icons.mjs    # Generate PWA icons from SVG using Sharp
 .github/
   workflows/deploy.yml  # GitHub Actions CI/CD pipeline (lint → test → build → deploy)
-netlify.toml            # Netlify build config and Next.js plugin
+netlify/
+  functions/            # Netlify scheduled functions
+    scheduled-deadline-reminder.ts  # Hourly check, sends 24h/1h deadline reminders
+    scheduled-weekly-summary.ts     # Tuesday 10am UTC, weekly transfer recommendations
+    scheduled-league-updates.ts     # Every 6 hours, post-gameweek league updates
+mcp-server/
+  index.ts              # MCP server for Claude Code FPL data access (8 tools, 3 resources)
+  package.json          # MCP server package config
+netlify.toml            # Netlify build config, Next.js plugin, and functions directory
 vitest.config.ts        # Vitest configuration
 next.config.ts          # Next.js config (image optimization, PWA headers)
 ```
@@ -143,6 +156,6 @@ next.config.ts          # Next.js config (image optimization, PWA headers)
 - **No external UI libraries:** All components built from scratch with Tailwind
 - **Auth is optional:** All pages remain public. Signed-in users get cross-device manager ID persistence via Supabase.
 - **Supabase clients:** Use `@/lib/supabase/client` in client components, `@/lib/supabase/server` in server components/route handlers
-- **Environment variables:** Supabase vars use `NEXT_PUBLIC_` prefix (needed client-side). `ANTHROPIC_API_KEY` for Claude AI. Never commit `.env*` files.
+- **Environment variables:** Supabase vars use `NEXT_PUBLIC_` prefix (needed client-side). `ANTHROPIC_API_KEY` for Claude AI. `NOTIFICATIONS_API_KEY` for scheduled functions. `RESEND_API_KEY` for email notifications. `NEXT_PUBLIC_APP_URL` for email links. Never commit `.env*` files.
 - **Testing:** Unit tests in `__tests__/` directories adjacent to source files. Use Vitest with mock factories.
 - **Pre-commit hooks:** lint-staged runs ESLint and Prettier on staged files, then runs tests.

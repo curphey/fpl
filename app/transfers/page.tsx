@@ -30,8 +30,9 @@ import { TransferTable } from "@/components/transfers/transfer-table";
 import { PriceChangesTable } from "@/components/transfers/price-changes";
 import { PriceAlertBanner } from "@/components/transfers/price-alert-banner";
 import { InjuryReturnsSection } from "@/components/transfers/injury-returns";
+import { MomentumTracker } from "@/components/transfers/momentum-tracker";
 
-type Tab = "recommendations" | "prices" | "injuries";
+type Tab = "recommendations" | "prices" | "injuries" | "momentum";
 type PositionFilter = "all" | PlayerPosition;
 
 const positionFilters: { key: PositionFilter; label: string }[] = [
@@ -167,6 +168,7 @@ export default function TransfersPage() {
         {[
           { key: "recommendations" as Tab, label: "Recommendations" },
           { key: "prices" as Tab, label: "Price Changes" },
+          { key: "momentum" as Tab, label: "Momentum" },
           { key: "injuries" as Tab, label: "Injury Returns" },
         ].map((t) => (
           <button
@@ -276,6 +278,8 @@ export default function TransfersPage() {
           watchlist={injuryWatchlist}
         />
       )}
+
+      {tab === "momentum" && <MomentumTracker />}
     </div>
   );
 }

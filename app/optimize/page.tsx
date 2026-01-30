@@ -1,11 +1,17 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import type { OptimizeResponse, OptimizeError, OptimizationType, TransferConstraints } from '@/lib/claude/types';
-import { Card, CardContent } from '@/components/ui/card';
-import { OptimizeForm } from '@/components/optimize/optimize-form';
-import { ThinkingDisplay } from '@/components/optimize/thinking-display';
-import { RecommendationsDisplay } from '@/components/optimize/recommendations-display';
+import { useState } from "react";
+import type {
+  OptimizeResponse,
+  OptimizeError,
+  OptimizationType,
+  TransferConstraints,
+  TeamContext,
+} from "@/lib/claude/types";
+import { Card, CardContent } from "@/components/ui/card";
+import { OptimizeForm } from "@/components/optimize/optimize-form";
+import { ThinkingDisplay } from "@/components/optimize/thinking-display";
+import { RecommendationsDisplay } from "@/components/optimize/recommendations-display";
 
 export default function OptimizePage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -16,15 +22,16 @@ export default function OptimizePage() {
     type: OptimizationType;
     query: string;
     constraints: TransferConstraints;
+    currentTeam?: TeamContext;
   }) {
     setIsLoading(true);
     setError(null);
     setResult(null);
 
     try {
-      const response = await fetch('/api/optimize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/optimize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
 
@@ -32,12 +39,14 @@ export default function OptimizePage() {
 
       if (!response.ok) {
         const errResponse = json as OptimizeError;
-        throw new Error(errResponse.error || 'Optimization failed');
+        throw new Error(errResponse.error || "Optimization failed");
       }
 
       setResult(json as OptimizeResponse);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+      setError(
+        err instanceof Error ? err.message : "An unexpected error occurred",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -120,16 +129,20 @@ export default function OptimizePage() {
               <h3 className="mb-2 font-semibold">How it works</h3>
               <ul className="space-y-2 text-sm text-fpl-muted">
                 <li>
-                  <strong className="text-foreground">1.</strong> Choose optimization type (transfers, chip timing, or wildcard)
+                  <strong className="text-foreground">1.</strong> Choose
+                  optimization type (transfers, chip timing, or wildcard)
                 </li>
                 <li>
-                  <strong className="text-foreground">2.</strong> Describe what you want in natural language
+                  <strong className="text-foreground">2.</strong> Describe what
+                  you want in natural language
                 </li>
                 <li>
-                  <strong className="text-foreground">3.</strong> Claude analyzes live FPL data with extended thinking
+                  <strong className="text-foreground">3.</strong> Claude
+                  analyzes live FPL data with extended thinking
                 </li>
                 <li>
-                  <strong className="text-foreground">4.</strong> Get data-driven recommendations with full reasoning
+                  <strong className="text-foreground">4.</strong> Get
+                  data-driven recommendations with full reasoning
                 </li>
               </ul>
             </div>

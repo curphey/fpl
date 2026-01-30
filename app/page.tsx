@@ -15,6 +15,7 @@ import { TopPlayersTable } from "@/components/dashboard/top-players-table";
 import { UpcomingFixtures } from "@/components/dashboard/upcoming-fixtures";
 import { SeasonProgress } from "@/components/dashboard/season-progress";
 import { PullToRefresh } from "@/components/pwa/pull-to-refresh";
+import { OnboardingBanner } from "@/components/dashboard/onboarding-banner";
 
 export default function DashboardPage() {
   const {
@@ -72,6 +73,7 @@ export default function DashboardPage() {
   return (
     <PullToRefresh onRefresh={handleRefresh}>
       <div className="space-y-6">
+        <OnboardingBanner />
         {displayGw && <GameweekBanner gameweek={displayGw} />}
         <KeyStatsOverview data={bootstrap} />
         <div className="grid gap-6 xl:grid-cols-2">

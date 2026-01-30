@@ -44,6 +44,28 @@ export {
 } from "./captain-model";
 export type { CaptainPick } from "./captain-model";
 
+// Type guards for runtime validation
+export {
+  isBootstrapStatic,
+  isFixture,
+  isFixtureArray,
+  isGameweek,
+  isTeam,
+  isPlayer,
+  isManagerEntry,
+  isManagerHistory,
+  isManagerPicks,
+  isLiveGameweek,
+  isElementSummary,
+  assertBootstrapStatic,
+  assertFixtureArray,
+  assertManagerEntry,
+  assertManagerHistory,
+  assertManagerPicks,
+  assertLiveGameweek,
+  assertElementSummary,
+} from "./type-guards";
+
 // Hooks (client-side only)
 export {
   useBootstrapStatic,
@@ -57,3 +79,7 @@ export {
   useLeagueStandings,
 } from "./hooks/use-fpl";
 export { useRivalPicks } from "./hooks/use-rival-picks";
+export {
+  useLeagueAnalysis,
+  type RivalCount,
+} from "./hooks/use-league-analysis";

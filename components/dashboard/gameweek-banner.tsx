@@ -5,6 +5,7 @@ import {
   formatTimeUntilDeadline,
   getTimeUntilDeadline,
 } from "@/lib/fpl/utils";
+import { AddToCalendar } from "./add-to-calendar";
 
 function getUrgencyLevel(
   deadline: string,
@@ -61,6 +62,12 @@ export function GameweekBanner({ gameweek }: { gameweek: Gameweek }) {
               </Link>
             )}
           </div>
+          {urgency !== "passed" && (
+            <AddToCalendar
+              gameweekName={gameweek.name}
+              deadlineTime={gameweek.deadline_time}
+            />
+          )}
           {gameweek.finished && (
             <>
               <div className="text-right">

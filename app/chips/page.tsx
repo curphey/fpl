@@ -26,8 +26,9 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChipTimingGrid } from "@/components/chips/chip-timing";
 import { ChipHistorySection } from "@/components/chips/chip-history";
+import { BenchBoostAnalyzer } from "@/components/chips/bench-boost-analyzer";
 
-type Tab = "overview" | "timing" | "history";
+type Tab = "overview" | "timing" | "bench_boost" | "history";
 
 const chipIcons: Record<string, string> = {
   wildcard: "WC",
@@ -243,6 +244,7 @@ export default function ChipsPage() {
         {[
           { key: "overview" as Tab, label: "Overview" },
           { key: "timing" as Tab, label: "Timing Optimizer" },
+          { key: "bench_boost" as Tab, label: "Bench Boost" },
           { key: "history" as Tab, label: "Performance History" },
         ].map((t) => (
           <button
@@ -301,6 +303,8 @@ export default function ChipsPage() {
           </CardContent>
         </Card>
       )}
+
+      {tab === "bench_boost" && <BenchBoostAnalyzer />}
 
       {tab === "history" && (
         <>

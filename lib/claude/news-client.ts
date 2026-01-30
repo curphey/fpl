@@ -23,6 +23,120 @@ const newsCache = new Map<
 >();
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
+// Deduplication cache - stores fingerprints of seen news items
+const seenItemsCache = new Map<string, number>(); // fingerprint -> timestamp
+const DEDUPE_WINDOW_MS = 48 * 60 * 60 * 1000; // 48 hours
+
+/**
+ * Generate a fingerprint for a news item based on its content
+ * Uses normalized text to detect similar articles
+ */
+function generateFingerprint(item: {
+  title: string;
+  players?: string[];
+  teams?: string[];
+  category?: string;
+}): string {
+  // Normalize title: lowercase, remove punctuation, collapse whitespace
+  const normalizedTitle = item.title
+    .toLowerCase()
+    .replace(/[^\w\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // Extract key terms (first 5 words of title)
+  const keyTerms = normalizedTitle.split(" ").slice(0, 5).join(" ");
+
+  // Include players and category for more precise matching
+  const players = (item.players || [])
+    .map((p) => p.toLowerCase())
+    .sort()
+    .join(",");
+  const category = item.category || "general";
+
+  return `${keyTerms}|${players}|${category}`;
+}
+
+/**
+ * Check if a news item is a duplicate based on content similarity
+ */
+function isDuplicate(item: NewsItem): boolean {
+  const fingerprint = generateFingerprint(item);
+
+  // Check exact fingerprint match
+  if (seenItemsCache.has(fingerprint)) {
+    return true;
+  }
+
+  // Also check for similar fingerprints (Jaccard similarity on key terms)
+  const itemTerms = new Set(fingerprint.split("|")[0].split(" "));
+  for (const [cachedFingerprint, timestamp] of seenItemsCache.entries()) {
+    // Skip expired entries
+    if (Date.now() - timestamp > DEDUPE_WINDOW_MS) {
+      seenItemsCache.delete(cachedFingerprint);
+      continue;
+    }
+
+    const cachedTerms = new Set(cachedFingerprint.split("|")[0].split(" "));
+
+    // Calculate Jaccard similarity
+    const intersection = new Set(
+      [...itemTerms].filter((x) => cachedTerms.has(x)),
+    );
+    const union = new Set([...itemTerms, ...cachedTerms]);
+    const similarity = intersection.size / union.size;
+
+    // If >70% similar and same players, consider duplicate
+    if (similarity > 0.7) {
+      const cachedPlayers = cachedFingerprint.split("|")[1];
+      const itemPlayers = fingerprint.split("|")[1];
+      if (
+        cachedPlayers === itemPlayers ||
+        cachedPlayers.includes(itemPlayers) ||
+        itemPlayers.includes(cachedPlayers)
+      ) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Mark an item as seen for deduplication
+ */
+function markAsSeen(item: NewsItem): void {
+  const fingerprint = generateFingerprint(item);
+  seenItemsCache.set(fingerprint, Date.now());
+
+  // Clean up old entries periodically (keep max 500 entries)
+  if (seenItemsCache.size > 500) {
+    const now = Date.now();
+    for (const [key, timestamp] of seenItemsCache.entries()) {
+      if (now - timestamp > DEDUPE_WINDOW_MS) {
+        seenItemsCache.delete(key);
+      }
+    }
+  }
+}
+
+/**
+ * Deduplicate a list of news items
+ */
+function deduplicateItems(items: NewsItem[]): NewsItem[] {
+  const uniqueItems: NewsItem[] = [];
+
+  for (const item of items) {
+    if (!isDuplicate(item)) {
+      uniqueItems.push(item);
+      markAsSeen(item);
+    }
+  }
+
+  return uniqueItems;
+}
+
 function getCacheKey(request: NewsSearchRequest): string {
   return JSON.stringify({
     query: request.query,
@@ -336,7 +450,7 @@ function parseNewsResponse(response: Anthropic.Message): NewsItem[] {
     const items = parsed.items || parsed || [];
 
     // Validate and normalize items
-    return items
+    const normalizedItems = items
       .filter((item: Record<string, unknown>) => item.title && item.summary)
       .map((item: Record<string, unknown>) => ({
         id:
@@ -357,6 +471,9 @@ function parseNewsResponse(response: Anthropic.Message): NewsItem[] {
           ? String(item.impactDetails)
           : undefined,
       }));
+
+    // Apply deduplication to remove similar articles
+    return deduplicateItems(normalizedItems);
   } catch {
     console.error("Failed to parse news response");
     return [];
@@ -480,4 +597,25 @@ function validateStatus(
   return valid.includes(status)
     ? (status as "injured" | "doubtful" | "fit" | "suspended" | "unknown")
     : "unknown";
+}
+
+/**
+ * Clear all caches (useful for testing or manual refresh)
+ */
+export function clearNewsCaches(): void {
+  newsCache.clear();
+  seenItemsCache.clear();
+}
+
+/**
+ * Get deduplication cache stats (for debugging)
+ */
+export function getDeduplicationStats(): {
+  seenItemsCount: number;
+  newsCacheCount: number;
+} {
+  return {
+    seenItemsCount: seenItemsCache.size,
+    newsCacheCount: newsCache.size,
+  };
 }

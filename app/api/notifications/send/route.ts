@@ -3,8 +3,13 @@ import webpush from "web-push";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type {
   NotificationType,
+  NotificationPreferences,
   PushSubscriptionJSON,
 } from "@/lib/notifications/types";
+import {
+  isInQuietHours,
+  shouldRespectQuietHours,
+} from "@/lib/notifications/quiet-hours";
 
 // Lazy initialization for build time
 let vapidConfigured = false;
@@ -111,9 +116,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Build query for notification preferences
+    // Include quiet hours fields for filtering
     let query = db
       .from("notification_preferences")
-      .select("user_id, push_subscription")
+      .select(
+        "user_id, push_subscription, quiet_hours_start, quiet_hours_end, timezone",
+      )
       .eq("push_enabled", true)
       .not("push_subscription", "is", null);
 
@@ -159,6 +167,28 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Filter out users in quiet hours (unless this notification type bypasses quiet hours)
+    const now = new Date();
+    const filteredSubscriptions = shouldRespectQuietHours(type)
+      ? subscriptions.filter((sub) => {
+          const prefs = {
+            quiet_hours_start: sub.quiet_hours_start,
+            quiet_hours_end: sub.quiet_hours_end,
+            timezone: sub.timezone,
+          } as NotificationPreferences;
+          return !isInQuietHours(prefs, now);
+        })
+      : subscriptions;
+
+    if (filteredSubscriptions.length === 0) {
+      return NextResponse.json({
+        success: 0,
+        failed: 0,
+        skipped: subscriptions.length,
+        message: "All subscribers are in quiet hours",
+      });
+    }
+
     // Prepare notification payload
     const payload = JSON.stringify({
       type,
@@ -180,45 +210,47 @@ export async function POST(request: NextRequest) {
     }> = [];
 
     await Promise.all(
-      subscriptions.map(async ({ user_id: recipientId, push_subscription }) => {
-        const subscription = push_subscription as PushSubscriptionJSON;
+      filteredSubscriptions.map(
+        async ({ user_id: recipientId, push_subscription }) => {
+          const subscription = push_subscription as PushSubscriptionJSON;
 
-        try {
-          await webpush.sendNotification(
-            {
-              endpoint: subscription.endpoint,
-              keys: subscription.keys,
-            },
-            payload,
-          );
+          try {
+            await webpush.sendNotification(
+              {
+                endpoint: subscription.endpoint,
+                keys: subscription.keys,
+              },
+              payload,
+            );
 
-          results.success++;
-          historyRecords.push({
-            user_id: recipientId,
-            notification_type: type,
-            channel: "push",
-            title,
-            body: notificationBody,
-            data: data || null,
-          });
-        } catch (error) {
-          results.failed++;
-          const errorMessage =
-            error instanceof Error ? error.message : "Unknown error";
-          results.errors.push(`User ${recipientId}: ${errorMessage}`);
+            results.success++;
+            historyRecords.push({
+              user_id: recipientId,
+              notification_type: type,
+              channel: "push",
+              title,
+              body: notificationBody,
+              data: data || null,
+            });
+          } catch (error) {
+            results.failed++;
+            const errorMessage =
+              error instanceof Error ? error.message : "Unknown error";
+            results.errors.push(`User ${recipientId}: ${errorMessage}`);
 
-          // If subscription is invalid/expired, remove it
-          if (
-            error instanceof webpush.WebPushError &&
-            (error.statusCode === 404 || error.statusCode === 410)
-          ) {
-            await db
-              .from("notification_preferences")
-              .update({ push_enabled: false, push_subscription: null })
-              .eq("user_id", recipientId);
+            // If subscription is invalid/expired, remove it
+            if (
+              error instanceof webpush.WebPushError &&
+              (error.statusCode === 404 || error.statusCode === 410)
+            ) {
+              await db
+                .from("notification_preferences")
+                .update({ push_enabled: false, push_subscription: null })
+                .eq("user_id", recipientId);
+            }
           }
-        }
-      }),
+        },
+      ),
     );
 
     // Save notification history

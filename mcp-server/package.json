@@ -1,0 +1,17 @@
+{
+  "name": "fpl-insights-mcp",
+  "version": "1.0.0",
+  "description": "MCP Server for FPL Insights - provides Claude with FPL data tools",
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "start": "npx tsx index.ts"
+  },
+  "keywords": [
+    "mcp",
+    "fpl",
+    "fantasy-premier-league",
+    "claude"
+  ],
+  "license": "MIT"
+}

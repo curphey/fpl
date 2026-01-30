@@ -11,6 +11,10 @@ import {
   shouldRespectQuietHours,
 } from "@/lib/notifications/quiet-hours";
 import { timingSafeCompare } from "@/lib/utils/timing-safe";
+import {
+  notificationSendSchema,
+  validationErrorResponse,
+} from "@/lib/api/validation";
 
 // Lazy initialization for build time
 let vapidConfigured = false;
@@ -97,7 +101,17 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body: SendNotificationRequest = await request.json();
+    const rawBody = await request.json();
+
+    // Validate request with Zod
+    const parseResult = notificationSendSchema.safeParse(rawBody);
+    if (!parseResult.success) {
+      return NextResponse.json(validationErrorResponse(parseResult.error), {
+        status: 400,
+      });
+    }
+
+    const body = parseResult.data as SendNotificationRequest;
     const {
       user_id,
       type,
@@ -107,14 +121,6 @@ export async function POST(request: NextRequest) {
       data,
       criteria,
     } = body;
-
-    // Validate required fields
-    if (!type || !title || !notificationBody) {
-      return NextResponse.json(
-        { error: "Missing required fields: type, title, body" },
-        { status: 400 },
-      );
-    }
 
     // Build query for notification preferences
     // Include quiet hours fields for filtering

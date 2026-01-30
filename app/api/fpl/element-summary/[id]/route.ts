@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fplClient, FPLApiError } from "@/lib/fpl/client";
+import { playerIdSchema, validationErrorResponse } from "@/lib/api/validation";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -10,11 +11,15 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const playerId = parseInt(id, 10);
 
-    if (isNaN(playerId) || playerId <= 0 || playerId > 10000) {
-      return NextResponse.json({ error: "Invalid player ID" }, { status: 400 });
+    // Validate player ID with Zod
+    const parseResult = playerIdSchema.safeParse(id);
+    if (!parseResult.success) {
+      return NextResponse.json(validationErrorResponse(parseResult.error), {
+        status: 400,
+      });
     }
+    const playerId = parseResult.data;
 
     const data = await fplClient.getPlayerSummary(playerId);
     return NextResponse.json(data);

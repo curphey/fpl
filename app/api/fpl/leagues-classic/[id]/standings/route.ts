@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fplClient, FPLApiError } from "@/lib/fpl/client";
+import {
+  leagueIdSchema,
+  pageSchema,
+  validationErrorResponse,
+} from "@/lib/api/validation";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -10,14 +15,21 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const leagueId = parseInt(id, 10);
 
-    if (isNaN(leagueId) || leagueId <= 0 || leagueId > 100_000_000) {
-      return NextResponse.json({ error: "Invalid league ID" }, { status: 400 });
+    // Validate league ID with Zod
+    const leagueParseResult = leagueIdSchema.safeParse(id);
+    if (!leagueParseResult.success) {
+      return NextResponse.json(
+        validationErrorResponse(leagueParseResult.error),
+        { status: 400 },
+      );
     }
+    const leagueId = leagueParseResult.data;
 
+    // Validate page parameter
     const searchParams = request.nextUrl.searchParams;
-    const page = parseInt(searchParams.get("page") || "1", 10);
+    const pageParseResult = pageSchema.safeParse(searchParams.get("page") || 1);
+    const page = pageParseResult.success ? pageParseResult.data : 1;
 
     const data = await fplClient.getLeagueStandings(leagueId, page);
     return NextResponse.json(data);

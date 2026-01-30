@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fplClient, FPLApiError } from "@/lib/fpl/client";
+import { managerIdSchema, validationErrorResponse } from "@/lib/api/validation";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -10,14 +11,15 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const managerId = parseInt(id, 10);
 
-    if (isNaN(managerId) || managerId <= 0 || managerId > 100_000_000) {
-      return NextResponse.json(
-        { error: "Invalid manager ID" },
-        { status: 400 },
-      );
+    // Validate manager ID with Zod
+    const parseResult = managerIdSchema.safeParse(id);
+    if (!parseResult.success) {
+      return NextResponse.json(validationErrorResponse(parseResult.error), {
+        status: 400,
+      });
     }
+    const managerId = parseResult.data;
 
     const data = await fplClient.getManager(managerId);
     return NextResponse.json(data);

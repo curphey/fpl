@@ -8,6 +8,8 @@ import {
   mockLiveData,
   mockLeagueStandings,
   mockOptimizeResponse,
+  mockRivalPicks,
+  mockRivalHistory,
 } from "./mock-data";
 
 // mockEntry now has leagues built in
@@ -38,11 +40,16 @@ export async function setupApiMocks(page: Page) {
   await page.route("**/api/fpl/entry/**", async (route) => {
     const url = route.request().url();
 
+    // Extract entry ID from URL
+    const entryMatch = url.match(/\/entry\/(\d+)/);
+    const entryId = entryMatch ? parseInt(entryMatch[1], 10) : null;
+    const isMainUser = entryId === 12345;
+
     if (url.includes("/history")) {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(mockEntryHistory),
+        body: JSON.stringify(isMainUser ? mockEntryHistory : mockRivalHistory),
       });
       return;
     }
@@ -51,7 +58,7 @@ export async function setupApiMocks(page: Page) {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(mockPicks),
+        body: JSON.stringify(isMainUser ? mockPicks : mockRivalPicks),
       });
       return;
     }

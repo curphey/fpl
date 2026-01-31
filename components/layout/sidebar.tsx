@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 import { navItems, secondaryNavItems } from "./nav-items";
 import { NavIcon } from "./nav-icon";
 import { SidebarChat } from "@/components/chat";
+import { useSwipeToClose } from "@/lib/hooks/use-swipe-to-close";
 
 export function Sidebar({
   open,
@@ -14,6 +16,26 @@ export function Sidebar({
   onClose: () => void;
 }) {
   const pathname = usePathname();
+
+  // Swipe to close gesture (mobile only)
+  const { setRef, bind, style, isDragging } = useSwipeToClose({
+    direction: "left",
+    threshold: 0.3,
+    enabled: open,
+    onClose,
+  });
+
+  // Prevent body scroll when sidebar is open on mobile
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
 
   return (
     <>
@@ -27,9 +49,12 @@ export function Sidebar({
 
       {/* Sidebar panel */}
       <aside
-        className={`fixed bottom-0 left-0 top-14 z-50 flex w-60 flex-col border-r border-fpl-border bg-fpl-purple-dark transition-transform lg:translate-x-0 ${
+        ref={setRef}
+        {...bind()}
+        style={open ? style : undefined}
+        className={`fixed bottom-0 left-0 top-14 z-50 flex w-60 touch-pan-y flex-col border-r border-fpl-border bg-fpl-purple-dark lg:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
-        }`}
+        } ${isDragging ? "" : "transition-transform"}`}
       >
         <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
           {navItems.map((item) => {

@@ -739,17 +739,38 @@ export const mockRivalHistory = {
 };
 
 export const mockOptimizeResponse = {
+  type: "transfer",
   thinking:
-    "Analyzing your squad...\n\nYour team has good coverage but there are some optimization opportunities.",
+    "Analyzing your squad...\n\nYour team has good coverage but there are some optimization opportunities. Looking at fixture difficulty ratings and expected points projections.",
   recommendations: [
     {
-      priority: 1,
-      action: "Transfer",
-      playersOut: ["Player A (4.5m)"],
-      playersIn: ["Saliba (6.0m)"],
-      reasoning: "Better fixture run and set-piece threat",
-      expectedGain: 8,
+      out: {
+        id: 100,
+        name: "Player A",
+        team: "TOT",
+        price: 4.5,
+        reason: "Difficult fixtures ahead and rotation risk",
+      },
+      in: {
+        id: 5,
+        name: "Saliba",
+        team: "ARS",
+        price: 6.0,
+        reason: "Great fixtures and set-piece threat",
+      },
+      netCost: 1.5,
+      confidence: "high",
     },
   ],
-  summary: "1 transfer recommended to strengthen defense",
+  summary:
+    "1 transfer recommended to strengthen defense for the upcoming fixtures",
+  warnings: [
+    "Consider waiting until after the midweek games for injury updates",
+  ],
+  processingTime: 12500,
+};
+
+// Mock optimize error response
+export const mockOptimizeError = {
+  error: "API rate limit exceeded. Please try again in a few minutes.",
 };

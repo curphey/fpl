@@ -8,6 +8,7 @@ import {
   mockLiveData,
   mockLeagueStandings,
   mockOptimizeResponse,
+  mockOptimizeError,
   mockRivalPicks,
   mockRivalHistory,
 } from "./mock-data";
@@ -129,4 +130,17 @@ export async function setupInvalidManagerMock(page: Page) {
  */
 export async function waitForApiLoad(page: Page) {
   await page.waitForResponse("**/api/fpl/bootstrap-static");
+}
+
+/**
+ * Set up route handler for optimizer API error
+ */
+export async function setupOptimizerErrorMock(page: Page) {
+  await page.route("**/api/optimize**", async (route) => {
+    await route.fulfill({
+      status: 429,
+      contentType: "application/json",
+      body: JSON.stringify(mockOptimizeError),
+    });
+  });
 }

@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, waitFor, act } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import {
   useBootstrapStatic,
   useFixtures,
@@ -15,6 +17,29 @@ import {
 // Mock fetch globally
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
+
+// Create a fresh QueryClient for each test
+function createTestQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false, // Disable retries for tests
+        gcTime: 0, // Disable garbage collection caching
+        staleTime: 0, // Always stale for tests
+      },
+    },
+  });
+}
+
+// Wrapper component for tests
+function createWrapper() {
+  const queryClient = createTestQueryClient();
+  return function Wrapper({ children }: { children: ReactNode }) {
+    return (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+  };
+}
 
 describe("FPL Data Hooks", () => {
   beforeEach(() => {
@@ -38,7 +63,9 @@ describe("FPL Data Hooks", () => {
         json: async () => mockBootstrapData,
       });
 
-      const { result } = renderHook(() => useBootstrapStatic());
+      const { result } = renderHook(() => useBootstrapStatic(), {
+        wrapper: createWrapper(),
+      });
 
       expect(result.current.isLoading).toBe(true);
       expect(result.current.data).toBeNull();
@@ -58,7 +85,9 @@ describe("FPL Data Hooks", () => {
         status: 500,
       });
 
-      const { result } = renderHook(() => useBootstrapStatic());
+      const { result } = renderHook(() => useBootstrapStatic(), {
+        wrapper: createWrapper(),
+      });
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
@@ -72,7 +101,9 @@ describe("FPL Data Hooks", () => {
     it("handles network error", async () => {
       mockFetch.mockRejectedValueOnce(new Error("Network failed"));
 
-      const { result } = renderHook(() => useBootstrapStatic());
+      const { result } = renderHook(() => useBootstrapStatic(), {
+        wrapper: createWrapper(),
+      });
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
@@ -92,7 +123,9 @@ describe("FPL Data Hooks", () => {
           json: async () => ({ ...mockBootstrapData, events: [{ id: 2 }] }),
         });
 
-      const { result } = renderHook(() => useBootstrapStatic());
+      const { result } = renderHook(() => useBootstrapStatic(), {
+        wrapper: createWrapper(),
+      });
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
@@ -122,7 +155,9 @@ describe("FPL Data Hooks", () => {
         json: async () => mockFixtures,
       });
 
-      const { result } = renderHook(() => useFixtures());
+      const { result } = renderHook(() => useFixtures(), {
+        wrapper: createWrapper(),
+      });
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
@@ -142,7 +177,9 @@ describe("FPL Data Hooks", () => {
         json: async () => mockFixtures,
       });
 
-      const { result } = renderHook(() => useGameweekFixtures(15));
+      const { result } = renderHook(() => useGameweekFixtures(15), {
+        wrapper: createWrapper(),
+      });
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
@@ -153,7 +190,9 @@ describe("FPL Data Hooks", () => {
     });
 
     it("does not fetch for invalid gameweek (0)", async () => {
-      const { result } = renderHook(() => useGameweekFixtures(0));
+      const { result } = renderHook(() => useGameweekFixtures(0), {
+        wrapper: createWrapper(),
+      });
 
       // Should not start loading for invalid gameweek
       expect(result.current.isLoading).toBe(false);
@@ -161,7 +200,9 @@ describe("FPL Data Hooks", () => {
     });
 
     it("does not fetch for gameweek > 38", async () => {
-      const { result } = renderHook(() => useGameweekFixtures(39));
+      const { result } = renderHook(() => useGameweekFixtures(39), {
+        wrapper: createWrapper(),
+      });
 
       expect(result.current.isLoading).toBe(false);
       expect(mockFetch).not.toHaveBeenCalled();
@@ -181,7 +222,9 @@ describe("FPL Data Hooks", () => {
         json: async () => mockPlayerSummary,
       });
 
-      const { result } = renderHook(() => usePlayerSummary(100));
+      const { result } = renderHook(() => usePlayerSummary(100), {
+        wrapper: createWrapper(),
+      });
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
@@ -192,14 +235,18 @@ describe("FPL Data Hooks", () => {
     });
 
     it("does not fetch for null player ID", async () => {
-      const { result } = renderHook(() => usePlayerSummary(null));
+      const { result } = renderHook(() => usePlayerSummary(null), {
+        wrapper: createWrapper(),
+      });
 
       expect(result.current.isLoading).toBe(false);
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
     it("does not fetch for zero player ID", async () => {
-      const { result } = renderHook(() => usePlayerSummary(0));
+      const { result } = renderHook(() => usePlayerSummary(0), {
+        wrapper: createWrapper(),
+      });
 
       expect(result.current.isLoading).toBe(false);
       expect(mockFetch).not.toHaveBeenCalled();
@@ -217,7 +264,9 @@ describe("FPL Data Hooks", () => {
         json: async () => mockLiveData,
       });
 
-      const { result } = renderHook(() => useLiveGameweek(20));
+      const { result } = renderHook(() => useLiveGameweek(20), {
+        wrapper: createWrapper(),
+      });
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
@@ -243,7 +292,9 @@ describe("FPL Data Hooks", () => {
         json: async () => mockManager,
       });
 
-      const { result } = renderHook(() => useManager(123456));
+      const { result } = renderHook(() => useManager(123456), {
+        wrapper: createWrapper(),
+      });
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
@@ -254,7 +305,9 @@ describe("FPL Data Hooks", () => {
     });
 
     it("does not fetch for null manager ID", async () => {
-      const { result } = renderHook(() => useManager(null));
+      const { result } = renderHook(() => useManager(null), {
+        wrapper: createWrapper(),
+      });
 
       expect(result.current.isLoading).toBe(false);
       expect(mockFetch).not.toHaveBeenCalled();
@@ -274,7 +327,9 @@ describe("FPL Data Hooks", () => {
         json: async () => mockHistory,
       });
 
-      const { result } = renderHook(() => useManagerHistory(123456));
+      const { result } = renderHook(() => useManagerHistory(123456), {
+        wrapper: createWrapper(),
+      });
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
@@ -299,7 +354,9 @@ describe("FPL Data Hooks", () => {
         json: async () => mockPicks,
       });
 
-      const { result } = renderHook(() => useManagerPicks(123456, 20));
+      const { result } = renderHook(() => useManagerPicks(123456, 20), {
+        wrapper: createWrapper(),
+      });
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
@@ -312,14 +369,18 @@ describe("FPL Data Hooks", () => {
     });
 
     it("does not fetch for null manager ID", async () => {
-      const { result } = renderHook(() => useManagerPicks(null, 20));
+      const { result } = renderHook(() => useManagerPicks(null, 20), {
+        wrapper: createWrapper(),
+      });
 
       expect(result.current.isLoading).toBe(false);
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
     it("does not fetch for invalid gameweek", async () => {
-      const { result } = renderHook(() => useManagerPicks(123456, 0));
+      const { result } = renderHook(() => useManagerPicks(123456, 0), {
+        wrapper: createWrapper(),
+      });
 
       expect(result.current.isLoading).toBe(false);
       expect(mockFetch).not.toHaveBeenCalled();
@@ -342,7 +403,9 @@ describe("FPL Data Hooks", () => {
         json: async () => mockStandings,
       });
 
-      const { result } = renderHook(() => useLeagueStandings(314));
+      const { result } = renderHook(() => useLeagueStandings(314), {
+        wrapper: createWrapper(),
+      });
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
@@ -360,7 +423,9 @@ describe("FPL Data Hooks", () => {
         json: async () => mockStandings,
       });
 
-      const { result } = renderHook(() => useLeagueStandings(314, 3));
+      const { result } = renderHook(() => useLeagueStandings(314, 3), {
+        wrapper: createWrapper(),
+      });
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
@@ -372,7 +437,9 @@ describe("FPL Data Hooks", () => {
     });
 
     it("does not fetch for null league ID", async () => {
-      const { result } = renderHook(() => useLeagueStandings(null));
+      const { result } = renderHook(() => useLeagueStandings(null), {
+        wrapper: createWrapper(),
+      });
 
       expect(result.current.isLoading).toBe(false);
       expect(mockFetch).not.toHaveBeenCalled();

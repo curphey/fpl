@@ -107,3 +107,121 @@ test.describe("Team & Gameweek Navigation", () => {
     await expect(input).toHaveValue("123456");
   });
 });
+
+// Tests that require a connected manager
+test.describe("Team Page - Connected State", () => {
+  test.beforeEach(async ({ page }) => {
+    await setupApiMocks(page);
+
+    // Connect manager first
+    await page.goto("/");
+    await page.getByRole("button", { name: "Connect" }).click();
+    const input = page.locator('input[placeholder="Manager ID"]');
+    await input.fill("12345");
+
+    const responsePromise = page.waitForResponse("**/api/fpl/entry/**");
+    await page.getByRole("button", { name: "Go" }).click();
+    await responsePromise;
+
+    // Wait for connected state
+    await expect(page.getByText("Test FC")).toBeVisible({ timeout: 10000 });
+
+    // Navigate to team page via sidebar (preserves React state)
+    await page
+      .getByRole("complementary")
+      .getByRole("link", { name: "My Team" })
+      .click();
+    await page.waitForLoadState("networkidle");
+
+    // Wait for team page to load
+    await expect(page).toHaveURL(/\/team/);
+  });
+
+  test("shows pitch view when connected", async ({ page }) => {
+    // Should show team name in heading (main content area)
+    await expect(page.getByRole("heading", { name: "Test FC" })).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Should show Pitch View and Squad Value toggle buttons
+    await expect(
+      page.getByRole("button", { name: "Pitch View" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Squad Value" }),
+    ).toBeVisible();
+  });
+
+  test("displays current gameweek name in navigation", async ({ page }) => {
+    // Should show gameweek name (from mock data: Gameweek 15)
+    await expect(page.getByText(/Gameweek \d+/)).toBeVisible({
+      timeout: 10000,
+    });
+  });
+
+  test("shows player names on pitch", async ({ page }) => {
+    // Should show player names from mock picks
+    // Mock data has Salah, Haaland, Raya, Saliba
+    await expect(page.getByText("Salah")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Haaland")).toBeVisible({ timeout: 10000 });
+  });
+
+  test("gameweek navigation buttons are visible", async ({ page }) => {
+    // Should have prev/next navigation buttons
+    const navButtons = page.locator("button svg polyline");
+    await expect(navButtons.first()).toBeVisible({ timeout: 10000 });
+  });
+
+  test("next button is disabled at current gameweek", async ({ page }) => {
+    // Find the navigation area with gameweek name
+    const gameweekNav = page.locator("text=/Gameweek \\d+/").locator("..");
+
+    // The next button (second button in nav) should be disabled at current GW
+    const nextButton = gameweekNav.locator("button").last();
+    await expect(nextButton).toBeDisabled();
+  });
+
+  test("previous button is enabled at current gameweek", async ({ page }) => {
+    // Find the navigation area with gameweek name
+    const gameweekNav = page.locator("text=/Gameweek \\d+/").locator("..");
+
+    // The prev button (first button in nav) should be enabled
+    const prevButton = gameweekNav.locator("button").first();
+    await expect(prevButton).toBeEnabled();
+  });
+
+  test("can toggle between Pitch View and Squad Value", async ({ page }) => {
+    const pitchButton = page.getByRole("button", { name: "Pitch View" });
+    const valueButton = page.getByRole("button", { name: "Squad Value" });
+
+    // Pitch View should be active by default (has green styling)
+    await expect(pitchButton).toHaveClass(/bg-fpl-green/);
+
+    // Click Squad Value
+    await valueButton.click();
+
+    // Squad Value should now be active
+    await expect(valueButton).toHaveClass(/bg-fpl-green/);
+
+    // Click back to Pitch View
+    await pitchButton.click();
+
+    // Pitch View should be active again
+    await expect(pitchButton).toHaveClass(/bg-fpl-green/);
+  });
+
+  test("shows team header with manager info", async ({ page }) => {
+    // Should show team name in heading
+    await expect(page.getByRole("heading", { name: "Test FC" })).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Should show points (from mock: 850 total, 65 GW points)
+    await expect(page.getByText("850")).toBeVisible({ timeout: 10000 });
+  });
+
+  test("shows gameweek summary", async ({ page }) => {
+    // Should show gameweek points from mock data
+    await expect(page.getByText("65")).toBeVisible({ timeout: 10000 });
+  });
+});

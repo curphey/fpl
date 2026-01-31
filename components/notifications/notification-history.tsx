@@ -13,6 +13,10 @@ const typeLabels: Record<NotificationType, { label: string; color: string }> = {
   injury: { label: "Injury", color: "bg-fpl-danger/20 text-fpl-danger" },
   transfer_rec: { label: "Transfer", color: "bg-blue-500/20 text-blue-400" },
   league_update: { label: "League", color: "bg-purple-500/20 text-purple-400" },
+  weekly_summary: {
+    label: "Summary",
+    color: "bg-fpl-purple/20 text-fpl-purple",
+  },
 };
 
 function formatTime(dateString: string): string {

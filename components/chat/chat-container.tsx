@@ -48,29 +48,6 @@ export function ChatContainer({
     setIsHistoryLoaded(true);
   }, []);
 
-  // Handle initial message from URL params
-  useEffect(() => {
-    if (
-      initialMessage &&
-      isHistoryLoaded &&
-      !initialMessageProcessed &&
-      !isLoading
-    ) {
-      setInitialMessageProcessed(true);
-      if (autoSubmit) {
-        // Auto-send the message
-        sendMessage(initialMessage);
-      }
-    }
-  }, [
-    initialMessage,
-    autoSubmit,
-    isHistoryLoaded,
-    initialMessageProcessed,
-    isLoading,
-    sendMessage,
-  ]);
-
   // Save messages to localStorage when they change (after initial load)
   useEffect(() => {
     if (isHistoryLoaded && messages.length > 0) {
@@ -256,6 +233,29 @@ export function ChatContainer({
     },
     [isLoading, managerId, messages, showThinking, userApiKey],
   );
+
+  // Handle initial message from URL params (must be after sendMessage is defined)
+  useEffect(() => {
+    if (
+      initialMessage &&
+      isHistoryLoaded &&
+      !initialMessageProcessed &&
+      !isLoading
+    ) {
+      setInitialMessageProcessed(true);
+      if (autoSubmit) {
+        // Auto-send the message
+        sendMessage(initialMessage);
+      }
+    }
+  }, [
+    initialMessage,
+    autoSubmit,
+    isHistoryLoaded,
+    initialMessageProcessed,
+    isLoading,
+    sendMessage,
+  ]);
 
   const handleSuggestedQuestion = useCallback(
     (question: string) => {

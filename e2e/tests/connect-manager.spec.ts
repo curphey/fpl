@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { setupApiMocks } from "../fixtures/handlers";
+import { setupApiMocks, setupInvalidManagerMock } from "../fixtures/handlers";
 import { navigateTo } from "../helpers/test-utils";
 
 test.describe("Connect Manager ID Flow", () => {
@@ -40,6 +40,166 @@ test.describe("Connect Manager ID Flow", () => {
     await expect(page.getByRole("button", { name: "Go" })).toBeVisible();
   });
 
+  test("can enter manager ID and submit", async ({ page }) => {
+    await navigateTo(page, "/");
+
+    // Click Connect button
+    await page.getByRole("button", { name: "Connect" }).click();
+
+    const input = page.locator('input[placeholder="Manager ID"]');
+    await input.fill("12345");
+
+    // Go button should be enabled
+    const goButton = page.getByRole("button", { name: "Go" });
+    await expect(goButton).toBeEnabled();
+
+    // Click Go to submit
+    await goButton.click();
+
+    // Should either show loading state or connected state
+    // (loading may be too fast to catch reliably)
+    await expect(
+      page.getByText("Test FC").or(page.getByText("Connecting...")),
+    ).toBeVisible({ timeout: 10000 });
+  });
+
+  test("manager name appears on successful connection", async ({ page }) => {
+    await navigateTo(page, "/");
+
+    // Click Connect button
+    await page.getByRole("button", { name: "Connect" }).click();
+
+    const input = page.locator('input[placeholder="Manager ID"]');
+    await input.fill("12345");
+
+    // Click Go and wait for API response
+    const responsePromise = page.waitForResponse("**/api/fpl/entry/**");
+    await page.getByRole("button", { name: "Go" }).click();
+    await responsePromise;
+
+    // Wait for the manager name to appear (from mock data: "Test FC")
+    await expect(page.getByText("Test FC")).toBeVisible({ timeout: 10000 });
+  });
+
+  test("can disconnect manager", async ({ page }) => {
+    await navigateTo(page, "/");
+
+    // First connect
+    await page.getByRole("button", { name: "Connect" }).click();
+    const input = page.locator('input[placeholder="Manager ID"]');
+    await input.fill("12345");
+
+    const responsePromise = page.waitForResponse("**/api/fpl/entry/**");
+    await page.getByRole("button", { name: "Go" }).click();
+    await responsePromise;
+
+    // Wait for connected state
+    await expect(page.getByText("Test FC")).toBeVisible({ timeout: 10000 });
+
+    // Click disconnect button
+    await page.getByRole("button", { name: "Disconnect manager" }).click();
+
+    // Should show Connect button again
+    await expect(page.getByRole("button", { name: "Connect" })).toBeVisible();
+  });
+
+  test("disconnect button is available when connected", async ({ page }) => {
+    await navigateTo(page, "/");
+
+    // Connect first
+    await page.getByRole("button", { name: "Connect" }).click();
+    const input = page.locator('input[placeholder="Manager ID"]');
+    await input.fill("12345");
+
+    const responsePromise = page.waitForResponse("**/api/fpl/entry/**");
+    await page.getByRole("button", { name: "Go" }).click();
+    await responsePromise;
+
+    // Manager name should appear
+    await expect(page.getByText("Test FC")).toBeVisible({ timeout: 10000 });
+
+    // Disconnect button should be available
+    await expect(
+      page.getByRole("button", { name: "Disconnect manager" }),
+    ).toBeVisible();
+  });
+
+  test("stores manager ID in localStorage on connection", async ({ page }) => {
+    await navigateTo(page, "/");
+
+    // Connect
+    await page.getByRole("button", { name: "Connect" }).click();
+    const input = page.locator('input[placeholder="Manager ID"]');
+    await input.fill("12345");
+
+    const responsePromise = page.waitForResponse("**/api/fpl/entry/**");
+    await page.getByRole("button", { name: "Go" }).click();
+    await responsePromise;
+
+    // Wait for connected state
+    await expect(page.getByText("Test FC")).toBeVisible({ timeout: 10000 });
+
+    // Verify localStorage has the manager ID
+    const storedId = await page.evaluate(() =>
+      localStorage.getItem("fpl-manager-id"),
+    );
+    expect(storedId).toBe("12345");
+  });
+
+  test("clears localStorage on disconnect", async ({ page }) => {
+    await navigateTo(page, "/");
+
+    // Connect
+    await page.getByRole("button", { name: "Connect" }).click();
+    const input = page.locator('input[placeholder="Manager ID"]');
+    await input.fill("12345");
+
+    const responsePromise = page.waitForResponse("**/api/fpl/entry/**");
+    await page.getByRole("button", { name: "Go" }).click();
+    await responsePromise;
+
+    await expect(page.getByText("Test FC")).toBeVisible({ timeout: 10000 });
+
+    // Verify localStorage has the ID
+    let storedId = await page.evaluate(() =>
+      localStorage.getItem("fpl-manager-id"),
+    );
+    expect(storedId).toBe("12345");
+
+    // Disconnect
+    await page.getByRole("button", { name: "Disconnect manager" }).click();
+
+    // localStorage should be cleared
+    storedId = await page.evaluate(() =>
+      localStorage.getItem("fpl-manager-id"),
+    );
+    expect(storedId).toBeNull();
+  });
+
+  test("shows error state for invalid manager ID", async ({ page }) => {
+    // Override with invalid manager mock
+    await setupInvalidManagerMock(page);
+
+    await navigateTo(page, "/team");
+
+    // Enter invalid manager ID
+    const input = page.locator('input[placeholder="e.g. 123456"]');
+    await input.fill("99999999");
+
+    // Submit and wait for response
+    const responsePromise = page.waitForResponse("**/api/fpl/entry/**");
+    await page
+      .getByRole("main")
+      .getByRole("button", { name: "Connect" })
+      .click();
+    await responsePromise;
+
+    // Should show error message
+    await expect(page.getByText(/Manager not found|not found/i)).toBeVisible({
+      timeout: 10000,
+    });
+  });
+
   test("can enter manager ID in team page connect prompt", async ({ page }) => {
     await navigateTo(page, "/team");
 
@@ -51,7 +211,7 @@ test.describe("Connect Manager ID Flow", () => {
     await input.fill("12345");
     await expect(input).toHaveValue("12345");
 
-    // Connect button in the form should be visible (use main area to avoid header button)
+    // Connect button in the form should be visible
     await expect(
       page.getByRole("main").getByRole("button", { name: "Connect" }),
     ).toBeVisible();

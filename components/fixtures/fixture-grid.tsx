@@ -1,8 +1,13 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useRef, useCallback } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import type { TeamFixtureRow, FixtureCell } from "@/lib/fpl/fixture-planner";
 import { getFDRColorClass } from "@/lib/fpl/fixture-planner";
+
+const ROW_HEIGHT = 44;
+const MAX_HEIGHT = 500;
+const OVERSCAN = 3;
 
 /**
  * Badge component for Double Gameweek indicator
@@ -104,6 +109,27 @@ function GridLegend() {
   );
 }
 
+const FixtureRow = memo(function FixtureRow({
+  row,
+  gwRange,
+}: {
+  row: TeamFixtureRow;
+  gwRange: number[];
+}) {
+  return (
+    <>
+      <td className="sticky left-0 z-10 bg-fpl-card px-3 py-1.5 text-xs font-medium">
+        {row.team.short_name}
+      </td>
+      {gwRange.map((gw) => (
+        <td key={gw} className="h-10 px-0.5 py-0.5">
+          <CellContent cells={row.fixtures.get(gw)} />
+        </td>
+      ))}
+    </>
+  );
+});
+
 export function FixtureGrid({
   rows,
   gwStart,
@@ -113,15 +139,28 @@ export function FixtureGrid({
   gwStart: number;
   gwEnd: number;
 }) {
+  const parentRef = useRef<HTMLDivElement>(null);
   const gwRange = Array.from(
     { length: gwEnd - gwStart + 1 },
     (_, i) => gwStart + i,
   );
 
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: useCallback(() => ROW_HEIGHT, []),
+    overscan: OVERSCAN,
+  });
+
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  const totalSize = rowVirtualizer.getTotalSize();
+  const needsVirtualization = rows.length * ROW_HEIGHT > MAX_HEIGHT;
+
   return (
     <div>
       <GridLegend />
       <div className="overflow-x-auto rounded-lg border border-fpl-border">
+        {/* Fixed header */}
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-fpl-purple">
@@ -138,24 +177,63 @@ export function FixtureGrid({
               ))}
             </tr>
           </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr
-                key={row.team.id}
-                className="border-t border-fpl-border/50 transition-colors hover:bg-fpl-card-hover/30"
-              >
-                <td className="sticky left-0 z-10 bg-fpl-card px-3 py-1.5 text-xs font-medium">
-                  {row.team.short_name}
-                </td>
-                {gwRange.map((gw) => (
-                  <td key={gw} className="h-10 px-0.5 py-0.5">
-                    <CellContent cells={row.fixtures.get(gw)} />
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
         </table>
+
+        {/* Virtualized or regular body */}
+        {needsVirtualization ? (
+          <div
+            ref={parentRef}
+            className="overflow-y-auto"
+            style={{ maxHeight: MAX_HEIGHT }}
+          >
+            <div
+              style={{
+                height: `${totalSize}px`,
+                width: "100%",
+                position: "relative",
+              }}
+            >
+              <table className="w-full text-sm">
+                <tbody>
+                  {virtualItems.map((virtualRow) => {
+                    const row = rows[virtualRow.index];
+                    return (
+                      <tr
+                        key={row.team.id}
+                        className="border-t border-fpl-border/50 transition-colors hover:bg-fpl-card-hover/30"
+                        style={{
+                          height: `${ROW_HEIGHT}px`,
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          transform: `translateY(${virtualRow.start}px)`,
+                          display: "table",
+                          tableLayout: "fixed",
+                        }}
+                      >
+                        <FixtureRow row={row} gwRange={gwRange} />
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <tbody>
+              {rows.map((row) => (
+                <tr
+                  key={row.team.id}
+                  className="border-t border-fpl-border/50 transition-colors hover:bg-fpl-card-hover/30"
+                >
+                  <FixtureRow row={row} gwRange={gwRange} />
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

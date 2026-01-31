@@ -204,6 +204,127 @@ export const chatTools: ChatTool[] = [
       },
     },
   },
+  {
+    name: "get_league_analysis",
+    description:
+      "Analyze a mini-league including rival picks, effective ownership, gaps to leader, and differentials. Requires manager ID to be connected.",
+    input_schema: {
+      type: "object",
+      properties: {
+        league_id: {
+          type: "number",
+          description: "The mini-league ID to analyze",
+        },
+        rival_count: {
+          type: "number",
+          description:
+            "Number of closest rivals to analyze (default: 5, max: 10)",
+        },
+      },
+      required: ["league_id"],
+    },
+  },
+  {
+    name: "get_differentials",
+    description:
+      "Find low-ownership players with high upside potential. Returns players with ownership below a threshold who have good form and fixtures.",
+    input_schema: {
+      type: "object",
+      properties: {
+        max_ownership: {
+          type: "number",
+          description: "Maximum ownership percentage (default: 10)",
+        },
+        position: {
+          type: "string",
+          enum: ["GKP", "DEF", "MID", "FWD"],
+          description: "Filter by position",
+        },
+        min_form: {
+          type: "number",
+          description: "Minimum form rating (default: 4.0)",
+        },
+        max_price: {
+          type: "number",
+          description: "Maximum price in millions",
+        },
+        limit: {
+          type: "number",
+          description: "Maximum number of results (default: 10)",
+        },
+      },
+    },
+  },
+  {
+    name: "get_team_templates",
+    description:
+      "Get suggested team templates for different FPL strategies. Returns optimized squads based on value, premium-heavy, balanced, or differential approaches.",
+    input_schema: {
+      type: "object",
+      properties: {
+        strategy: {
+          type: "string",
+          enum: ["value", "premium", "balanced", "differential"],
+          description:
+            "Team building strategy (default: balanced). 'value' focuses on price/points ratio, 'premium' loads up on expensive players, 'balanced' mixes both, 'differential' focuses on low-ownership picks.",
+        },
+        budget: {
+          type: "number",
+          description: "Total budget in millions (default: 100)",
+        },
+        formation: {
+          type: "string",
+          enum: ["3-4-3", "3-5-2", "4-3-3", "4-4-2", "4-5-1", "5-3-2", "5-4-1"],
+          description: "Preferred formation (default: 3-4-3)",
+        },
+      },
+    },
+  },
+  {
+    name: "get_player_comparison_detailed",
+    description:
+      "Deep dive comparison of players including historical data, season history, form trends, and fixture analysis. More comprehensive than compare_players.",
+    input_schema: {
+      type: "object",
+      properties: {
+        player_names: {
+          type: "array",
+          items: { type: "string" },
+          description: "Array of player names to compare (2-4 players)",
+        },
+        include_history: {
+          type: "boolean",
+          description:
+            "Include last 5 gameweeks performance breakdown (default: true)",
+        },
+        include_fixtures: {
+          type: "boolean",
+          description: "Include next 5 fixtures analysis (default: true)",
+        },
+      },
+      required: ["player_names"],
+    },
+  },
+  {
+    name: "get_watchlist",
+    description:
+      "Get detailed stats for a list of specific players the user is tracking. Useful for monitoring potential transfers or keeping an eye on form changes.",
+    input_schema: {
+      type: "object",
+      properties: {
+        player_names: {
+          type: "array",
+          items: { type: "string" },
+          description: "Array of player names to track",
+        },
+        include_price_prediction: {
+          type: "boolean",
+          description: "Include price change predictions (default: true)",
+        },
+      },
+      required: ["player_names"],
+    },
+  },
 ];
 
 /**

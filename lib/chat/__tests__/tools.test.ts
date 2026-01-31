@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import { chatTools, getToolDefinitions } from "../tools";
 
 describe("chatTools", () => {
-  it("should have 10 tools defined", () => {
-    expect(chatTools).toHaveLength(10);
+  it("should have 15 tools defined", () => {
+    expect(chatTools).toHaveLength(15);
   });
 
   it("should include all expected tools", () => {
@@ -18,6 +18,11 @@ describe("chatTools", () => {
     expect(toolNames).toContain("get_price_changes");
     expect(toolNames).toContain("get_chip_advice");
     expect(toolNames).toContain("get_gameweek_info");
+    expect(toolNames).toContain("get_league_analysis");
+    expect(toolNames).toContain("get_differentials");
+    expect(toolNames).toContain("get_team_templates");
+    expect(toolNames).toContain("get_player_comparison_detailed");
+    expect(toolNames).toContain("get_watchlist");
   });
 
   it("should have valid schemas for all tools", () => {
@@ -34,7 +39,7 @@ describe("chatTools", () => {
 describe("getToolDefinitions", () => {
   it("should return formatted tool definitions", () => {
     const definitions = getToolDefinitions();
-    expect(definitions).toHaveLength(10);
+    expect(definitions).toHaveLength(15);
 
     for (const def of definitions) {
       expect(def).toHaveProperty("name");
@@ -92,5 +97,66 @@ describe("tool schema details", () => {
       "bboost",
       "3xc",
     ]);
+  });
+
+  it("get_league_analysis should require league_id", () => {
+    const leagueTool = chatTools.find((t) => t.name === "get_league_analysis");
+    expect(leagueTool).toBeDefined();
+    expect(leagueTool!.input_schema.required).toContain("league_id");
+    expect(leagueTool!.input_schema.properties.league_id.type).toBe("number");
+    expect(leagueTool!.input_schema.properties.rival_count).toBeDefined();
+  });
+
+  it("get_differentials should have correct filter properties", () => {
+    const diffTool = chatTools.find((t) => t.name === "get_differentials");
+    expect(diffTool).toBeDefined();
+
+    const props = diffTool!.input_schema.properties;
+    expect(props.max_ownership).toBeDefined();
+    expect(props.position).toBeDefined();
+    expect(props.min_form).toBeDefined();
+    expect(props.max_price).toBeDefined();
+    expect(props.limit).toBeDefined();
+    expect(props.position.enum).toEqual(["GKP", "DEF", "MID", "FWD"]);
+  });
+
+  it("get_team_templates should have strategy enum", () => {
+    const templateTool = chatTools.find((t) => t.name === "get_team_templates");
+    expect(templateTool).toBeDefined();
+    expect(templateTool!.input_schema.properties.strategy.enum).toEqual([
+      "value",
+      "premium",
+      "balanced",
+      "differential",
+    ]);
+    expect(templateTool!.input_schema.properties.formation.enum).toContain(
+      "3-4-3",
+    );
+    expect(templateTool!.input_schema.properties.formation.enum).toContain(
+      "4-4-2",
+    );
+  });
+
+  it("get_player_comparison_detailed should require player_names", () => {
+    const compareTool = chatTools.find(
+      (t) => t.name === "get_player_comparison_detailed",
+    );
+    expect(compareTool).toBeDefined();
+    expect(compareTool!.input_schema.required).toContain("player_names");
+    expect(compareTool!.input_schema.properties.player_names.type).toBe(
+      "array",
+    );
+    expect(compareTool!.input_schema.properties.include_history).toBeDefined();
+    expect(compareTool!.input_schema.properties.include_fixtures).toBeDefined();
+  });
+
+  it("get_watchlist should require player_names", () => {
+    const watchTool = chatTools.find((t) => t.name === "get_watchlist");
+    expect(watchTool).toBeDefined();
+    expect(watchTool!.input_schema.required).toContain("player_names");
+    expect(watchTool!.input_schema.properties.player_names.type).toBe("array");
+    expect(
+      watchTool!.input_schema.properties.include_price_prediction,
+    ).toBeDefined();
   });
 });

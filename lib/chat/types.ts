@@ -58,7 +58,12 @@ export type ChatToolName =
   | "get_transfer_recommendations"
   | "get_price_changes"
   | "get_chip_advice"
-  | "get_gameweek_info";
+  | "get_gameweek_info"
+  | "get_league_analysis"
+  | "get_differentials"
+  | "get_team_templates"
+  | "get_player_comparison_detailed"
+  | "get_watchlist";
 
 export interface ChatTool {
   name: ChatToolName;

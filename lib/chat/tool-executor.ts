@@ -10,7 +10,12 @@ import { scoreCaptainOptions } from "@/lib/fpl/captain-model";
 import { scoreTransferTargets } from "@/lib/fpl/transfer-model";
 import { predictPriceChanges } from "@/lib/fpl/price-model";
 import { analyzeChipTiming } from "@/lib/fpl/chip-model";
-import type { BootstrapStatic, Fixture } from "@/lib/fpl/types";
+import {
+  selectRivals,
+  buildRivalTeam,
+  analyzeLeague,
+} from "@/lib/fpl/league-analyzer";
+import type { BootstrapStatic, Fixture, Player } from "@/lib/fpl/types";
 
 interface ToolContext {
   managerId?: number;
@@ -556,6 +561,595 @@ export async function executeTool(
         averageScore: gw.average_entry_score || 0,
         highestScore: gw.highest_score || 0,
       };
+    }
+
+    case "get_league_analysis": {
+      if (!managerId) {
+        return {
+          error: "No manager ID connected. Please connect your FPL team first.",
+        };
+      }
+
+      const leagueId = input.league_id as number;
+      if (!leagueId) {
+        return { error: "League ID is required" };
+      }
+
+      const rivalCount = Math.min((input.rival_count as number) || 5, 10);
+
+      try {
+        // Fetch league standings
+        const standings = await fplClient.getLeagueStandings(leagueId);
+
+        // Find user in standings
+        const userStanding = standings.standings.results.find(
+          (s) => s.entry === managerId,
+        );
+        if (!userStanding) {
+          return {
+            error:
+              "Manager not found in this league. Make sure you are a member.",
+          };
+        }
+
+        // Get user picks
+        const userPicks = await fplClient.getManagerPicks(managerId, currentGw);
+
+        // Select closest rivals
+        const closestRivals = selectRivals(
+          standings.standings.results,
+          managerId,
+          rivalCount,
+        );
+
+        // Fetch rival picks
+        const rivalPicksPromises = closestRivals.map((rival) =>
+          fplClient
+            .getManagerPicks(rival.entry, currentGw)
+            .then((picks) => ({
+              standing: rival,
+              picks,
+            }))
+            .catch(() => null),
+        );
+        const rivalPicksResults = await Promise.all(rivalPicksPromises);
+        const validRivalPicks = rivalPicksResults.filter(
+          (r): r is NonNullable<typeof r> => r !== null,
+        );
+
+        // Build rival teams
+        const rivals = validRivalPicks.map((r) =>
+          buildRivalTeam(r.standing, r.picks, userStanding.total),
+        );
+
+        // Create lookup maps
+        const playerMap = new Map(bootstrap.elements.map((p) => [p.id, p]));
+
+        // Run analysis
+        const leaderTotal = standings.standings.results[0]?.total || 0;
+        const analysis = analyzeLeague(
+          userPicks.picks,
+          userStanding,
+          rivals,
+          leaderTotal,
+          playerMap,
+          teamMap,
+        );
+
+        return {
+          league: {
+            name: standings.league.name,
+            id: leagueId,
+          },
+          userRank: analysis.userRank,
+          gapToLeader: analysis.gapToLeader,
+          rivalsAnalyzed: rivals.length,
+          effectiveOwnership: analysis.effectiveOwnership
+            .slice(0, 15)
+            .map((eo) => ({
+              player: eo.playerName,
+              team: eo.teamShortName,
+              position: eo.position,
+              leagueEO: `${Math.round(eo.leagueEO)}%`,
+              captainEO: `${Math.round(eo.captainEO)}%`,
+              globalOwnership: `${eo.globalOwnership}%`,
+              userStatus: eo.userStatus,
+            })),
+          yourDifferentials: analysis.yourDifferentials
+            .slice(0, 5)
+            .map((d) => ({
+              player: d.playerName,
+              team: d.teamShortName,
+              position: d.position,
+              form: d.form,
+              reason: "No rivals own this player",
+            })),
+          theirDifferentials: analysis.theirDifferentials
+            .slice(0, 5)
+            .map((d) => ({
+              player: d.playerName,
+              team: d.teamShortName,
+              position: d.position,
+              form: d.form,
+              rivalsOwning: `${d.rivalsOwning}/${d.totalRivals}`,
+              riskScore: d.riskScore,
+            })),
+          uniquePlayerCount: analysis.uniquePlayerCount,
+          eoCoverage: `${analysis.eoCoverage}%`,
+        };
+      } catch (error) {
+        return {
+          error: `Failed to analyze league: ${error instanceof Error ? error.message : "Unknown error"}`,
+        };
+      }
+    }
+
+    case "get_differentials": {
+      const maxOwnership = (input.max_ownership as number) || 10;
+      const minForm = (input.min_form as number) || 4.0;
+      const maxPrice = input.max_price as number | undefined;
+      const positionFilter = input.position as string | undefined;
+      const limit = (input.limit as number) || 10;
+
+      let players = bootstrap.elements.filter(
+        (p) =>
+          parseFloat(p.selected_by_percent) <= maxOwnership &&
+          parseFloat(p.form) >= minForm &&
+          p.minutes > 0 &&
+          p.chance_of_playing_next_round !== 0, // Exclude definitely injured
+      );
+
+      if (positionFilter) {
+        const posId = positionIdMap[positionFilter];
+        if (posId) {
+          players = players.filter((p) => p.element_type === posId);
+        }
+      }
+
+      if (maxPrice) {
+        players = players.filter((p) => p.now_cost <= maxPrice * 10);
+      }
+
+      // Score differentials by form + fixtures
+      const scoredPlayers = players.map((p) => {
+        const upcomingFixtures = fixtures.filter(
+          (f) =>
+            !f.finished &&
+            f.event &&
+            f.event >= currentGw &&
+            f.event <= currentGw + 5 &&
+            (f.team_h === p.team || f.team_a === p.team),
+        );
+
+        const avgDifficulty =
+          upcomingFixtures.length > 0
+            ? upcomingFixtures.reduce((sum, f) => {
+                const isHome = f.team_h === p.team;
+                return (
+                  sum + (isHome ? f.team_h_difficulty : f.team_a_difficulty)
+                );
+              }, 0) / upcomingFixtures.length
+            : 3;
+
+        const fixtureScore = (5 - avgDifficulty) * 10; // Lower difficulty = higher score
+        const formScore = parseFloat(p.form) * 10;
+        const xgiScore = parseFloat(p.expected_goal_involvements) * 5;
+        const totalScore = formScore + fixtureScore + xgiScore;
+
+        return { player: p, totalScore, avgDifficulty };
+      });
+
+      scoredPlayers.sort((a, b) => b.totalScore - a.totalScore);
+
+      return scoredPlayers.slice(0, limit).map((sp, idx) => ({
+        rank: idx + 1,
+        player: {
+          name: sp.player.web_name,
+          team: teamMap.get(sp.player.team)?.short_name || "???",
+          position: positionMap.get(sp.player.element_type) || "???",
+          price: `£${(sp.player.now_cost / 10).toFixed(1)}m`,
+        },
+        ownership: `${sp.player.selected_by_percent}%`,
+        form: sp.player.form,
+        xGI: sp.player.expected_goal_involvements,
+        avgFixtureDifficulty: Math.round(sp.avgDifficulty * 10) / 10,
+        totalPoints: sp.player.total_points,
+        goals: sp.player.goals_scored,
+        assists: sp.player.assists,
+        news: sp.player.news || null,
+      }));
+    }
+
+    case "get_team_templates": {
+      const strategy = (input.strategy as string) || "balanced";
+      const budget = ((input.budget as number) || 100) * 10; // Convert to API format
+      const formation = (input.formation as string) || "3-4-3";
+
+      // Parse formation
+      const formationParts = formation.split("-").map(Number);
+      const [numDef, numMid, numFwd] = formationParts;
+      const numGk = 1;
+
+      // Filter eligible players
+      const eligiblePlayers = bootstrap.elements.filter(
+        (p) =>
+          p.minutes > 0 &&
+          p.chance_of_playing_next_round !== 0 &&
+          p.status !== "u", // Not unavailable
+      );
+
+      // Score players based on strategy
+      const scorePlayers = (players: Player[], strategyType: string) => {
+        return players.map((p) => {
+          let score = 0;
+          const form = parseFloat(p.form);
+          const pointsPerMillion = p.total_points / (p.now_cost / 10);
+          const ownership = parseFloat(p.selected_by_percent);
+
+          switch (strategyType) {
+            case "value":
+              score = pointsPerMillion * 20 + form * 5;
+              break;
+            case "premium":
+              score = p.total_points * 2 + form * 10;
+              break;
+            case "differential":
+              score = form * 15 + pointsPerMillion * 10 - ownership * 2; // Penalize high ownership
+              break;
+            case "balanced":
+            default:
+              score = p.total_points + form * 10 + pointsPerMillion * 5;
+              break;
+          }
+
+          return { player: p, score };
+        });
+      };
+
+      // Select best players per position
+      const selectBest = (
+        players: { player: Player; score: number }[],
+        count: number,
+        usedBudget: number,
+        remainingBudget: number,
+        remainingSlots: number,
+      ) => {
+        const sorted = [...players].sort((a, b) => b.score - a.score);
+        const selected: Player[] = [];
+        let spent = 0;
+        const avgPerSlot = (remainingBudget - spent) / remainingSlots;
+
+        for (const sp of sorted) {
+          if (selected.length >= count) break;
+          // Allow some budget flexibility
+          if (
+            sp.player.now_cost <= avgPerSlot * 1.5 ||
+            selected.length === count - 1
+          ) {
+            selected.push(sp.player);
+            spent += sp.player.now_cost;
+          }
+        }
+
+        return { selected, spent };
+      };
+
+      // Build team
+      const gkPlayers = scorePlayers(
+        eligiblePlayers.filter((p) => p.element_type === 1),
+        strategy,
+      );
+      const defPlayers = scorePlayers(
+        eligiblePlayers.filter((p) => p.element_type === 2),
+        strategy,
+      );
+      const midPlayers = scorePlayers(
+        eligiblePlayers.filter((p) => p.element_type === 3),
+        strategy,
+      );
+      const fwdPlayers = scorePlayers(
+        eligiblePlayers.filter((p) => p.element_type === 4),
+        strategy,
+      );
+
+      // Simple greedy selection (starting XI)
+      let remainingBudget = budget;
+      const totalSlots = numGk + numDef + numMid + numFwd;
+
+      const { selected: gks, spent: gkSpent } = selectBest(
+        gkPlayers,
+        numGk,
+        0,
+        remainingBudget,
+        totalSlots,
+      );
+      remainingBudget -= gkSpent;
+
+      const { selected: defs, spent: defSpent } = selectBest(
+        defPlayers,
+        numDef,
+        gkSpent,
+        remainingBudget,
+        totalSlots - numGk,
+      );
+      remainingBudget -= defSpent;
+
+      const { selected: mids, spent: midSpent } = selectBest(
+        midPlayers,
+        numMid,
+        gkSpent + defSpent,
+        remainingBudget,
+        totalSlots - numGk - numDef,
+      );
+      remainingBudget -= midSpent;
+
+      const { selected: fwds } = selectBest(
+        fwdPlayers,
+        numFwd,
+        gkSpent + defSpent + midSpent,
+        remainingBudget,
+        numFwd,
+      );
+
+      const startingXI = [...gks, ...defs, ...mids, ...fwds];
+      const totalCost = startingXI.reduce((sum, p) => sum + p.now_cost, 0);
+
+      const formatPlayer = (p: Player) => ({
+        name: p.web_name,
+        team: teamMap.get(p.team)?.short_name || "???",
+        position: positionMap.get(p.element_type) || "???",
+        price: `£${(p.now_cost / 10).toFixed(1)}m`,
+        totalPoints: p.total_points,
+        form: p.form,
+        ownership: `${p.selected_by_percent}%`,
+      });
+
+      return {
+        strategy: {
+          name: strategy,
+          description:
+            strategy === "value"
+              ? "Focus on points per million value"
+              : strategy === "premium"
+                ? "Load up on expensive, high-scoring players"
+                : strategy === "differential"
+                  ? "Low-ownership picks with upside"
+                  : "Mix of value and premium options",
+        },
+        formation,
+        startingXI: {
+          goalkeeper: gks.map(formatPlayer),
+          defenders: defs.map(formatPlayer),
+          midfielders: mids.map(formatPlayer),
+          forwards: fwds.map(formatPlayer),
+        },
+        totalCost: `£${(totalCost / 10).toFixed(1)}m`,
+        budgetRemaining: `£${((budget - totalCost) / 10).toFixed(1)}m`,
+        totalProjectedPoints: startingXI.reduce(
+          (sum, p) => sum + p.total_points,
+          0,
+        ),
+        note: "This is a starting XI template. Budget for bench (~£17m) not included.",
+      };
+    }
+
+    case "get_player_comparison_detailed": {
+      const playerNames = input.player_names as string[];
+      if (!playerNames || playerNames.length < 2 || playerNames.length > 4) {
+        return { error: "Please provide 2-4 players to compare" };
+      }
+
+      const includeHistory = (input.include_history as boolean) !== false;
+      const includeFixtures = (input.include_fixtures as boolean) !== false;
+
+      const playersToCompare = playerNames
+        .map((name) => {
+          const query = name.toLowerCase();
+          return bootstrap.elements.find(
+            (p) =>
+              p.web_name.toLowerCase() === query ||
+              p.web_name.toLowerCase().includes(query),
+          );
+        })
+        .filter((p): p is NonNullable<typeof p> => p !== undefined);
+
+      if (playersToCompare.length < 2) {
+        return { error: "Could not find enough players to compare" };
+      }
+
+      // Fetch detailed data for each player
+      const detailedPromises = playersToCompare.map(async (player) => {
+        try {
+          const summary = await fplClient.getPlayerSummary(player.id);
+          return { player, summary };
+        } catch {
+          return { player, summary: null };
+        }
+      });
+
+      const detailedResults = await Promise.all(detailedPromises);
+
+      return detailedResults.map((result) => {
+        const { player, summary } = result;
+
+        const baseData = {
+          id: player.id,
+          name: player.web_name,
+          fullName: `${player.first_name} ${player.second_name}`,
+          team: teamMap.get(player.team)?.name || "???",
+          position: positionMap.get(player.element_type) || "???",
+          price: `£${(player.now_cost / 10).toFixed(1)}m`,
+          priceChange: `£${((player.now_cost - player.cost_change_start) / 10).toFixed(1)}m`,
+          stats: {
+            totalPoints: player.total_points,
+            form: player.form,
+            ownership: `${player.selected_by_percent}%`,
+            minutes: player.minutes,
+            goals: player.goals_scored,
+            assists: player.assists,
+            cleanSheets: player.clean_sheets,
+            bonus: player.bonus,
+            bps: player.bps,
+            xG: player.expected_goals,
+            xA: player.expected_assists,
+            xGI: player.expected_goal_involvements,
+            xGIPer90:
+              player.minutes > 0
+                ? (
+                    (parseFloat(player.expected_goal_involvements) /
+                      player.minutes) *
+                    90
+                  ).toFixed(2)
+                : "0.00",
+            pointsPerGame:
+              player.minutes > 0
+                ? (player.total_points / (player.minutes / 90)).toFixed(1)
+                : "0.0",
+            pointsPerMillion: (
+              player.total_points /
+              (player.now_cost / 10)
+            ).toFixed(1),
+          },
+          news: player.news || null,
+          chanceOfPlaying: player.chance_of_playing_next_round,
+        };
+
+        // Add history if requested and available
+        let history = null;
+        if (includeHistory && summary?.history) {
+          history = summary.history.slice(-5).map((h) => ({
+            gameweek: h.round,
+            points: h.total_points,
+            minutes: h.minutes,
+            goals: h.goals_scored,
+            assists: h.assists,
+            bonus: h.bonus,
+            xG: h.expected_goals,
+            xA: h.expected_assists,
+            opponent: teamMap.get(h.opponent_team)?.short_name || "???",
+            home: h.was_home,
+          }));
+        }
+
+        // Add fixtures if requested and available
+        let upcomingFixtures = null;
+        if (includeFixtures && summary?.fixtures) {
+          upcomingFixtures = summary.fixtures.slice(0, 5).map((f) => ({
+            gameweek: f.event,
+            opponent:
+              teamMap.get(f.is_home ? f.team_a : f.team_h)?.short_name || "???",
+            home: f.is_home,
+            difficulty: f.difficulty,
+          }));
+        }
+
+        return {
+          ...baseData,
+          recentHistory: history,
+          upcomingFixtures,
+        };
+      });
+    }
+
+    case "get_watchlist": {
+      const playerNames = input.player_names as string[];
+      if (!playerNames || playerNames.length === 0) {
+        return { error: "Please provide at least one player to track" };
+      }
+
+      const includePricePrediction =
+        (input.include_price_prediction as boolean) !== false;
+
+      const players = playerNames
+        .map((name) => {
+          const query = name.toLowerCase();
+          return bootstrap.elements.find(
+            (p) =>
+              p.web_name.toLowerCase() === query ||
+              p.web_name.toLowerCase().includes(query),
+          );
+        })
+        .filter((p): p is NonNullable<typeof p> => p !== undefined);
+
+      if (players.length === 0) {
+        return { error: "No matching players found" };
+      }
+
+      // Get price predictions if requested
+      let priceData: Map<
+        number,
+        { direction: string; probability: number }
+      > | null = null;
+      if (includePricePrediction) {
+        const { risers, fallers } = predictPriceChanges(enrichedPlayers);
+        priceData = new Map();
+        for (const r of risers) {
+          priceData.set(r.player.id, {
+            direction: "rise",
+            probability: r.probability,
+          });
+        }
+        for (const f of fallers) {
+          priceData.set(f.player.id, {
+            direction: "fall",
+            probability: f.probability,
+          });
+        }
+      }
+
+      return players.map((p) => {
+        const upcomingFixtures = fixtures
+          .filter(
+            (f) =>
+              !f.finished &&
+              f.event &&
+              f.event >= currentGw &&
+              f.event <= currentGw + 3 &&
+              (f.team_h === p.team || f.team_a === p.team),
+          )
+          .map((f) => {
+            const isHome = f.team_h === p.team;
+            return {
+              gameweek: f.event,
+              opponent:
+                teamMap.get(isHome ? f.team_a : f.team_h)?.short_name || "???",
+              home: isHome,
+              difficulty: isHome ? f.team_h_difficulty : f.team_a_difficulty,
+            };
+          });
+
+        const baseData = {
+          id: p.id,
+          name: p.web_name,
+          team: teamMap.get(p.team)?.short_name || "???",
+          position: positionMap.get(p.element_type) || "???",
+          price: `£${(p.now_cost / 10).toFixed(1)}m`,
+          totalPoints: p.total_points,
+          form: p.form,
+          ownership: `${p.selected_by_percent}%`,
+          minutes: p.minutes,
+          goals: p.goals_scored,
+          assists: p.assists,
+          xGI: p.expected_goal_involvements,
+          news: p.news || null,
+          chanceOfPlaying: p.chance_of_playing_next_round,
+          upcomingFixtures,
+        };
+
+        // Add price prediction if available
+        const pricePrediction = priceData?.get(p.id);
+        if (pricePrediction) {
+          return {
+            ...baseData,
+            pricePrediction: {
+              direction: pricePrediction.direction,
+              probability: `${Math.round(pricePrediction.probability * 100)}%`,
+            },
+          };
+        }
+
+        return baseData;
+      });
     }
 
     default:

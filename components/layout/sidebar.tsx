@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { navItems, secondaryNavItems } from "./nav-items";
 import { NavIcon } from "./nav-icon";
+import { SidebarChat } from "@/components/chat";
 
 export function Sidebar({
   open,
@@ -26,11 +27,11 @@ export function Sidebar({
 
       {/* Sidebar panel */}
       <aside
-        className={`fixed bottom-0 left-0 top-14 z-50 w-60 border-r border-fpl-border bg-fpl-purple-dark transition-transform lg:translate-x-0 ${
+        className={`fixed bottom-0 left-0 top-14 z-50 flex w-60 flex-col border-r border-fpl-border bg-fpl-purple-dark transition-transform lg:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <nav className="flex flex-col gap-1 p-3">
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -56,25 +57,32 @@ export function Sidebar({
             Analytics
           </span>
 
-          {secondaryNavItems.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onClose}
-                className={`flex min-h-[44px] items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors active:scale-[0.98] ${
-                  isActive
-                    ? "bg-fpl-purple-light text-fpl-green"
-                    : "text-fpl-muted hover:bg-fpl-purple-light/50 hover:text-foreground"
-                }`}
-              >
-                <NavIcon name={item.icon} />
-                {item.label}
-              </Link>
-            );
-          })}
+          {secondaryNavItems
+            .filter((item) => item.href !== "/chat")
+            .map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onClose}
+                  className={`flex min-h-[44px] items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors active:scale-[0.98] ${
+                    isActive
+                      ? "bg-fpl-purple-light text-fpl-green"
+                      : "text-fpl-muted hover:bg-fpl-purple-light/50 hover:text-foreground"
+                  }`}
+                >
+                  <NavIcon name={item.icon} />
+                  {item.label}
+                </Link>
+              );
+            })}
         </nav>
+
+        {/* Desktop chat panel */}
+        <div className="hidden lg:block">
+          <SidebarChat />
+        </div>
       </aside>
     </>
   );

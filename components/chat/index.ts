@@ -10,3 +10,4 @@ export { SuggestedQuestions } from "./suggested-questions";
 export { ThinkingIndicator } from "./thinking-indicator";
 export { StructuredResponse } from "./structured-response";
 export { ApiKeyInput, useApiKey } from "./api-key-input";
+export { SidebarChat } from "./sidebar-chat";

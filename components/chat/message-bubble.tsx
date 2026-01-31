@@ -3,6 +3,10 @@
 import { useState } from "react";
 import type { ChatMessage, ToolCall } from "@/lib/chat/types";
 import { ThinkingIndicator } from "./thinking-indicator";
+import {
+  StructuredResponse,
+  shouldRenderStructured,
+} from "./structured-response";
 import ReactMarkdown from "react-markdown";
 
 interface MessageBubbleProps {
@@ -208,7 +212,14 @@ function ToolCallBadge({ toolCall }: { toolCall: ToolCall }) {
     get_price_changes: "Prices",
     get_chip_advice: "Chips",
     get_gameweek_info: "Gameweek",
+    get_league_analysis: "League",
+    get_differentials: "Differentials",
+    get_team_templates: "Templates",
+    get_player_comparison_detailed: "Deep Compare",
+    get_watchlist: "Watchlist",
   };
+
+  const hasStructuredResponse = shouldRenderStructured(toolCall);
 
   return (
     <div className="rounded border border-fpl-border/30 bg-black/5">
@@ -225,7 +236,8 @@ function ToolCallBadge({ toolCall }: { toolCall: ToolCall }) {
         {toolCall.status === "running" && (
           <span className="text-xs text-fpl-muted">Loading...</span>
         )}
-        {(toolCall.result || toolCall.error) && (
+        {/* Show expand arrow only for non-structured responses */}
+        {(toolCall.result || toolCall.error) && !hasStructuredResponse && (
           <svg
             className={`ml-auto h-3 w-3 text-fpl-muted transition-transform ${
               isExpanded ? "rotate-180" : ""
@@ -244,15 +256,32 @@ function ToolCallBadge({ toolCall }: { toolCall: ToolCall }) {
         )}
       </button>
 
-      {isExpanded && (toolCall.result || toolCall.error) && (
+      {/* Structured response (always visible when available) */}
+      {hasStructuredResponse && toolCall.status === "completed" && (
         <div className="border-t border-fpl-border/30 p-2">
-          {toolCall.error ? (
-            <p className="text-xs text-red-400">{toolCall.error}</p>
-          ) : (
-            <pre className="max-h-40 overflow-auto whitespace-pre-wrap text-xs text-fpl-muted">
-              {JSON.stringify(toolCall.result, null, 2)}
-            </pre>
-          )}
+          <StructuredResponse toolCall={toolCall} />
+        </div>
+      )}
+
+      {/* Raw JSON view (expandable) */}
+      {isExpanded &&
+        (toolCall.result || toolCall.error) &&
+        !hasStructuredResponse && (
+          <div className="border-t border-fpl-border/30 p-2">
+            {toolCall.error ? (
+              <p className="text-xs text-red-400">{toolCall.error}</p>
+            ) : (
+              <pre className="max-h-40 overflow-auto whitespace-pre-wrap text-xs text-fpl-muted">
+                {JSON.stringify(toolCall.result, null, 2)}
+              </pre>
+            )}
+          </div>
+        )}
+
+      {/* Error display */}
+      {toolCall.error && (
+        <div className="border-t border-fpl-border/30 p-2">
+          <p className="text-xs text-red-400">{toolCall.error}</p>
         </div>
       )}
     </div>

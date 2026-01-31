@@ -23,7 +23,7 @@ export const navItems: NavItem[] = [
   { label: "My Team", href: "/team", icon: "team" },
   { label: "Transfers", href: "/transfers", icon: "transfers" },
   { label: "Live", href: "/live", icon: "live" },
-  { label: "Fixtures", href: "/fixtures", icon: "fixtures" },
+  { label: "Chat", href: "/chat", icon: "chat" },
 ];
 
 /** Additional nav items shown only in the sidebar */

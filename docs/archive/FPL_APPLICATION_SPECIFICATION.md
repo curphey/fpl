@@ -1,4 +1,5 @@
 # Fantasy Premier League Optimization Application
+
 ## Product Specification v1.0
 
 ---
@@ -36,13 +37,13 @@ This specification outlines a web application designed to give Fantasy Premier L
 
 #### 1.1.1 Squad Size and Structure
 
-| Rule | Value | Validation |
-|------|-------|------------|
+| Rule             | Value                  | Validation                |
+| ---------------- | ---------------------- | ------------------------- |
 | Total squad size | **Exactly 15 players** | Cannot be 14 or 16. Ever. |
-| Goalkeepers | **Exactly 2** | Not 1, not 3. Exactly 2. |
-| Defenders | **Exactly 5** | Not 4, not 6. Exactly 5. |
-| Midfielders | **Exactly 5** | Not 4, not 6. Exactly 5. |
-| Forwards | **Exactly 3** | Not 2, not 4. Exactly 3. |
+| Goalkeepers      | **Exactly 2**          | Not 1, not 3. Exactly 2.  |
+| Defenders        | **Exactly 5**          | Not 4, not 6. Exactly 5.  |
+| Midfielders      | **Exactly 5**          | Not 4, not 6. Exactly 5.  |
+| Forwards         | **Exactly 3**          | Not 2, not 4. Exactly 3.  |
 
 ```
 VALIDATION: count(GK) == 2 AND count(DEF) == 5 AND count(MID) == 5 AND count(FWD) == 3
@@ -51,8 +52,8 @@ VALIDATION: total_players == 15
 
 #### 1.1.2 Team Limit Rule
 
-| Rule | Value | Validation |
-|------|-------|------------|
+| Rule                                      | Value | Validation                                |
+| ----------------------------------------- | ----- | ----------------------------------------- |
 | Max players from same Premier League team | **3** | Cannot have 4+ players from Arsenal, etc. |
 
 ```
@@ -60,19 +61,20 @@ VALIDATION: For each of 20 PL teams: count(players from team) <= 3
 ```
 
 **Example violations to catch**:
+
 - ❌ 4 Arsenal players (Saka, Saliba, Raya, Martinelli)
 - ❌ Transfer in 4th Liverpool player when you have 3
 - ✅ 3 Man City + 3 Arsenal + 3 Liverpool = valid (9 players from 3 teams)
 
 #### 1.1.3 Budget Rules
 
-| Rule | Value | Validation |
-|------|-------|------------|
-| Starting budget | **£100.0m** | All new teams start here |
-| Minimum spend | **£0** | You can have money in bank |
-| Maximum squad value | **No limit** | Team value can exceed £100m through price rises |
-| Bank balance | **No maximum** | Can hold any amount in bank |
-| Price precision | **£0.1m increments** | All prices end in .0, .1, .2, etc. |
+| Rule                | Value                | Validation                                      |
+| ------------------- | -------------------- | ----------------------------------------------- |
+| Starting budget     | **£100.0m**          | All new teams start here                        |
+| Minimum spend       | **£0**               | You can have money in bank                      |
+| Maximum squad value | **No limit**         | Team value can exceed £100m through price rises |
+| Bank balance        | **No maximum**       | Can hold any amount in bank                     |
+| Price precision     | **£0.1m increments** | All prices end in .0, .1, .2, etc.              |
 
 ```
 VALIDATION: sum(player_prices) + bank <= total_budget
@@ -81,6 +83,7 @@ VALIDATION: All prices are multiples of 0.1
 ```
 
 **Budget edge cases**:
+
 - Player A costs £10.0m, you have £10.0m in bank → ✅ Valid (bank becomes £0.0m)
 - Player A costs £10.1m, you have £10.0m in bank → ❌ Invalid (insufficient funds)
 - Team value £105.3m, bank £2.1m, total budget £107.4m → ✅ Valid (price rises allowed this)
@@ -93,12 +96,12 @@ VALIDATION: All prices are multiples of 0.1
 
 The **starting 11** must follow valid football formations:
 
-| Position | Minimum | Maximum | Notes |
-|----------|---------|---------|-------|
-| Goalkeeper | 1 | 1 | Always exactly 1 GK starts |
-| Defenders | 3 | 5 | At least 3, max 5 |
-| Midfielders | 2 | 5 | At least 2, can be up to 5 |
-| Forwards | 1 | 3 | At least 1, max 3 |
+| Position    | Minimum | Maximum | Notes                      |
+| ----------- | ------- | ------- | -------------------------- |
+| Goalkeeper  | 1       | 1       | Always exactly 1 GK starts |
+| Defenders   | 3       | 5       | At least 3, max 5          |
+| Midfielders | 2       | 5       | At least 2, can be up to 5 |
+| Forwards    | 1       | 3       | At least 1, max 3          |
 
 ```
 VALIDATION: starting_GK == 1
@@ -130,12 +133,12 @@ VALIDATION: starting_GK + starting_DEF + starting_MID + starting_FWD == 11
 
 #### 1.2.2 Bench Structure
 
-| Position | Bench Slot | Purpose |
-|----------|------------|---------|
-| Slot 1 | GK | Backup goalkeeper |
-| Slot 2 | Outfield | First substitute |
-| Slot 3 | Outfield | Second substitute |
-| Slot 4 | Outfield | Third substitute |
+| Position | Bench Slot | Purpose           |
+| -------- | ---------- | ----------------- |
+| Slot 1   | GK         | Backup goalkeeper |
+| Slot 2   | Outfield   | First substitute  |
+| Slot 3   | Outfield   | Second substitute |
+| Slot 4   | Outfield   | Third substitute  |
 
 ```
 VALIDATION: bench[0].position == 'GK'
@@ -153,12 +156,12 @@ VALIDATION: count(bench) == 4
 
 #### 1.3.1 Basic Rules
 
-| Rule | Description |
-|------|-------------|
-| Captain selection | Must be from starting 11 |
-| Vice-captain selection | Must be from starting 11 |
-| Captain ≠ Vice-captain | Cannot be the same player |
-| Captain points | Doubled (×2) |
+| Rule                    | Description                     |
+| ----------------------- | ------------------------------- |
+| Captain selection       | Must be from starting 11        |
+| Vice-captain selection  | Must be from starting 11        |
+| Captain ≠ Vice-captain  | Cannot be the same player       |
+| Captain points          | Doubled (×2)                    |
 | Vice-captain activation | Only if captain plays 0 minutes |
 
 ```
@@ -181,6 +184,7 @@ ELSE:
 ```
 
 **Edge cases**:
+
 - Captain plays 1 minute, scores 1 point → Gets 2 points (doubled) ✅
 - Captain plays 0 minutes, VC plays 90 → VC points doubled ✅
 - Captain plays 0 minutes, VC plays 0 minutes → No doubling occurs ✅
@@ -192,11 +196,11 @@ ELSE:
 
 #### 1.4.1 Appearance Points
 
-| Action | Points | Conditions |
-|--------|--------|------------|
-| Playing 1-59 minutes | 1 | Any minutes played |
-| Playing 60+ minutes | 2 | Must be 60 or more |
-| Not playing | 0 | 0 minutes = 0 points |
+| Action               | Points | Conditions           |
+| -------------------- | ------ | -------------------- |
+| Playing 1-59 minutes | 1      | Any minutes played   |
+| Playing 60+ minutes  | 2      | Must be 60 or more   |
+| Not playing          | 0      | 0 minutes = 0 points |
 
 ```
 IF minutes == 0: appearance_points = 0
@@ -208,28 +212,30 @@ ELSE: appearance_points = 2
 
 #### 1.4.2 Goal Scoring Points
 
-| Position | Points per Goal |
-|----------|-----------------|
-| Forward | 4 |
-| Midfielder | 5 |
-| Defender | 6 |
-| Goalkeeper | 6 |
+| Position   | Points per Goal |
+| ---------- | --------------- |
+| Forward    | 4               |
+| Midfielder | 5               |
+| Defender   | 6               |
+| Goalkeeper | 6               |
 
 ```
 goal_points = goals × points_per_position[player.position]
 ```
 
 **Important**: Position is determined by FPL classification, NOT where player actually plays on pitch
+
 - Trent Alexander-Arnold is classified as DEF → Gets 6 points per goal
 - Even if he plays midfield in real life, FPL position is what counts
 
 #### 1.4.3 Assist Points
 
 | Action | Points |
-|--------|--------|
-| Assist | 3 |
+| ------ | ------ |
+| Assist | 3      |
 
 **FPL Assist Definition** (different from Opta):
+
 - Pass leading directly to a goal
 - Winning a penalty that is scored counts as assist
 - Winning a free kick that is scored does NOT count as assist
@@ -237,12 +243,12 @@ goal_points = goals × points_per_position[player.position]
 
 #### 1.4.4 Clean Sheet Points
 
-| Position | Points | Condition |
-|----------|--------|-----------|
-| Goalkeeper | 4 | Team concedes 0 goals AND player plays 60+ mins |
-| Defender | 4 | Team concedes 0 goals AND player plays 60+ mins |
-| Midfielder | 1 | Team concedes 0 goals AND player plays 60+ mins |
-| Forward | 0 | Forwards never get clean sheet points |
+| Position   | Points | Condition                                       |
+| ---------- | ------ | ----------------------------------------------- |
+| Goalkeeper | 4      | Team concedes 0 goals AND player plays 60+ mins |
+| Defender   | 4      | Team concedes 0 goals AND player plays 60+ mins |
+| Midfielder | 1      | Team concedes 0 goals AND player plays 60+ mins |
+| Forward    | 0      | Forwards never get clean sheet points           |
 
 ```
 IF team_goals_conceded == 0 AND player.minutes >= 60:
@@ -254,6 +260,7 @@ ELSE:
 ```
 
 **Critical edge cases**:
+
 - Player plays 59 minutes, team keeps clean sheet → 0 clean sheet points ❌
 - Player plays 60 minutes, team concedes in 90th minute → 0 clean sheet points ❌
 - Player subbed off at 60 mins with clean sheet, team concedes later → 4 points ✅
@@ -261,15 +268,15 @@ ELSE:
 
 #### 1.4.5 Goals Conceded Points (GK and DEF only)
 
-| Goals Conceded | Points |
-|----------------|--------|
-| 0 | 0 (but clean sheet bonus applies) |
-| 1 | 0 |
-| 2 | -1 |
-| 3 | -1 |
-| 4 | -2 |
-| 5 | -2 |
-| n | -floor(n/2) |
+| Goals Conceded | Points                            |
+| -------------- | --------------------------------- |
+| 0              | 0 (but clean sheet bonus applies) |
+| 1              | 0                                 |
+| 2              | -1                                |
+| 3              | -1                                |
+| 4              | -2                                |
+| 5              | -2                                |
+| n              | -floor(n/2)                       |
 
 ```
 IF player.position IN ['GK', 'DEF']:
@@ -282,15 +289,16 @@ ELSE:
 
 #### 1.4.6 Goalkeeper Save Points
 
-| Action | Points |
-|--------|--------|
-| Every 3 saves | 1 |
+| Action        | Points |
+| ------------- | ------ |
+| Every 3 saves | 1      |
 
 ```
 save_points = floor(saves / 3)
 ```
 
 **Examples**:
+
 - 2 saves → 0 points
 - 3 saves → 1 point
 - 5 saves → 1 point
@@ -299,22 +307,23 @@ save_points = floor(saves / 3)
 
 #### 1.4.7 Penalty Points
 
-| Action | Points |
-|--------|--------|
-| Penalty saved (GK) | 5 |
-| Penalty missed (any) | -2 |
+| Action               | Points |
+| -------------------- | ------ |
+| Penalty saved (GK)   | 5      |
+| Penalty missed (any) | -2     |
 
 **Definitions**:
+
 - Penalty saved = Goalkeeper stops the penalty
 - Penalty missed = Shot misses target (hits post/bar or off target)
 - Penalty scored = Normal goal points apply (no bonus for penalties)
 
 #### 1.4.8 Card Points
 
-| Action | Points |
-|--------|--------|
-| Yellow card | -1 |
-| Red card (direct) | -3 |
+| Action                 | Points                                 |
+| ---------------------- | -------------------------------------- |
+| Yellow card            | -1                                     |
+| Red card (direct)      | -3                                     |
 | Red card (two yellows) | -3 total (-1 first yellow, -2 for red) |
 
 ```
@@ -325,9 +334,9 @@ ELSE IF yellow_cards == 0 AND red_cards == 1: card_points = -3  # Straight red
 
 #### 1.4.9 Own Goal Points
 
-| Action | Points |
-|--------|--------|
-| Own goal | -2 |
+| Action   | Points |
+| -------- | ------ |
+| Own goal | -2     |
 
 Applied to any player who scores own goal, regardless of position.
 
@@ -336,12 +345,13 @@ Applied to any player who scores own goal, regardless of position.
 After each match, bonus points awarded to top 3 players by BPS score:
 
 | BPS Rank | Bonus Points |
-|----------|--------------|
-| 1st | 3 |
-| 2nd | 2 |
-| 3rd | 1 |
+| -------- | ------------ |
+| 1st      | 3            |
+| 2nd      | 2            |
+| 3rd      | 1            |
 
 **Tie-breaking rules**:
+
 - If players tie for 1st: Both get 3 bonus points
 - If 2 players tie for 1st: 3rd place gets 1 bonus point
 - If 3+ players tie for 1st: All get 3 bonus points, no 2nd/3rd awarded
@@ -349,16 +359,17 @@ After each match, bonus points awarded to top 3 players by BPS score:
 - Etc.
 
 **BPS scoring factors** (simplified):
+
 - Goals, assists, clean sheets, saves increase BPS
 - Cards, own goals, penalties missed decrease BPS
 - Detailed BPS calculation is complex and done by FPL
 
 #### 1.4.11 NEW: Defensive Contributions (DEFCON) - 2025/26
 
-| Position | Requirement | Points |
-|----------|-------------|--------|
-| Defender | 10 CBIT (Clearances, Blocks, Interceptions, Tackles) | 2 |
-| Midfielder/Forward | 12 CBIRT (includes Ball Recoveries) | 2 |
+| Position           | Requirement                                          | Points |
+| ------------------ | ---------------------------------------------------- | ------ |
+| Defender           | 10 CBIT (Clearances, Blocks, Interceptions, Tackles) | 2      |
+| Midfielder/Forward | 12 CBIRT (includes Ball Recoveries)                  | 2      |
 
 ```
 IF player.position == 'DEF' AND (clearances + blocks + interceptions + tackles) >= 10:
@@ -375,18 +386,19 @@ ELSE:
 
 #### 1.5.1 Free Transfers
 
-| Rule | Value |
-|------|-------|
-| Free transfers per gameweek | 1 |
-| Maximum banked transfers | 5 (NEW for 2025/26, was 2) |
-| Rollover rule | Unused FT rolls to next week |
-| Maximum possible FTs | 5 (with 4 banked + 1 new) |
+| Rule                        | Value                        |
+| --------------------------- | ---------------------------- |
+| Free transfers per gameweek | 1                            |
+| Maximum banked transfers    | 5 (NEW for 2025/26, was 2)   |
+| Rollover rule               | Unused FT rolls to next week |
+| Maximum possible FTs        | 5 (with 4 banked + 1 new)    |
 
 ```
 new_gameweek_FT = min(previous_unused_FT + 1, 5)
 ```
 
 **Examples**:
+
 - GW1: Start with 1 FT, use 0 → GW2: 2 FT
 - GW2: Have 2 FT, use 0 → GW3: 3 FT
 - GW3: Have 3 FT, use 0 → GW4: 4 FT
@@ -395,19 +407,20 @@ new_gameweek_FT = min(previous_unused_FT + 1, 5)
 
 #### 1.5.2 Transfer Hits
 
-| Transfers | Free Transfers Available | Cost |
-|-----------|-------------------------|------|
-| 1 | 1+ | 0 points |
-| 2 | 2+ | 0 points |
-| 2 | 1 | -4 points |
-| 3 | 1 | -8 points |
-| 5 | 3 | -8 points |
+| Transfers | Free Transfers Available | Cost      |
+| --------- | ------------------------ | --------- |
+| 1         | 1+                       | 0 points  |
+| 2         | 2+                       | 0 points  |
+| 2         | 1                        | -4 points |
+| 3         | 1                        | -8 points |
+| 5         | 3                        | -8 points |
 
 ```
 hit_cost = max(0, (transfers_made - free_transfers) × 4)
 ```
 
 **Formula**:
+
 ```
 points_deducted = max(0, transfers_made - free_transfers_available) × 4
 ```
@@ -434,24 +447,25 @@ You only get **HALF** the profit (rounded down) when selling.
 
 #### 1.5.4 Transfer Deadline
 
-| Rule | Details |
-|------|---------|
-| Deadline | 90 minutes before first kick-off of gameweek |
-| After deadline | No transfers possible until next GW |
-| Deadline during BGW | Still 90 mins before first match |
+| Rule                | Details                                      |
+| ------------------- | -------------------------------------------- |
+| Deadline            | 90 minutes before first kick-off of gameweek |
+| After deadline      | No transfers possible until next GW          |
+| Deadline during BGW | Still 90 mins before first match             |
 
 **Edge cases**:
+
 - Friday 8pm kick-off → Deadline is Friday 6:30pm
 - Saturday 12:30pm kick-off → Deadline is Saturday 11:00am
 - If matches span multiple days, deadline is before FIRST match
 
 #### 1.5.5 GW16 Special Rule (2025/26)
 
-| Rule | Details |
-|------|---------|
-| GW16 bonus | All managers receive 5 free transfers |
-| Purpose | AFCON planning (African players absent) |
-| Stacking | Replaces current FT count, doesn't add to it |
+| Rule       | Details                                      |
+| ---------- | -------------------------------------------- |
+| GW16 bonus | All managers receive 5 free transfers        |
+| Purpose    | AFCON planning (African players absent)      |
+| Stacking   | Replaces current FT count, doesn't add to it |
 
 ```
 IF gameweek == 16:
@@ -493,6 +507,7 @@ FUNCTION is_valid_substitution(starter, bench_player, current_formation):
 #### 1.6.3 Auto-Sub Examples
 
 **Example 1**: Simple substitution
+
 ```
 Starting: 1 GK, 4 DEF, 4 MID, 2 FWD (4-4-2)
 Bench: GK, DEF, MID, FWD
@@ -502,6 +517,7 @@ Result: First bench outfield player (DEF) comes in → 5-3-2 ✅
 ```
 
 **Example 2**: Formation constraint blocks sub
+
 ```
 Starting: 1 GK, 3 DEF, 5 MID, 2 FWD (3-5-2)
 Bench: GK, FWD, MID, DEF
@@ -513,6 +529,7 @@ Scenario: One DEF doesn't play
 ```
 
 **Example 3**: No valid sub available
+
 ```
 Starting: 1 GK, 3 DEF, 5 MID, 2 FWD (3-5-2)
 Bench: GK, FWD, FWD, FWD
@@ -529,25 +546,25 @@ Scenario: One DEF doesn't play
 
 #### 1.7.1 Chip Overview
 
-| Chip | Set 1 (GW1-19) | Set 2 (GW20-38) | Total Available |
-|------|----------------|-----------------|-----------------|
-| Wildcard | 1 | 1 | 2 |
-| Free Hit | 1 | 1 | 2 |
-| Triple Captain | 1 | 1 | 2 |
-| Bench Boost | 1 | 1 | 2 |
+| Chip           | Set 1 (GW1-19) | Set 2 (GW20-38) | Total Available |
+| -------------- | -------------- | --------------- | --------------- |
+| Wildcard       | 1              | 1               | 2               |
+| Free Hit       | 1              | 1               | 2               |
+| Triple Captain | 1              | 1               | 2               |
+| Bench Boost    | 1              | 1               | 2               |
 
 **Critical rule**: Set 1 chips EXPIRE after GW19. Cannot be used in GW20+.
 
 #### 1.7.2 Wildcard Rules
 
-| Rule | Details |
-|------|---------|
-| Effect | Unlimited free transfers for one gameweek |
-| Hits | No point deductions regardless of transfer count |
-| Transfer rollover | Resets to 1 FT after wildcard week |
-| Team value | Buy at current price, sell at selling price |
-| Activation | Must be activated before deadline |
-| Cancellation | Cannot cancel once deadline passes |
+| Rule              | Details                                          |
+| ----------------- | ------------------------------------------------ |
+| Effect            | Unlimited free transfers for one gameweek        |
+| Hits              | No point deductions regardless of transfer count |
+| Transfer rollover | Resets to 1 FT after wildcard week               |
+| Team value        | Buy at current price, sell at selling price      |
+| Activation        | Must be activated before deadline                |
+| Cancellation      | Cannot cancel once deadline passes               |
 
 ```
 IF wildcard_active:
@@ -556,19 +573,20 @@ IF wildcard_active:
 ```
 
 **Wildcard edge cases**:
+
 - Make 15 transfers on wildcard → 0 point hit ✅
 - Activate wildcard, make 0 transfers → Wildcard still consumed ✅
 - Activate wildcard, deadline passes → Cannot deactivate ✅
 
 #### 1.7.3 Free Hit Rules
 
-| Rule | Details |
-|------|---------|
-| Effect | Unlimited transfers for ONE gameweek only |
-| Reversion | Team reverts to pre-Free Hit squad after gameweek |
-| Budget | Use current team value + bank for Free Hit team |
-| Transfer rollover | FT count preserved (not reset) |
-| Team value | Does NOT affect team value (temporary team) |
+| Rule              | Details                                           |
+| ----------------- | ------------------------------------------------- |
+| Effect            | Unlimited transfers for ONE gameweek only         |
+| Reversion         | Team reverts to pre-Free Hit squad after gameweek |
+| Budget            | Use current team value + bank for Free Hit team   |
+| Transfer rollover | FT count preserved (not reset)                    |
+| Team value        | Does NOT affect team value (temporary team)       |
 
 ```
 IF free_hit_active:
@@ -580,17 +598,18 @@ IF free_hit_active:
 ```
 
 **Free Hit edge cases**:
+
 - Team value £105m, bank £1m → Can spend £106m on Free Hit team ✅
 - Player prices change during Free Hit week → Your original team unaffected ✅
 - Free Hit team can exceed 3-player-per-team if original team did? → No, rules still apply ❌
 
 #### 1.7.4 Triple Captain Rules
 
-| Rule | Details |
-|------|---------|
-| Effect | Captain scores ×3 instead of ×2 |
-| Vice-captain | If captain plays 0 mins, VC gets ×3 |
-| Stacking | Cannot use with Bench Boost (only one chip per GW) |
+| Rule         | Details                                            |
+| ------------ | -------------------------------------------------- |
+| Effect       | Captain scores ×3 instead of ×2                    |
+| Vice-captain | If captain plays 0 mins, VC gets ×3                |
+| Stacking     | Cannot use with Bench Boost (only one chip per GW) |
 
 ```
 IF triple_captain_active:
@@ -599,12 +618,12 @@ IF triple_captain_active:
 
 #### 1.7.5 Bench Boost Rules
 
-| Rule | Details |
-|------|---------|
-| Effect | All 15 squad players' points count |
-| Bench points | Added to gameweek total |
-| Auto-subs | Still occur if starter doesn't play |
-| Captain | Still counts (×2 or ×3 if TC also active) |
+| Rule         | Details                                   |
+| ------------ | ----------------------------------------- |
+| Effect       | All 15 squad players' points count        |
+| Bench points | Added to gameweek total                   |
+| Auto-subs    | Still occur if starter doesn't play       |
+| Captain      | Still counts (×2 or ×3 if TC also active) |
 
 ```
 IF bench_boost_active:
@@ -613,18 +632,20 @@ IF bench_boost_active:
 ```
 
 **Bench Boost edge cases**:
+
 - Bench player plays 0 minutes → Gets 0 points (no sub for bench) ✅
 - Starter plays 0 mins, bench player comes in via auto-sub → Both counted anyway with BB ✅
 
 #### 1.7.6 Chip Restrictions
 
-| Rule | Details |
-|------|---------|
-| One chip per gameweek | Cannot use TC + BB together |
+| Rule                  | Details                               |
+| --------------------- | ------------------------------------- |
+| One chip per gameweek | Cannot use TC + BB together           |
 | Wildcard + other chip | CAN use wildcard + BB/TC/FH same week |
-| Free Hit + other chip | CAN use Free Hit + BB/TC same week |
+| Free Hit + other chip | CAN use Free Hit + BB/TC same week    |
 
 **Wait, clarification needed**:
+
 - Wildcard is a "planning" chip, can combine with "points" chips
 - Actually in FPL: Only ONE chip per gameweek. Period.
 
@@ -638,32 +659,33 @@ VALIDATION: chips_used_this_gw <= 1
 
 #### 1.8.1 Standard Gameweek
 
-| Rule | Details |
-|------|---------|
-| Matches per GW | Usually 10 (each team plays once) |
-| Duration | Typically Sat-Mon |
+| Rule                | Details                                      |
+| ------------------- | -------------------------------------------- |
+| Matches per GW      | Usually 10 (each team plays once)            |
+| Duration            | Typically Sat-Mon                            |
 | Points finalization | After last match completes + BPS calculation |
 
 #### 1.8.2 Blank Gameweek (BGW)
 
-| Rule | Details |
-|------|---------|
-| Definition | Some teams don't play (FA Cup, rescheduling) |
-| Player points | Players from non-playing teams score 0 |
-| Auto-subs | Still apply if starter's team has no fixture |
+| Rule          | Details                                      |
+| ------------- | -------------------------------------------- |
+| Definition    | Some teams don't play (FA Cup, rescheduling) |
+| Player points | Players from non-playing teams score 0       |
+| Auto-subs     | Still apply if starter's team has no fixture |
 
 **BGW impact**:
+
 - If your player's team doesn't play → 0 points
 - They can still be auto-subbed out if bench player's team plays
 
 #### 1.8.3 Double Gameweek (DGW)
 
-| Rule | Details |
-|------|---------|
-| Definition | Some teams play twice in one GW |
-| Player points | Sum of both matches |
-| Captain | Doubled/tripled across BOTH matches |
-| Clean sheets | Evaluated per match |
+| Rule          | Details                             |
+| ------------- | ----------------------------------- |
+| Definition    | Some teams play twice in one GW     |
+| Player points | Sum of both matches                 |
+| Captain       | Doubled/tripled across BOTH matches |
+| Clean sheets  | Evaluated per match                 |
 
 ```
 DGW_player_points = match_1_points + match_2_points
@@ -672,6 +694,7 @@ IF captain:
 ```
 
 **DGW edge cases**:
+
 - Player plays 45 mins in match 1, 45 mins in match 2 → Gets 1+1 = 2 appearance points
 - Player plays 60 mins in match 1 only → Gets 2 appearance points (from match 1)
 - Clean sheet in match 1, concedes 3 in match 2 → Gets 4 - 1 = 3 from those
@@ -682,31 +705,31 @@ IF captain:
 
 #### 1.9.1 Price Change Mechanics
 
-| Rule | Details |
-|------|---------|
-| Timing | Overnight (approximately 2:30 AM UK) |
-| Maximum change | ±£0.3m per gameweek |
-| Trigger | Net transfer activity (in - out) |
-| Algorithm | Proprietary (not published) |
-| Threshold | ~10,000+ net transfers typically needed |
+| Rule           | Details                                 |
+| -------------- | --------------------------------------- |
+| Timing         | Overnight (approximately 2:30 AM UK)    |
+| Maximum change | ±£0.3m per gameweek                     |
+| Trigger        | Net transfer activity (in - out)        |
+| Algorithm      | Proprietary (not published)             |
+| Threshold      | ~10,000+ net transfers typically needed |
 
 #### 1.9.2 Price Change Limits
 
-| Rule | Details |
-|------|---------|
-| Daily max rise | £0.1m |
-| Daily max fall | £0.1m (can be £0.2m-£0.3m in extreme cases) |
-| Weekly max rise | £0.3m |
-| Weekly max fall | £0.3m |
-| Season floor | Price cannot fall below £0.1m below starting price? (unconfirmed) |
+| Rule            | Details                                                           |
+| --------------- | ----------------------------------------------------------------- |
+| Daily max rise  | £0.1m                                                             |
+| Daily max fall  | £0.1m (can be £0.2m-£0.3m in extreme cases)                       |
+| Weekly max rise | £0.3m                                                             |
+| Weekly max fall | £0.3m                                                             |
+| Season floor    | Price cannot fall below £0.1m below starting price? (unconfirmed) |
 
 #### 1.9.3 Price Lock Periods
 
-| Period | Price Changes |
-|--------|---------------|
-| Before GW1 | No changes |
+| Period              | Price Changes    |
+| ------------------- | ---------------- |
+| Before GW1          | No changes       |
 | During GW (Sat-Mon) | Changes continue |
-| After season ends | No changes |
+| After season ends   | No changes       |
 
 ---
 
@@ -714,33 +737,33 @@ IF captain:
 
 #### 1.10.1 Classic League Scoring
 
-| Rule | Details |
-|------|---------|
-| Points | Cumulative gameweek points |
-| Ranking | Total points (higher = better) |
-| Tiebreaker | Total goals scored by players |
+| Rule       | Details                        |
+| ---------- | ------------------------------ |
+| Points     | Cumulative gameweek points     |
+| Ranking    | Total points (higher = better) |
+| Tiebreaker | Total goals scored by players  |
 
 #### 1.10.2 Head-to-Head League
 
-| Rule | Details |
-|------|---------|
-| Format | Weekly matchups against league members |
-| Win | 3 league points |
-| Draw | 1 league point each |
-| Loss | 0 league points |
-| Tiebreaker | Total FPL points scored |
+| Rule       | Details                                |
+| ---------- | -------------------------------------- |
+| Format     | Weekly matchups against league members |
+| Win        | 3 league points                        |
+| Draw       | 1 league point each                    |
+| Loss       | 0 league points                        |
+| Tiebreaker | Total FPL points scored                |
 
 ---
 
 ### 1.11 Player Status Flags
 
-| Flag | Meaning | Recommendation |
-|------|---------|----------------|
-| None | Fully fit | Safe to select |
-| Yellow (75%) | Minor doubt | Monitor news |
+| Flag         | Meaning           | Recommendation |
+| ------------ | ----------------- | -------------- |
+| None         | Fully fit         | Safe to select |
+| Yellow (75%) | Minor doubt       | Monitor news   |
 | Orange (50%) | Significant doubt | Consider bench |
-| Orange (25%) | Major doubt | Avoid starting |
-| Red (0%) | Unavailable | Do not select |
+| Orange (25%) | Major doubt       | Avoid starting |
+| Red (0%)     | Unavailable       | Do not select  |
 
 **Note**: These percentages are estimates. Always check press conferences.
 
@@ -759,11 +782,13 @@ IF captain:
 ### 2.2 Market Gap
 
 Existing tools (Fantasy Football Scout, Fantasy Football Hub, Fantasy Football Fix) provide:
+
 - Raw statistics and data
 - Basic recommendations
 - Fixture difficulty ratings
 
 **They lack**:
+
 - Personalized optimization based on your specific team and rivals
 - AI-powered predictive models with confidence intervals
 - Integrated chip strategy planning
@@ -784,7 +809,7 @@ Existing tools (Fantasy Football Scout, Fantasy Football Hub, Fantasy Football F
 ### 3.2 Secondary Persona: "Data-Driven Dana"
 
 - Loves statistics and analytics
-- Wants to understand *why* certain players are recommended
+- Wants to understand _why_ certain players are recommended
 - Interested in underlying metrics (xG, xA, ICT)
 - May build custom models or exports
 
@@ -814,6 +839,7 @@ Existing tools (Fantasy Football Scout, Fantasy Football Hub, Fantasy Football F
 **Purpose**: Deep analysis of your current squad
 
 Features:
+
 - Player-by-player rating with confidence score
 - Fixture difficulty for next 5 gameweeks (color-coded)
 - Expected points projection (with ranges)
@@ -826,6 +852,7 @@ Features:
 **Purpose**: AI-powered transfer suggestions
 
 Features:
+
 - **Best single transfer**: Highest expected point gain
 - **Best 2-3 transfer combinations**: For accumulated free transfers
 - **Differential picks**: Low-ownership players with high upside
@@ -843,6 +870,7 @@ Features:
 **Purpose**: Optimize the most important weekly decision (~30% of season points)
 
 Features:
+
 - Ranked captain options with expected points
 - Historical performance vs upcoming opponent
 - Home/away splits
@@ -853,16 +881,19 @@ Features:
 #### Advanced Captaincy Analysis
 
 **Ownership-Adjusted Captaincy**:
+
 - Mini-league captain EO (Effective Ownership) - not overall ownership
 - "Parity vs Swing" indicator: captaining 80% owned Haaland maintains position; differential captain creates movement
 - Captain EO breakeven calculator: "Salah needs X points to justify over Haaland given ownership"
 
 **Fixture Intelligence**:
+
 - Fixture stacking analysis: newly promoted sides, defensive injuries, historically leaky defenses
 - "Big game" performance tracking: some players over/underperform in favorable fixtures
 - Team defensive form vs player historical output
 
 **Penalty Certainty Tracking**:
+
 - Confirmed penalty taker status (penalties = 0.76 xG)
 - Penalty order hierarchy when primary taker is absent
 - Recent penalty wins by team
@@ -881,6 +912,7 @@ Features:
 | Target man (headers from set pieces) | Medium | Opta |
 
 **Player Set-Piece Profile**:
+
 ```
 ┌─────────────────────────────────────────────────┐
 │ Cole Palmer - Set Piece Profile                 │
@@ -897,11 +929,13 @@ Features:
 ```
 
 **Team Set-Piece Quality**:
+
 - Rank teams by set-piece xG created and conceded
 - Identify undervalued defenders on high set-piece teams
 - Flag "set-piece merchants" - players whose value depends on dead balls
 
 **Set-Piece Vulnerability Analysis**:
+
 - Teams that concede most from corners/free kicks
 - Target defenders/forwards playing against vulnerable teams
 
@@ -910,6 +944,7 @@ Features:
 **Purpose**: Long-term planning and transfer strategy
 
 Features:
+
 - Interactive fixture difficulty calendar (FDR)
 - Custom difficulty ratings (user can adjust)
 - Team rotation patterns identification
@@ -922,6 +957,7 @@ Features:
 **Purpose**: Optimize chip usage throughout the season with game-theory awareness
 
 Features:
+
 - Recommended chip timing based on fixtures
 - Double Gameweek chip calculator
 - Wildcard + Bench Boost combination planner
@@ -932,11 +968,13 @@ Features:
 #### Game Theory: Chip Timing vs Rivals
 
 **Mini-League Chip Tracker**:
+
 - Track which chips each rival has remaining
 - Identify when rivals are likely to use chips (fixture analysis)
 - Alert when rivals use chips (requires monitoring their teams)
 
 **Strategic Chip Scenarios**:
+
 - **"Chip Chicken"**: When protecting a lead, using your chip early on a moderate DGW may force rivals into suboptimal usage
 - **Defensive Chip Usage**: Match rival chip timing to neutralize their advantage
 - **Aggressive Chip Usage**: Use chips when rivals can't respond (e.g., they've already used theirs)
@@ -950,6 +988,7 @@ Features:
 | Chasing (50+ behind) | Aggressive - differentiate chip timing from leader |
 
 **Chip Combination Planning**:
+
 - Wildcard → Bench Boost pathway (build 15-player squad for DGW)
 - Free Hit for BGWs to preserve team structure
 - Triple Captain on premium asset DGWs with favorable fixtures
@@ -959,6 +998,7 @@ Features:
 **Purpose**: Buy low, sell high - but strategically
 
 Features:
+
 - Real-time transfer activity monitoring
 - Price rise/fall probability percentages
 - Alerts for imminent price changes
@@ -968,6 +1008,7 @@ Features:
 #### Advanced Price Strategy
 
 **Team Value vs Flexibility Tradeoff**:
+
 ```
 High Team Value (£105m+):
 - Pros: Access to premium players, flexibility
@@ -979,11 +1020,13 @@ Liquid Funds (£2m+ ITB):
 ```
 
 **"Dead Money" Identification**:
+
 - Players you bought at £7.0m now worth £6.5m = £0.5m dead money
 - Calculate: "If you sold X, you'd lose £Y in value"
 - Recommend: Hold losers if still good picks, sell if not
 
 **Early Transfer vs Wait Decision**:
+
 ```
 ┌─────────────────────────────────────────────────┐
 │ Transfer Timing Decision: Saka                  │
@@ -1000,6 +1043,7 @@ Liquid Funds (£2m+ ITB):
 ```
 
 **Price Rise Chasing Warning**:
+
 - Flag "bandwagon" transfers that are price-driven, not performance-driven
 - Show: "This player has risen £0.4m but xGI hasn't changed"
 - Identify sustainable vs unsustainable price rises
@@ -1011,6 +1055,7 @@ Liquid Funds (£2m+ ITB):
 **Key Insight**: In a mini-league, you're not trying to score the most points—you're trying to score more than specific rivals.
 
 Features:
+
 - Rival team comparison
 - Differential player identification
 - "What they have that you don't" analysis
@@ -1021,11 +1066,13 @@ Features:
 #### Mini-League Effective Ownership (ML-EO)
 
 **Why ML-EO Matters**:
+
 - Global ownership is irrelevant; only your mini-league matters
 - A 40% globally owned player with 0% mini-league ownership is a 100% differential for you
 - Player points only help you if rivals don't also have them
 
 **ML-EO Calculations**:
+
 ```
 ML_EO = Σ(Rival_Owns_Player × Rival_Weight) / Σ(Rival_Weight)
 
@@ -1042,17 +1089,20 @@ Where:
 | Palmer | 50% | 80% | Risk - you don't own |
 
 **EO Breakeven Calculator**:
+
 - "How many points does your differential need to outscore the template pick?"
 - Factors in: ownership difference, captain rates, points projection
 
 #### Rival-Specific Recommendations
 
 **Direct Rival Targeting**:
+
 - Identify your 2-3 closest rivals by points
 - Show exact team differences
 - Calculate "swing scenarios" - what happens if Player X scores big?
 
 **Strategic Moves**:
+
 - "Cover" recommendations: players to match rivals and neutralize their advantage
 - "Attack" recommendations: differentials to gain ground
 - Risk/reward analysis for each move relative to specific rivals
@@ -1064,11 +1114,13 @@ Where:
 The "template" is the consensus team structure used by top managers. Deviating carries risk but is necessary to gain ground in mini-leagues.
 
 **Template Analysis**:
+
 - Identify current template players (high ownership among top 10k managers)
 - Calculate your template alignment percentage
 - Show which template players you're missing and their impact
 
 **Deviation Scoring System**:
+
 ```
 Deviation_Value = (Differential_xPts - Template_xPts) × Ownership_Swing_Factor
 
@@ -1088,6 +1140,7 @@ Where:
 | Far behind | High-risk differentials, punt on low-owned players | 30-50% |
 
 **Variance Control**:
+
 - "Safe floor" recommendations: high-floor template players
 - "Ceiling chasers": volatile differentials for when you need big swings
 - Weekly variance budget based on league position
@@ -1097,6 +1150,7 @@ Where:
 **Purpose**: Follow your team's performance in real-time
 
 Features:
+
 - Live points calculation
 - Bonus point projections (BPS)
 - Auto-sub scenarios
@@ -1109,6 +1163,7 @@ Features:
 **Purpose**: Learn from the past
 
 Features:
+
 - Season review and insights
 - "What if" historical scenarios
 - Model performance tracking
@@ -1123,6 +1178,7 @@ The end of season requires completely different strategy than mid-season. This f
 #### Overall Rank Scenarios (GW30+)
 
 **"Points Needed" Calculator**:
+
 ```
 Based on historical data, calculate weekly averages needed to hit targets:
 
@@ -1148,6 +1204,7 @@ Recommendation: Top 10k unlikely. Focus on defending top 50k.
 #### Mini-League End-Game (Final 5 GWs)
 
 **Points Gap Analysis**:
+
 ```
 You: 1,847 | Leader: 1,892 | Gap: -45 points
 
@@ -1167,12 +1224,14 @@ Recommendation: Go differential - nothing to lose.
 ```
 
 **"Protecting a Lead" Mode**:
+
 - Identify which template players your chasers DON'T have
 - Recommend: "Match their differentials to neutralize"
 - Calculate: "If you both have Haaland, his points don't matter"
 - Risk assessment: "Taking a -8 hit when leading is rarely wise"
 
 **Final GW Chip Strategy**:
+
 - GW38: Free Hit often optimal (fixture uncertainty, nothing to save for)
 - TC on confirmed starters with DGW or elite fixture
 - BB only if you've built for it
@@ -1180,11 +1239,13 @@ Recommendation: Go differential - nothing to lose.
 #### Simulation Engine
 
 **Monte Carlo Season Finish**:
+
 - Run 10,000 simulations of remaining gameweeks
 - Show probability distributions of final rank/position
 - Factor in: your team, rival teams, chips remaining, fixtures
 
 **"What Needs to Happen" Scenarios**:
+
 - "For you to win your mini-league, X needs to happen"
 - Identify key fixtures/players that determine outcomes
 - Suggest: "Root for Team A vs Team B because..."
@@ -1194,6 +1255,7 @@ Recommendation: Go differential - nothing to lose.
 **Purpose**: Learn from past seasons to validate the system and discover winning strategies
 
 This feature serves two critical functions:
+
 1. **System Validation**: Backtest our recommendations against historical data
 2. **Strategy Discovery**: Identify patterns that separate winners from losers
 
@@ -1215,6 +1277,7 @@ This feature serves two critical functions:
 | xG/xA data | Understat archive | Per match |
 
 **Elite Manager Archive**:
+
 - Store top 1k/10k/100k teams from each historical season
 - Track their decisions: transfers, captains, chips, bench
 - Build "what the best managers did" database
@@ -1259,6 +1322,7 @@ This feature serves two critical functions:
 ```
 
 **Algorithm Validation Process**:
+
 ```python
 def backtest_algorithm(algorithm, seasons=['2021/22', '2022/23', '2023/24']):
     results = []
@@ -1399,6 +1463,7 @@ def backtest_algorithm(algorithm, seasons=['2021/22', '2022/23', '2023/24']):
 ```
 
 **Learning Mode Features**:
+
 - Hide future outcomes until decision made
 - Compare your choice to optimal hindsight
 - Track cumulative "what if" score
@@ -1411,6 +1476,7 @@ def backtest_algorithm(algorithm, seasons=['2021/22', '2022/23', '2023/24']):
 **Purpose**: Analyze your own historical seasons
 
 **Import Your History**:
+
 - Connect FPL account to import all past seasons
 - Or manually enter FPL ID to fetch public history
 
@@ -1464,6 +1530,7 @@ def backtest_algorithm(algorithm, seasons=['2021/22', '2022/23', '2023/24']):
 **Purpose**: Ensure our ML models are trained properly
 
 **Data Split Strategy**:
+
 ```
 Training Data:    2016/17 - 2021/22 (6 seasons)
 Validation Data:  2022/23 (1 season)
@@ -1474,6 +1541,7 @@ CRITICAL: Never train on test data. Ever.
 ```
 
 **Walk-Forward Validation**:
+
 ```
 For each gameweek in test season:
   1. Train model on all data BEFORE that gameweek
@@ -1485,6 +1553,7 @@ This simulates real-world usage where we only have past data.
 ```
 
 **Model Performance Dashboard**:
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ MODEL PERFORMANCE TRACKER                                   │
@@ -1546,16 +1615,17 @@ POST /api/historical/simulate
 
 ### 5.1 Official FPL API Endpoints
 
-| Endpoint | Data | Update Frequency |
-|----------|------|------------------|
-| `/bootstrap-static/` | All players, teams, gameweeks, game settings | Every few hours |
-| `/element-summary/{id}/` | Individual player history and fixtures | On demand |
-| `/fixtures/` | Match schedule and results | After each match |
-| `/entry/{id}/` | Manager info, history, leagues | On demand |
-| `/entry/{id}/event/{gw}/picks/` | Manager's team for specific GW | After deadline |
-| `/event/{gw}/live/` | Live gameweek data | During matches |
+| Endpoint                        | Data                                         | Update Frequency |
+| ------------------------------- | -------------------------------------------- | ---------------- |
+| `/bootstrap-static/`            | All players, teams, gameweeks, game settings | Every few hours  |
+| `/element-summary/{id}/`        | Individual player history and fixtures       | On demand        |
+| `/fixtures/`                    | Match schedule and results                   | After each match |
+| `/entry/{id}/`                  | Manager info, history, leagues               | On demand        |
+| `/entry/{id}/event/{gw}/picks/` | Manager's team for specific GW               | After deadline   |
+| `/event/{gw}/live/`             | Live gameweek data                           | During matches   |
 
 **API Limitations**:
+
 - CORS policy prevents direct frontend calls
 - Rate limiting (be respectful)
 - Brief unavailability after deadlines
@@ -1563,30 +1633,31 @@ POST /api/historical/simulate
 
 ### 5.2 Third-Party Data Sources
 
-| Source | Data | Access Method |
-|--------|------|---------------|
-| **Understat** | xG, xA, shot maps | Web scraping |
-| **FBref** | Advanced statistics | Web scraping |
-| **Opta** (via providers) | Detailed match events | Partnership/API |
-| **Transfermarkt** | Player values, injuries | Web scraping |
-| **Twitter/X** | Team news, injury updates | API |
-| **Official Club Sources** | Injury updates, press conferences | RSS/Scraping |
+| Source                    | Data                              | Access Method   |
+| ------------------------- | --------------------------------- | --------------- |
+| **Understat**             | xG, xA, shot maps                 | Web scraping    |
+| **FBref**                 | Advanced statistics               | Web scraping    |
+| **Opta** (via providers)  | Detailed match events             | Partnership/API |
+| **Transfermarkt**         | Player values, injuries           | Web scraping    |
+| **Twitter/X**             | Team news, injury updates         | API             |
+| **Official Club Sources** | Injury updates, press conferences | RSS/Scraping    |
 
 ### 5.3 Data Availability for Strategic Features
 
 **Critical Assessment**: Can we actually get the data for these features?
 
-| Feature | Data Needed | Source | Available? | Notes |
-|---------|-------------|--------|------------|-------|
-| **Mini-League EO** | Rival team compositions | `/entry/{id}/event/{gw}/picks/` | **Yes** | Public via entry ID |
-| **Rival Chip Tracking** | Chips used per GW | `/entry/{id}/history/` | **Yes** | Shows chip usage history |
-| **Captain Choices** | Who rivals captained | `/entry/{id}/event/{gw}/picks/` | **Yes** | Includes captain flag |
-| **League Standings** | Points, rank | `/leagues-classic/{id}/standings/` | **Yes** | Paginated |
-| **Set-Piece Takers** | Who takes what | FBref, manual tracking | **Partial** | Requires scraping + curation |
-| **Minutes Probability** | Historical patterns | FPL API + calculated | **Yes** | Need to build model |
-| **Template Players** | Top 10k ownership | Calculated from bootstrap | **Yes** | Need sampling approach |
+| Feature                 | Data Needed             | Source                             | Available?  | Notes                        |
+| ----------------------- | ----------------------- | ---------------------------------- | ----------- | ---------------------------- |
+| **Mini-League EO**      | Rival team compositions | `/entry/{id}/event/{gw}/picks/`    | **Yes**     | Public via entry ID          |
+| **Rival Chip Tracking** | Chips used per GW       | `/entry/{id}/history/`             | **Yes**     | Shows chip usage history     |
+| **Captain Choices**     | Who rivals captained    | `/entry/{id}/event/{gw}/picks/`    | **Yes**     | Includes captain flag        |
+| **League Standings**    | Points, rank            | `/leagues-classic/{id}/standings/` | **Yes**     | Paginated                    |
+| **Set-Piece Takers**    | Who takes what          | FBref, manual tracking             | **Partial** | Requires scraping + curation |
+| **Minutes Probability** | Historical patterns     | FPL API + calculated               | **Yes**     | Need to build model          |
+| **Template Players**    | Top 10k ownership       | Calculated from bootstrap          | **Yes**     | Need sampling approach       |
 
 **API Call Considerations**:
+
 ```
 Mini-league with 20 rivals:
 - Initial sync: 20 calls to /entry/{id}/ + 20 calls to /entry/{id}/history/
@@ -1611,16 +1682,17 @@ Rate limiting strategy:
 
 **Critical for**: Model validation, strategy discovery, season replay
 
-| Data Type | Source | Availability | Notes |
-|-----------|--------|--------------|-------|
+| Data Type                    | Source                                                                              | Availability  | Notes                               |
+| ---------------------------- | ----------------------------------------------------------------------------------- | ------------- | ----------------------------------- |
 | **Player GW scores (2016+)** | [vaastav/Fantasy-Premier-League](https://github.com/vaastav/Fantasy-Premier-League) | **Excellent** | Community-maintained, updated daily |
-| **Player prices history** | Same GitHub repo | **Excellent** | Daily snapshots |
-| **Fixture results** | FPL API + GitHub | **Excellent** | Complete history |
-| **Top manager teams** | Needs scraping/archiving | **Partial** | We need to build this archive |
-| **Historical xG/xA** | Understat archive | **Good** | Available back to 2014/15 |
-| **Transfer trends** | FPL Statistics archive | **Partial** | Some historical data available |
+| **Player prices history**    | Same GitHub repo                                                                    | **Excellent** | Daily snapshots                     |
+| **Fixture results**          | FPL API + GitHub                                                                    | **Excellent** | Complete history                    |
+| **Top manager teams**        | Needs scraping/archiving                                                            | **Partial**   | We need to build this archive       |
+| **Historical xG/xA**         | Understat archive                                                                   | **Good**      | Available back to 2014/15           |
+| **Transfer trends**          | FPL Statistics archive                                                              | **Partial**   | Some historical data available      |
 
 **Key Historical Data Repository**:
+
 ```
 https://github.com/vaastav/Fantasy-Premier-League
 
@@ -1637,6 +1709,7 @@ Structure:
 ```
 
 **Data Collection Strategy for Missing Historical Data**:
+
 ```
 Top Manager Archive (build ourselves):
 1. At season end, scrape top 10k manager IDs
@@ -1649,6 +1722,7 @@ Value: Enables "what did winners do" analysis
 ```
 
 **Historical Data Schema**:
+
 ```sql
 -- Historical player gameweek data
 CREATE TABLE historical_player_gw (
@@ -1757,17 +1831,17 @@ CREATE TABLE historical_top_manager_gw (
 
 ### 6.2 Recommended Technology Stack
 
-| Layer | Technology | Rationale |
-|-------|------------|-----------|
-| **Frontend** | Next.js 14+ (React) | SSR, API routes, excellent DX |
-| **Mobile** | React Native / Expo | Code sharing with web |
-| **Backend API** | Node.js (Fastify) or Python (FastAPI) | Fast, type-safe, async |
-| **Database** | PostgreSQL | Relational data, JSON support |
-| **Cache** | Redis | Session, real-time data |
-| **ML/Analytics** | Python (scikit-learn, XGBoost) | Industry standard |
-| **Job Queue** | BullMQ / Celery | Background tasks |
-| **Hosting** | Vercel (frontend) + Railway/Render (backend) | Easy deployment |
-| **Auth** | NextAuth.js / Auth0 | Secure, FPL OAuth support |
+| Layer            | Technology                                   | Rationale                     |
+| ---------------- | -------------------------------------------- | ----------------------------- |
+| **Frontend**     | Next.js 14+ (React)                          | SSR, API routes, excellent DX |
+| **Mobile**       | React Native / Expo                          | Code sharing with web         |
+| **Backend API**  | Node.js (Fastify) or Python (FastAPI)        | Fast, type-safe, async        |
+| **Database**     | PostgreSQL                                   | Relational data, JSON support |
+| **Cache**        | Redis                                        | Session, real-time data       |
+| **ML/Analytics** | Python (scikit-learn, XGBoost)               | Industry standard             |
+| **Job Queue**    | BullMQ / Celery                              | Background tasks              |
+| **Hosting**      | Vercel (frontend) + Railway/Render (backend) | Easy deployment               |
+| **Auth**         | NextAuth.js / Auth0                          | Secure, FPL OAuth support     |
 
 ### 6.3 Database Schema (Core Tables)
 
@@ -1838,15 +1912,16 @@ CREATE TABLE user_teams (
 
 #### 6.4.1 User Roles
 
-| Role | Description | Permissions |
-|------|-------------|-------------|
-| **Admin/Developer** | System administrator (you) | Full access, debug tools, data management |
-| **Standard User** | Regular users (your friend) | Full feature access, own data only |
-| **Demo User** | Trial/limited access | Read-only, sample data |
+| Role                | Description                 | Permissions                               |
+| ------------------- | --------------------------- | ----------------------------------------- |
+| **Admin/Developer** | System administrator (you)  | Full access, debug tools, data management |
+| **Standard User**   | Regular users (your friend) | Full feature access, own data only        |
+| **Demo User**       | Trial/limited access        | Read-only, sample data                    |
 
 #### 6.4.2 Authentication Methods
 
 **Primary: Email + Password**
+
 ```
 - Email/password registration
 - Email verification required
@@ -1855,6 +1930,7 @@ CREATE TABLE user_teams (
 ```
 
 **Secondary: FPL Account Linking**
+
 ```
 - OAuth-style flow with FPL (cookie-based, not official OAuth)
 - Links FPL Team ID to user account
@@ -1863,6 +1939,7 @@ CREATE TABLE user_teams (
 ```
 
 **Future: Social Login**
+
 ```
 - Google OAuth (optional)
 - Apple Sign-In (for iOS app)
@@ -1944,6 +2021,7 @@ CREATE TABLE user_preferences (
 #### 6.4.4 Role-Based Access Control (RBAC)
 
 **Admin Role Capabilities**:
+
 ```
 ✅ View all users and their data
 ✅ Access debug/diagnostic tools
@@ -1957,6 +2035,7 @@ CREATE TABLE user_preferences (
 ```
 
 **Standard User Capabilities**:
+
 ```
 ✅ Full access to all features
 ✅ View/manage own FPL team data
@@ -1969,6 +2048,7 @@ CREATE TABLE user_preferences (
 ```
 
 **Demo User Capabilities**:
+
 ```
 ✅ View sample/demo data
 ✅ Try recommendation features (with sample team)
@@ -1981,6 +2061,7 @@ CREATE TABLE user_preferences (
 #### 6.4.5 API Authentication
 
 **JWT-Based Authentication**:
+
 ```
 Authorization: Bearer <jwt_token>
 
@@ -1997,6 +2078,7 @@ JWT Payload:
 ```
 
 **API Endpoints by Role**:
+
 ```
 Public (no auth):
   GET  /api/health
@@ -2041,6 +2123,7 @@ ORDER BY created_at DESC;
 ```
 
 **Row-Level Security (PostgreSQL)**:
+
 ```sql
 -- Enable RLS on user data tables
 ALTER TABLE user_teams ENABLE ROW LEVEL SECURITY;
@@ -2060,6 +2143,7 @@ CREATE POLICY admin_access ON user_teams
 #### 6.4.7 Initial User Setup
 
 **For Your Development (Admin Account)**:
+
 ```sql
 INSERT INTO users (email, password_hash, role, email_verified)
 VALUES (
@@ -2071,6 +2155,7 @@ VALUES (
 ```
 
 **For Your Friend (Standard User)**:
+
 ```sql
 -- They'll register through normal flow, but you can pre-create:
 INSERT INTO users (email, password_hash, role, email_verified)
@@ -2134,6 +2219,7 @@ Concurrent Sessions:
 ### 7.2 Key Screens
 
 #### Dashboard
+
 ```
 ┌─────────────────────────────────────────────┐
 │  FPL Optimizer          GW22  ⏰ 2d 14h    │
@@ -2162,6 +2248,7 @@ Concurrent Sessions:
 ```
 
 #### Transfer Recommender
+
 ```
 ┌─────────────────────────────────────────────┐
 │  Transfer Recommendations                   │
@@ -2191,14 +2278,14 @@ Concurrent Sessions:
 
 ### 7.3 Color Scheme & Visual Language
 
-| Element | Color | Usage |
-|---------|-------|-------|
-| Primary | `#37003C` (PL Purple) | Headers, CTAs |
-| Secondary | `#00FF85` (PL Green) | Success, positive |
-| Accent | `#E90052` (PL Pink) | Highlights, alerts |
-| Danger | `#FF4444` | Negative, warnings |
-| Background | `#F5F5F5` | Page background |
-| Card | `#FFFFFF` | Content cards |
+| Element    | Color                 | Usage              |
+| ---------- | --------------------- | ------------------ |
+| Primary    | `#37003C` (PL Purple) | Headers, CTAs      |
+| Secondary  | `#00FF85` (PL Green)  | Success, positive  |
+| Accent     | `#E90052` (PL Pink)   | Highlights, alerts |
+| Danger     | `#FF4444`             | Negative, warnings |
+| Background | `#F5F5F5`             | Page background    |
+| Card       | `#FFFFFF`             | Content cards      |
 
 ---
 
@@ -2261,10 +2348,10 @@ function validateSquad(squad: Player[]): SquadValidationResult {
   // Rule 1: Exactly 15 players
   if (squad.length !== 15) {
     errors.push({
-      code: 'SQUAD_SIZE_INVALID',
+      code: "SQUAD_SIZE_INVALID",
       message: `Squad must have exactly 15 players`,
       expected: 15,
-      actual: squad.length
+      actual: squad.length,
     });
   }
 
@@ -2273,37 +2360,37 @@ function validateSquad(squad: Player[]): SquadValidationResult {
 
   if (positions.GK !== 2) {
     errors.push({
-      code: 'GK_COUNT_INVALID',
+      code: "GK_COUNT_INVALID",
       message: `Must have exactly 2 goalkeepers`,
       expected: 2,
-      actual: positions.GK
+      actual: positions.GK,
     });
   }
 
   if (positions.DEF !== 5) {
     errors.push({
-      code: 'DEF_COUNT_INVALID',
+      code: "DEF_COUNT_INVALID",
       message: `Must have exactly 5 defenders`,
       expected: 5,
-      actual: positions.DEF
+      actual: positions.DEF,
     });
   }
 
   if (positions.MID !== 5) {
     errors.push({
-      code: 'MID_COUNT_INVALID',
+      code: "MID_COUNT_INVALID",
       message: `Must have exactly 5 midfielders`,
       expected: 5,
-      actual: positions.MID
+      actual: positions.MID,
     });
   }
 
   if (positions.FWD !== 3) {
     errors.push({
-      code: 'FWD_COUNT_INVALID',
+      code: "FWD_COUNT_INVALID",
       message: `Must have exactly 3 forwards`,
       expected: 3,
-      actual: positions.FWD
+      actual: positions.FWD,
     });
   }
 
@@ -2312,11 +2399,11 @@ function validateSquad(squad: Player[]): SquadValidationResult {
   for (const [teamId, count] of Object.entries(teamCounts)) {
     if (count > 3) {
       errors.push({
-        code: 'TEAM_LIMIT_EXCEEDED',
+        code: "TEAM_LIMIT_EXCEEDED",
         message: `Cannot have more than 3 players from ${getTeamName(teamId)}`,
         expected: 3,
         actual: count,
-        field: teamId
+        field: teamId,
       });
     }
   }
@@ -2324,7 +2411,7 @@ function validateSquad(squad: Player[]): SquadValidationResult {
   return {
     valid: errors.length === 0,
     errors,
-    warnings: []
+    warnings: [],
   };
 }
 ```
@@ -2336,19 +2423,19 @@ function validateSquad(squad: Player[]): SquadValidationResult {
 ```typescript
 interface FormationValidationResult {
   valid: boolean;
-  formation: string;  // e.g., "4-4-2"
+  formation: string; // e.g., "4-4-2"
   errors: ValidationError[];
 }
 
 const VALID_FORMATIONS = [
-  { def: 3, mid: 4, fwd: 3 },  // 3-4-3
-  { def: 3, mid: 5, fwd: 2 },  // 3-5-2
-  { def: 4, mid: 3, fwd: 3 },  // 4-3-3
-  { def: 4, mid: 4, fwd: 2 },  // 4-4-2
-  { def: 4, mid: 5, fwd: 1 },  // 4-5-1
-  { def: 5, mid: 2, fwd: 3 },  // 5-2-3
-  { def: 5, mid: 3, fwd: 2 },  // 5-3-2
-  { def: 5, mid: 4, fwd: 1 },  // 5-4-1
+  { def: 3, mid: 4, fwd: 3 }, // 3-4-3
+  { def: 3, mid: 5, fwd: 2 }, // 3-5-2
+  { def: 4, mid: 3, fwd: 3 }, // 4-3-3
+  { def: 4, mid: 4, fwd: 2 }, // 4-4-2
+  { def: 4, mid: 5, fwd: 1 }, // 4-5-1
+  { def: 5, mid: 2, fwd: 3 }, // 5-2-3
+  { def: 5, mid: 3, fwd: 2 }, // 5-3-2
+  { def: 5, mid: 4, fwd: 1 }, // 5-4-1
 ];
 
 function validateFormation(starting11: Player[]): FormationValidationResult {
@@ -2357,12 +2444,12 @@ function validateFormation(starting11: Player[]): FormationValidationResult {
   // Must have exactly 11 starters
   if (starting11.length !== 11) {
     errors.push({
-      code: 'STARTING_11_SIZE_INVALID',
+      code: "STARTING_11_SIZE_INVALID",
       message: `Starting XI must have exactly 11 players`,
       expected: 11,
-      actual: starting11.length
+      actual: starting11.length,
     });
-    return { valid: false, formation: 'INVALID', errors };
+    return { valid: false, formation: "INVALID", errors };
   }
 
   const positions = countPositions(starting11);
@@ -2370,32 +2457,40 @@ function validateFormation(starting11: Player[]): FormationValidationResult {
   // Must have exactly 1 GK
   if (positions.GK !== 1) {
     errors.push({
-      code: 'STARTING_GK_INVALID',
+      code: "STARTING_GK_INVALID",
       message: `Must start exactly 1 goalkeeper`,
       expected: 1,
-      actual: positions.GK
+      actual: positions.GK,
     });
   }
 
   // Check formation validity
-  const formation = { def: positions.DEF, mid: positions.MID, fwd: positions.FWD };
+  const formation = {
+    def: positions.DEF,
+    mid: positions.MID,
+    fwd: positions.FWD,
+  };
   const isValidFormation = VALID_FORMATIONS.some(
-    f => f.def === formation.def && f.mid === formation.mid && f.fwd === formation.fwd
+    (f) =>
+      f.def === formation.def &&
+      f.mid === formation.mid &&
+      f.fwd === formation.fwd,
   );
 
   if (!isValidFormation) {
     errors.push({
-      code: 'FORMATION_INVALID',
-      message: `Invalid formation: ${formation.def}-${formation.mid}-${formation.fwd}. ` +
-               `Must have 3-5 DEF, 2-5 MID, 1-3 FWD.`,
-      actual: `${formation.def}-${formation.mid}-${formation.fwd}`
+      code: "FORMATION_INVALID",
+      message:
+        `Invalid formation: ${formation.def}-${formation.mid}-${formation.fwd}. ` +
+        `Must have 3-5 DEF, 2-5 MID, 1-3 FWD.`,
+      actual: `${formation.def}-${formation.mid}-${formation.fwd}`,
     });
   }
 
   return {
     valid: errors.length === 0,
     formation: `${formation.def}-${formation.mid}-${formation.fwd}`,
-    errors
+    errors,
   };
 }
 ```
@@ -2427,7 +2522,7 @@ function validateTransfer(
   currentBank: number,
   freeTransfers: number,
   isWildcardActive: boolean,
-  isFreeHitActive: boolean
+  isFreeHitActive: boolean,
 ): TransferValidationResult {
   const errors: ValidationError[] = [];
   const warnings: ValidationWarning[] = [];
@@ -2435,47 +2530,49 @@ function validateTransfer(
   // Rule 1: Same number of players in and out
   if (playersOut.length !== playersIn.length) {
     errors.push({
-      code: 'TRANSFER_COUNT_MISMATCH',
+      code: "TRANSFER_COUNT_MISMATCH",
       message: `Must transfer same number of players in and out`,
       expected: playersOut.length,
-      actual: playersIn.length
+      actual: playersIn.length,
     });
   }
 
   // Rule 2: Players out must be in current squad
   for (const player of playersOut) {
-    if (!currentSquad.find(p => p.id === player.id)) {
+    if (!currentSquad.find((p) => p.id === player.id)) {
       errors.push({
-        code: 'PLAYER_NOT_IN_SQUAD',
+        code: "PLAYER_NOT_IN_SQUAD",
         message: `Cannot transfer out ${player.name} - not in squad`,
-        field: player.id.toString()
+        field: player.id.toString(),
       });
     }
   }
 
   // Rule 3: Players in must not already be in squad
-  const squadAfterSales = currentSquad.filter(p => !playersOut.find(po => po.id === p.id));
+  const squadAfterSales = currentSquad.filter(
+    (p) => !playersOut.find((po) => po.id === p.id),
+  );
   for (const player of playersIn) {
-    if (squadAfterSales.find(p => p.id === player.id)) {
+    if (squadAfterSales.find((p) => p.id === player.id)) {
       errors.push({
-        code: 'PLAYER_ALREADY_IN_SQUAD',
+        code: "PLAYER_ALREADY_IN_SQUAD",
         message: `Cannot transfer in ${player.name} - already in squad`,
-        field: player.id.toString()
+        field: player.id.toString(),
       });
     }
   }
 
   // Calculate sale prices (you get half the profit rounded down)
-  const salePrices = playersOut.map(player => {
+  const salePrices = playersOut.map((player) => {
     const purchasePrice = getPlayerPurchasePrice(player.id); // From user's purchase history
     const currentPrice = player.currentPrice;
     const profit = currentPrice - purchasePrice;
-    const salePrice = purchasePrice + Math.floor(profit / 2 * 10) / 10; // Round to 0.1
+    const salePrice = purchasePrice + Math.floor((profit / 2) * 10) / 10; // Round to 0.1
     return { player, salePrice: Math.max(salePrice, currentPrice) }; // Handle price drops
   });
 
   // Actually, correction: if price dropped, you sell at current (lower) price
-  const correctedSalePrices = playersOut.map(player => {
+  const correctedSalePrices = playersOut.map((player) => {
     const purchasePrice = getPlayerPurchasePrice(player.id);
     const currentPrice = player.currentPrice;
 
@@ -2490,17 +2587,20 @@ function validateTransfer(
     }
   });
 
-  const totalSaleValue = correctedSalePrices.reduce((sum, p) => sum + p.salePrice, 0);
+  const totalSaleValue = correctedSalePrices.reduce(
+    (sum, p) => sum + p.salePrice,
+    0,
+  );
   const totalBuyValue = playersIn.reduce((sum, p) => sum + p.currentPrice, 0);
   const availableBudget = currentBank + totalSaleValue;
 
   // Rule 4: Budget check
   if (totalBuyValue > availableBudget) {
     errors.push({
-      code: 'INSUFFICIENT_BUDGET',
+      code: "INSUFFICIENT_BUDGET",
       message: `Insufficient funds: need £${totalBuyValue.toFixed(1)}m, have £${availableBudget.toFixed(1)}m`,
       expected: totalBuyValue,
-      actual: availableBudget
+      actual: availableBudget,
     });
   }
 
@@ -2511,15 +2611,16 @@ function validateTransfer(
 
   // Calculate hit cost
   const transferCount = playersOut.length;
-  const hitPoints = isWildcardActive || isFreeHitActive
-    ? 0
-    : Math.max(0, transferCount - freeTransfers) * 4;
+  const hitPoints =
+    isWildcardActive || isFreeHitActive
+      ? 0
+      : Math.max(0, transferCount - freeTransfers) * 4;
 
   if (hitPoints > 0) {
     warnings.push({
-      code: 'POINT_HIT',
+      code: "POINT_HIT",
       message: `This transfer will cost ${hitPoints} points`,
-      severity: hitPoints >= 8 ? 'high' : 'medium'
+      severity: hitPoints >= 8 ? "high" : "medium",
     });
   }
 
@@ -2529,13 +2630,16 @@ function validateTransfer(
     warnings,
     costBreakdown: {
       playersOut: correctedSalePrices,
-      playersIn: playersIn.map(p => ({ player: p, buyPrice: p.currentPrice })),
+      playersIn: playersIn.map((p) => ({
+        player: p,
+        buyPrice: p.currentPrice,
+      })),
       totalSaleValue,
       totalBuyValue,
       hitPoints,
       freeTransfersUsed: Math.min(transferCount, freeTransfers),
-      additionalTransfers: Math.max(0, transferCount - freeTransfers)
-    }
+      additionalTransfers: Math.max(0, transferCount - freeTransfers),
+    },
   };
 }
 ```
@@ -2552,10 +2656,10 @@ interface ChipValidationResult {
 }
 
 function validateChipUsage(
-  chip: 'wildcard' | 'free_hit' | 'triple_captain' | 'bench_boost',
+  chip: "wildcard" | "free_hit" | "triple_captain" | "bench_boost",
   gameweek: number,
   userChipHistory: ChipUsage[],
-  otherChipThisWeek?: string
+  otherChipThisWeek?: string,
 ): ChipValidationResult {
   const errors: ValidationError[] = [];
   const warnings: ValidationWarning[] = [];
@@ -2563,7 +2667,7 @@ function validateChipUsage(
   // Rule 1: Only one chip per gameweek
   if (otherChipThisWeek) {
     errors.push({
-      code: 'MULTIPLE_CHIPS',
+      code: "MULTIPLE_CHIPS",
       message: `Cannot use ${chip} - already using ${otherChipThisWeek} this gameweek`,
     });
   }
@@ -2571,12 +2675,12 @@ function validateChipUsage(
   // Rule 2: Check if chip is available in current set
   const set = gameweek <= 19 ? 1 : 2;
   const chipUsedInSet = userChipHistory.find(
-    usage => usage.chip === chip && usage.set === set
+    (usage) => usage.chip === chip && usage.set === set,
   );
 
   if (chipUsedInSet) {
     errors.push({
-      code: 'CHIP_ALREADY_USED',
+      code: "CHIP_ALREADY_USED",
       message: `${chip} already used in set ${set} (GW${chipUsedInSet.gameweek})`,
     });
   }
@@ -2584,38 +2688,38 @@ function validateChipUsage(
   // Rule 3: Cannot use set 1 chips after GW19
   if (set === 2 && gameweek > 19) {
     const set1ChipRemaining = !userChipHistory.find(
-      usage => usage.chip === chip && usage.set === 1
+      (usage) => usage.chip === chip && usage.set === 1,
     );
-    if (set1ChipRemaining && chip !== 'wildcard') {
+    if (set1ChipRemaining && chip !== "wildcard") {
       // Set 1 chip expired
       warnings.push({
-        code: 'SET1_EXPIRED',
+        code: "SET1_EXPIRED",
         message: `Note: Set 1 ${chip} has expired (was not used before GW20)`,
-        severity: 'info'
+        severity: "info",
       });
     }
   }
 
   // Chip-specific warnings
-  if (chip === 'bench_boost') {
+  if (chip === "bench_boost") {
     // Check if it's a DGW
     const isDGW = checkIfDoubleGameweek(gameweek);
     if (!isDGW) {
       warnings.push({
-        code: 'BB_NOT_DGW',
+        code: "BB_NOT_DGW",
         message: `Bench Boost typically best used in Double Gameweeks`,
-        severity: 'medium'
+        severity: "medium",
       });
     }
   }
 
-  if (chip === 'triple_captain') {
+  if (chip === "triple_captain") {
     const isDGW = checkIfDoubleGameweek(gameweek);
     if (!isDGW) {
       warnings.push({
-        code: 'TC_NOT_DGW',
+        code: "TC_NOT_DGW",
         message: `Triple Captain typically best used in Double Gameweeks`,
-        severity: 'medium'
+        severity: "medium",
       });
     }
   }
@@ -2623,7 +2727,7 @@ function validateChipUsage(
   return {
     valid: errors.length === 0,
     errors,
-    warnings
+    warnings,
   };
 }
 ```
@@ -2646,13 +2750,13 @@ interface PointsBreakdown {
   redCards: number;
   ownGoals: number;
   bonus: number;
-  defcon: number;  // NEW 2025/26
+  defcon: number; // NEW 2025/26
   total: number;
 }
 
 function calculatePlayerPoints(
   player: Player,
-  matchStats: MatchStats
+  matchStats: MatchStats,
 ): PointsBreakdown {
   const breakdown: PointsBreakdown = {
     appearance: 0,
@@ -2668,7 +2772,7 @@ function calculatePlayerPoints(
     ownGoals: 0,
     bonus: 0,
     defcon: 0,
-    total: 0
+    total: 0,
   };
 
   // Appearance points
@@ -2682,7 +2786,10 @@ function calculatePlayerPoints(
 
   // Goals
   const goalPoints = {
-    'GK': 6, 'DEF': 6, 'MID': 5, 'FWD': 4
+    GK: 6,
+    DEF: 6,
+    MID: 5,
+    FWD: 4,
   };
   breakdown.goals = matchStats.goals * goalPoints[player.position];
 
@@ -2691,20 +2798,22 @@ function calculatePlayerPoints(
 
   // Clean sheet (only if played 60+ mins)
   if (matchStats.minutes >= 60 && matchStats.teamGoalsConceded === 0) {
-    if (player.position === 'GK' || player.position === 'DEF') {
+    if (player.position === "GK" || player.position === "DEF") {
       breakdown.cleanSheet = 4;
-    } else if (player.position === 'MID') {
+    } else if (player.position === "MID") {
       breakdown.cleanSheet = 1;
     }
   }
 
   // Goals conceded (GK and DEF only)
-  if (player.position === 'GK' || player.position === 'DEF') {
-    breakdown.goalsConceded = -Math.floor(matchStats.goalsConcededWhilePlaying / 2);
+  if (player.position === "GK" || player.position === "DEF") {
+    breakdown.goalsConceded = -Math.floor(
+      matchStats.goalsConcededWhilePlaying / 2,
+    );
   }
 
   // Saves (GK only)
-  if (player.position === 'GK') {
+  if (player.position === "GK") {
     breakdown.saves = Math.floor(matchStats.saves / 3);
   }
 
@@ -2717,9 +2826,9 @@ function calculatePlayerPoints(
   if (matchStats.redCard) {
     // Check if straight red or two yellows
     if (matchStats.yellowCards === 2) {
-      breakdown.redCards = -2;  // -1 for first yellow already counted, -2 more for red
+      breakdown.redCards = -2; // -1 for first yellow already counted, -2 more for red
     } else {
-      breakdown.redCards = -3;  // Straight red
+      breakdown.redCards = -3; // Straight red
     }
   }
 
@@ -2730,23 +2839,30 @@ function calculatePlayerPoints(
   breakdown.bonus = matchStats.bonus;
 
   // DEFCON (NEW 2025/26)
-  if (player.position === 'DEF') {
-    const cbit = matchStats.clearances + matchStats.blocks +
-                 matchStats.interceptions + matchStats.tackles;
+  if (player.position === "DEF") {
+    const cbit =
+      matchStats.clearances +
+      matchStats.blocks +
+      matchStats.interceptions +
+      matchStats.tackles;
     if (cbit >= 10) {
       breakdown.defcon = 2;
     }
-  } else if (player.position === 'MID' || player.position === 'FWD') {
-    const cbirt = matchStats.clearances + matchStats.blocks +
-                  matchStats.interceptions + matchStats.tackles +
-                  matchStats.recoveries;
+  } else if (player.position === "MID" || player.position === "FWD") {
+    const cbirt =
+      matchStats.clearances +
+      matchStats.blocks +
+      matchStats.interceptions +
+      matchStats.tackles +
+      matchStats.recoveries;
     if (cbirt >= 12) {
       breakdown.defcon = 2;
     }
   }
 
   // Total
-  breakdown.total = Object.values(breakdown).reduce((a, b) => a + b, 0) - breakdown.total;
+  breakdown.total =
+    Object.values(breakdown).reduce((a, b) => a + b, 0) - breakdown.total;
 
   return breakdown;
 }
@@ -2765,8 +2881,8 @@ interface AutoSubResult {
 
 function calculateAutoSubs(
   originalStarting11: Player[],
-  bench: Player[],  // Ordered: [GK, Outfield1, Outfield2, Outfield3]
-  playerMinutes: Map<string, number>
+  bench: Player[], // Ordered: [GK, Outfield1, Outfield2, Outfield3]
+  playerMinutes: Map<string, number>,
 ): AutoSubResult {
   const substitutions: { starter: Player; sub: Player }[] = [];
   const reasoning: string[] = [];
@@ -2775,21 +2891,21 @@ function calculateAutoSubs(
 
   // Find starters who didn't play
   const nonPlayingStarters = currentStarting11.filter(
-    p => (playerMinutes.get(p.id.toString()) || 0) === 0
+    (p) => (playerMinutes.get(p.id.toString()) || 0) === 0,
   );
 
   for (const starter of nonPlayingStarters) {
     // Try each bench player in order
     for (const benchPlayer of bench) {
       // Skip if bench player already used as sub
-      if (substitutions.find(s => s.sub.id === benchPlayer.id)) continue;
+      if (substitutions.find((s) => s.sub.id === benchPlayer.id)) continue;
 
       // Skip if bench player didn't play
       if ((playerMinutes.get(benchPlayer.id.toString()) || 0) === 0) continue;
 
       // Check if substitution is valid
       const testStarting11 = currentStarting11
-        .filter(p => p.id !== starter.id)
+        .filter((p) => p.id !== starter.id)
         .concat([benchPlayer]);
 
       const formationResult = validateFormation(testStarting11);
@@ -2798,13 +2914,13 @@ function calculateAutoSubs(
         substitutions.push({ starter, sub: benchPlayer });
         currentStarting11 = testStarting11;
         reasoning.push(
-          `${starter.name} (0 mins) → ${benchPlayer.name} (bench slot ${bench.indexOf(benchPlayer) + 1})`
+          `${starter.name} (0 mins) → ${benchPlayer.name} (bench slot ${bench.indexOf(benchPlayer) + 1})`,
         );
-        break;  // Move to next non-playing starter
+        break; // Move to next non-playing starter
       } else {
         reasoning.push(
           `${benchPlayer.name} cannot replace ${starter.name} - would create invalid formation ` +
-          `(${formationResult.formation})`
+            `(${formationResult.formation})`,
         );
       }
     }
@@ -2813,7 +2929,7 @@ function calculateAutoSubs(
   return {
     substitutions,
     finalStarting11: currentStarting11,
-    reasoning
+    reasoning,
   };
 }
 ```
@@ -2824,7 +2940,7 @@ function calculateAutoSubs(
 
 ```typescript
 interface Recommendation {
-  type: 'transfer' | 'captain' | 'chip' | 'formation';
+  type: "transfer" | "captain" | "chip" | "formation";
   action: any;
   expectedPoints: number;
   confidence: number;
@@ -2838,49 +2954,55 @@ interface ValidatedRecommendation extends Recommendation {
 
 function validateRecommendation(
   recommendation: Recommendation,
-  userContext: UserContext
+  userContext: UserContext,
 ): ValidatedRecommendation {
   let errors: ValidationError[] = [];
   let warnings: ValidationWarning[] = [];
 
   switch (recommendation.type) {
-    case 'transfer':
+    case "transfer":
       const transferResult = validateTransfer(
         userContext.currentSquad,
         recommendation.action.playersOut,
         recommendation.action.playersIn,
         userContext.bank,
         userContext.freeTransfers,
-        userContext.activeChip === 'wildcard',
-        userContext.activeChip === 'free_hit'
+        userContext.activeChip === "wildcard",
+        userContext.activeChip === "free_hit",
       );
       errors = transferResult.errors;
       warnings = transferResult.warnings;
       break;
 
-    case 'captain':
+    case "captain":
       // Captain must be in starting 11
-      if (!userContext.starting11.find(p => p.id === recommendation.action.captainId)) {
+      if (
+        !userContext.starting11.find(
+          (p) => p.id === recommendation.action.captainId,
+        )
+      ) {
         errors.push({
-          code: 'CAPTAIN_NOT_IN_STARTING_11',
-          message: `Recommended captain is not in starting 11`
+          code: "CAPTAIN_NOT_IN_STARTING_11",
+          message: `Recommended captain is not in starting 11`,
         });
       }
       break;
 
-    case 'chip':
+    case "chip":
       const chipResult = validateChipUsage(
         recommendation.action.chip,
         userContext.currentGameweek,
         userContext.chipHistory,
-        userContext.activeChip
+        userContext.activeChip,
       );
       errors = chipResult.errors;
       warnings = chipResult.warnings;
       break;
 
-    case 'formation':
-      const formationResult = validateFormation(recommendation.action.starting11);
+    case "formation":
+      const formationResult = validateFormation(
+        recommendation.action.starting11,
+      );
       errors = formationResult.errors;
       break;
   }
@@ -2889,18 +3011,18 @@ function validateRecommendation(
     ...recommendation,
     isValid: errors.length === 0,
     validationErrors: errors,
-    validationWarnings: warnings
+    validationWarnings: warnings,
   };
 }
 
 // CRITICAL: This must be called before returning any recommendation to the UI
 function filterInvalidRecommendations(
   recommendations: Recommendation[],
-  userContext: UserContext
+  userContext: UserContext,
 ): ValidatedRecommendation[] {
   return recommendations
-    .map(rec => validateRecommendation(rec, userContext))
-    .filter(rec => rec.isValid);  // Only return valid recommendations
+    .map((rec) => validateRecommendation(rec, userContext))
+    .filter((rec) => rec.isValid); // Only return valid recommendations
 }
 ```
 
@@ -3040,6 +3162,7 @@ describe('FPL Rules Engine', () => {
 ### 8.1 Key Metrics Calculated
 
 #### Player Value Score (PVS)
+
 ```
 PVS = (Expected_Points × Form_Multiplier × Fixture_Multiplier) / Price
 
@@ -3051,22 +3174,23 @@ Where:
 
 #### Expected Points Model Inputs
 
-| Feature | Weight | Source |
-|---------|--------|--------|
-| xG per 90 | High | Understat |
-| xA per 90 | High | Understat |
-| Minutes per game | High | FPL API |
-| ICT Index | Medium | FPL API |
-| Fixture difficulty | Medium | FPL API |
-| Home/Away | Medium | FPL API |
-| Historical vs opponent | Low | Calculated |
-| Set piece involvement | Medium | Third-party |
-| Clean sheet probability | High (DEF/GK) | Model |
-| Team form | Medium | Calculated |
+| Feature                 | Weight        | Source      |
+| ----------------------- | ------------- | ----------- |
+| xG per 90               | High          | Understat   |
+| xA per 90               | High          | Understat   |
+| Minutes per game        | High          | FPL API     |
+| ICT Index               | Medium        | FPL API     |
+| Fixture difficulty      | Medium        | FPL API     |
+| Home/Away               | Medium        | FPL API     |
+| Historical vs opponent  | Low           | Calculated  |
+| Set piece involvement   | Medium        | Third-party |
+| Clean sheet probability | High (DEF/GK) | Model       |
+| Team form               | Medium        | Calculated  |
 
 ### 8.2 Prediction Models
 
 #### Point Prediction (Regression)
+
 - **Algorithm**: XGBoost Regressor / LightGBM
 - **Features**: 30+ engineered features
 - **Output**: Expected points (with confidence interval)
@@ -3074,12 +3198,14 @@ Where:
 - **Validation**: Walk-forward cross-validation
 
 #### Clean Sheet Probability (Classification)
+
 - **Algorithm**: Logistic Regression / Random Forest
 - **Features**: Team defensive stats, opponent attacking stats
 - **Output**: Probability 0-1
 - **Usage**: Defensive player valuations
 
 #### Price Change Prediction
+
 - **Algorithm**: Time-series analysis + transfer velocity
 - **Features**: Net transfers, current price, ownership %
 - **Output**: Rise/Fall probability, timing
@@ -3103,6 +3229,7 @@ Where:
 | Match importance | Medium | Calculated |
 
 **Outputs**:
+
 ```
 ┌─────────────────────────────────────────────────┐
 │ Saka - Minutes Probability                      │
@@ -3120,23 +3247,25 @@ Where:
 ```
 
 **Manager Profiles** (Pep Roulette, etc.):
+
 - Track historical rotation patterns by manager
 - Identify "safe" vs "risky" players under each manager
 - Special flags for managers known for rotation (Guardiola, Slot, Arteta)
 
 **Bench Order Optimization**:
+
 - First sub should be high-floor (likely to play 60+ if called upon)
 - Order based on: (Minutes_Probability × Expected_Points_If_Playing)
 - Alert when bench order is suboptimal
 
 ### 8.3 Model Performance Targets
 
-| Metric | Target | Measurement |
-|--------|--------|-------------|
-| Point prediction MAE | < 2.0 | Mean Absolute Error |
-| Captain success rate | > 60% | Captain in top 3 scorers |
-| Transfer recommendation accuracy | > 55% | Recommended player outscores alternative |
-| Price change prediction | > 80% | Correct direction prediction |
+| Metric                           | Target | Measurement                              |
+| -------------------------------- | ------ | ---------------------------------------- |
+| Point prediction MAE             | < 2.0  | Mean Absolute Error                      |
+| Captain success rate             | > 60%  | Captain in top 3 scorers                 |
+| Transfer recommendation accuracy | > 55%  | Recommended player outscores alternative |
+| Price change prediction          | > 80%  | Correct direction prediction             |
 
 ---
 
@@ -3194,6 +3323,7 @@ def optimize_transfers(current_team, budget, free_transfers):
 The spec must address when making NO transfer is optimal.
 
 **Hit Worthiness Calculator**:
+
 ```
 A -4 hit requires the incoming player to outscore the outgoing player by 4+ points.
 
@@ -3210,6 +3340,7 @@ Late-season hits require MUCH higher point differentials.
 ```
 
 **Rolling Transfer Value**:
+
 ```
 Rolling_Value = Expected_Gain_This_GW vs Expected_Gain_If_Rolled
 
@@ -3220,12 +3351,14 @@ Consider:
 ```
 
 **Transfer Efficiency Tracking**:
+
 - Log all transfers with expected vs actual points
 - Calculate user's historical transfer accuracy
 - Identify patterns: "You tend to transfer too early after price rises"
 - Show: "Your transfers have net +X/-Y points this season"
 
 **Knee-Jerk Prevention**:
+
 - Flag transfers made within 24 hours of a player blanking
 - Show: "Wait for more data" recommendations
 - Price change urgency vs decision quality tradeoff
@@ -3233,15 +3366,18 @@ Consider:
 ### 9.3 Chip Optimization
 
 **Wildcard Timing**:
+
 - Identify optimal restructuring points (fixture swings)
 - Calculate team value vs expected points tradeoff
 - Factor in upcoming double/blank gameweeks
 
 **Bench Boost Timing** (Advanced):
+
 - Simple trigger (bench > 20 pts) is insufficient
 - Requires **full 15-player squad optimization** for BB weeks
 
 **BB Squad Building Strategy**:
+
 ```
 1. Pre-BB Wildcard: Restructure entire team for 15 starters
 2. Target DGW players with TWO favorable fixtures (not one hard, one easy)
@@ -3251,12 +3387,14 @@ Consider:
 ```
 
 **BB Scoring**:
+
 ```
 BB_Value = Σ All_15_Players_Expected_Points - Normal_11_Expected_Points
          = Bench_Expected + (Upgraded_Starters - Original_Starters)
 ```
 
 **BB Requirements Checklist**:
+
 - [ ] 15 players with confirmed double gameweek
 - [ ] No players with rotation risk in either fixture
 - [ ] Favorable fixtures in BOTH games (not just one)
@@ -3264,6 +3402,7 @@ BB_Value = Σ All_15_Players_Expected_Points - Normal_11_Expected_Points
 - [ ] Consider rival BB timing (defensive vs aggressive)
 
 **Triple Captain Timing**:
+
 - Score = Best_Captain_Expected_Points × 3
 - Trigger when premium player has favorable DGW
 
@@ -3275,15 +3414,16 @@ BB_Value = Σ All_15_Players_Expected_Points - Normal_11_Expected_Points
 
 **Goal**: Launch with core value proposition
 
-| Week | Deliverable |
-|------|-------------|
-| 1-2 | Project setup, FPL API integration, basic data pipeline |
-| 3-4 | User authentication, team sync from FPL |
-| 5-6 | Dashboard, basic team analyzer |
-| 7-8 | Transfer recommender (rule-based initially) |
-| 9-10 | Captain selector, testing, soft launch |
+| Week | Deliverable                                             |
+| ---- | ------------------------------------------------------- |
+| 1-2  | Project setup, FPL API integration, basic data pipeline |
+| 3-4  | User authentication, team sync from FPL                 |
+| 5-6  | Dashboard, basic team analyzer                          |
+| 7-8  | Transfer recommender (rule-based initially)             |
+| 9-10 | Captain selector, testing, soft launch                  |
 
 **MVP Features**:
+
 - ✅ Dashboard with team overview
 - ✅ Basic transfer recommendations (top 5)
 - ✅ Captain selector with fixture analysis
@@ -3294,14 +3434,15 @@ BB_Value = Σ All_15_Players_Expected_Points - Normal_11_Expected_Points
 
 **Goal**: Introduce ML-powered predictions
 
-| Week | Deliverable |
-|------|-------------|
-| 1-2 | Historical data collection, feature engineering |
-| 3-4 | Point prediction model training and validation |
-| 5-6 | Integrate predictions into recommendations |
-| 7-8 | A/B testing, model refinement |
+| Week | Deliverable                                     |
+| ---- | ----------------------------------------------- |
+| 1-2  | Historical data collection, feature engineering |
+| 3-4  | Point prediction model training and validation  |
+| 5-6  | Integrate predictions into recommendations      |
+| 7-8  | A/B testing, model refinement                   |
 
 **Phase 2 Features**:
+
 - ✅ ML-powered point predictions
 - ✅ Confidence intervals on recommendations
 - ✅ Advanced metrics (xG, xA, xGI) integration
@@ -3312,6 +3453,7 @@ BB_Value = Σ All_15_Players_Expected_Points - Normal_11_Expected_Points
 **Goal**: Mini-league competitive features
 
 **Phase 3 Features**:
+
 - ✅ Mini-league integration
 - ✅ Rival comparison and differential analysis
 - ✅ Effective ownership calculations
@@ -3322,6 +3464,7 @@ BB_Value = Σ All_15_Players_Expected_Points - Normal_11_Expected_Points
 **Goal**: Full optimization suite
 
 **Phase 4 Features**:
+
 - ✅ Chip strategy advisor
 - ✅ Season-long planning tools
 - ✅ Double/Blank GW predictor
@@ -3333,6 +3476,7 @@ BB_Value = Σ All_15_Players_Expected_Points - Normal_11_Expected_Points
 **Goal**: Multi-platform presence
 
 **Phase 5 Features**:
+
 - ✅ Native mobile app (iOS/Android)
 - ✅ Browser extension
 - ✅ Push notifications
@@ -3344,41 +3488,43 @@ BB_Value = Σ All_15_Players_Expected_Points - Normal_11_Expected_Points
 
 ### 11.1 Product Metrics
 
-| Metric | Target (Year 1) | Measurement |
-|--------|-----------------|-------------|
-| Monthly Active Users | 50,000 | Analytics |
-| User Retention (30-day) | > 40% | Cohort analysis |
-| Premium Conversion | > 5% | Revenue / MAU |
-| NPS Score | > 50 | User surveys |
+| Metric                  | Target (Year 1) | Measurement     |
+| ----------------------- | --------------- | --------------- |
+| Monthly Active Users    | 50,000          | Analytics       |
+| User Retention (30-day) | > 40%           | Cohort analysis |
+| Premium Conversion      | > 5%            | Revenue / MAU   |
+| NPS Score               | > 50            | User surveys    |
 
 ### 11.2 Prediction Accuracy Metrics
 
-| Metric | Target | Measurement |
-|--------|--------|-------------|
-| Captain Success Rate | > 60% | Captain in top 3 scorers |
-| Transfer Recommendation Accuracy | > 55% | Backtesting |
-| Point Prediction MAE | < 2.0 | Weekly comparison |
-| User Rank Improvement | +10% | Before/after comparison |
+| Metric                           | Target | Measurement              |
+| -------------------------------- | ------ | ------------------------ |
+| Captain Success Rate             | > 60%  | Captain in top 3 scorers |
+| Transfer Recommendation Accuracy | > 55%  | Backtesting              |
+| Point Prediction MAE             | < 2.0  | Weekly comparison        |
+| User Rank Improvement            | +10%   | Before/after comparison  |
 
 ### 11.3 Winning-Focused Metrics (NEW)
 
 **These are the metrics that matter for actually winning leagues:**
 
-| Metric | Target | Measurement |
-|--------|--------|-------------|
-| Mini-League Win Rate | > 25% | % of users who win at least one mini-league |
-| Mini-League Top 3 Rate | > 50% | % of users finishing top 3 in primary league |
-| Overall Rank Improvement | > 15% | Season-over-season improvement |
-| Chip Timing Success | > 65% | Chip used in optimal or near-optimal week |
-| Differential Hit Rate | > 40% | % of differential picks that outperform template |
-| "Swing Week" Identification | > 70% | Correctly identified weeks where differentials matter |
+| Metric                      | Target | Measurement                                           |
+| --------------------------- | ------ | ----------------------------------------------------- |
+| Mini-League Win Rate        | > 25%  | % of users who win at least one mini-league           |
+| Mini-League Top 3 Rate      | > 50%  | % of users finishing top 3 in primary league          |
+| Overall Rank Improvement    | > 15%  | Season-over-season improvement                        |
+| Chip Timing Success         | > 65%  | Chip used in optimal or near-optimal week             |
+| Differential Hit Rate       | > 40%  | % of differential picks that outperform template      |
+| "Swing Week" Identification | > 70%  | Correctly identified weeks where differentials matter |
 
 **User Outcome Tracking**:
+
 - Track mini-league finishing positions for all users
 - Compare to baseline (random expectation for league size)
 - Identify which features correlate with winning
 
 **The Ultimate Metric**:
+
 ```
 "Did using this app help you beat your friends?"
 
@@ -3390,11 +3536,11 @@ Survey at season end:
 
 ### 11.4 Business Metrics
 
-| Metric | Target (Year 1) | Notes |
-|--------|-----------------|-------|
-| Monthly Recurring Revenue | £10,000 | Premium subscriptions |
-| Customer Acquisition Cost | < £5 | Marketing efficiency |
-| Lifetime Value | > £30 | Retention × ARPU |
+| Metric                    | Target (Year 1) | Notes                 |
+| ------------------------- | --------------- | --------------------- |
+| Monthly Recurring Revenue | £10,000         | Premium subscriptions |
+| Customer Acquisition Cost | < £5            | Marketing efficiency  |
+| Lifetime Value            | > £30           | Retention × ARPU      |
 
 ---
 
@@ -3402,12 +3548,12 @@ Survey at season end:
 
 ### 12.1 Existing Competitors
 
-| Product | Strengths | Weaknesses | Price |
-|---------|-----------|------------|-------|
+| Product                    | Strengths                                           | Weaknesses                 | Price      |
+| -------------------------- | --------------------------------------------------- | -------------------------- | ---------- |
 | **Fantasy Football Scout** | Comprehensive stats, community, member area content | Expensive, overwhelming UI | £25/season |
-| **Fantasy Football Hub** | Ben Crellin's planning tools, clean UI | Less depth than Scout | £19/season |
-| **Fantasy Football Fix** | AI recommendations, elite manager tracking | Accuracy concerns | £15/season |
-| **FPL Review** | Free tier, transparent model | Limited features, basic UI | Free/£10 |
+| **Fantasy Football Hub**   | Ben Crellin's planning tools, clean UI              | Less depth than Scout      | £19/season |
+| **Fantasy Football Fix**   | AI recommendations, elite manager tracking          | Accuracy concerns          | £15/season |
+| **FPL Review**             | Free tier, transparent model                        | Limited features, basic UI | Free/£10   |
 
 ### 12.2 Our Differentiation
 
@@ -3420,10 +3566,10 @@ Survey at season end:
 
 ### 12.3 Pricing Strategy
 
-| Tier | Price | Features |
-|------|-------|----------|
-| **Free** | £0 | Dashboard, basic recommendations, fixture planner |
-| **Pro** | £2.99/month | Full recommendations, mini-league analysis, chip advisor |
+| Tier      | Price       | Features                                                       |
+| --------- | ----------- | -------------------------------------------------------------- |
+| **Free**  | £0          | Dashboard, basic recommendations, fixture planner              |
+| **Pro**   | £2.99/month | Full recommendations, mini-league analysis, chip advisor       |
 | **Elite** | £7.99/month | Everything + historical analysis, API access, priority support |
 
 ---
@@ -3447,7 +3593,9 @@ GET /leagues-classic/{id}/standings/  # League standings
 ```
 
 ### Authentication
+
 For personal team data, authenticate via:
+
 1. POST to `https://users.premierleague.com/accounts/login/`
 2. Use returned session cookie for subsequent requests
 
@@ -3455,21 +3603,21 @@ For personal team data, authenticate via:
 
 ## Appendix B: Glossary
 
-| Term | Definition |
-|------|------------|
-| **BGW** | Blank Gameweek - some teams don't play |
-| **DGW** | Double Gameweek - some teams play twice |
-| **xG** | Expected Goals - goal probability from shots |
-| **xA** | Expected Assists - assist probability from passes |
-| **xGI** | Expected Goal Involvement (xG + xA) |
-| **ICT** | Influence, Creativity, Threat index |
-| **BPS** | Bonus Points System |
-| **DEFCON** | Defensive Contributions (new 2025/26) |
-| **FDR** | Fixture Difficulty Rating (1-5 scale) |
-| **EO** | Effective Ownership (ownership-weighted by captain) |
-| **Template** | Common team structure used by many managers |
-| **Differential** | Low-ownership player pick |
-| **Hits** | Point deductions for extra transfers (-4 each) |
+| Term             | Definition                                          |
+| ---------------- | --------------------------------------------------- |
+| **BGW**          | Blank Gameweek - some teams don't play              |
+| **DGW**          | Double Gameweek - some teams play twice             |
+| **xG**           | Expected Goals - goal probability from shots        |
+| **xA**           | Expected Assists - assist probability from passes   |
+| **xGI**          | Expected Goal Involvement (xG + xA)                 |
+| **ICT**          | Influence, Creativity, Threat index                 |
+| **BPS**          | Bonus Points System                                 |
+| **DEFCON**       | Defensive Contributions (new 2025/26)               |
+| **FDR**          | Fixture Difficulty Rating (1-5 scale)               |
+| **EO**           | Effective Ownership (ownership-weighted by captain) |
+| **Template**     | Common team structure used by many managers         |
+| **Differential** | Low-ownership player pick                           |
+| **Hits**         | Point deductions for extra transfers (-4 each)      |
 
 ---
 
@@ -3492,104 +3640,105 @@ For personal team data, authenticate via:
 
 ### D.1 Squad Composition Tests
 
-| ID | Scenario | Expected | Priority |
-|----|----------|----------|----------|
-| SQ-01 | Squad with 14 players | REJECT "Must have 15 players" | Critical |
-| SQ-02 | Squad with 16 players | REJECT "Must have 15 players" | Critical |
-| SQ-03 | Squad with 1 GK | REJECT "Must have 2 GKs" | Critical |
-| SQ-04 | Squad with 3 GK | REJECT "Must have 2 GKs" | Critical |
-| SQ-05 | Squad with 4 DEF | REJECT "Must have 5 DEFs" | Critical |
-| SQ-06 | Squad with 4 Arsenal players | REJECT "Max 3 from Arsenal" | Critical |
-| SQ-07 | Valid squad (2 GK, 5 DEF, 5 MID, 3 FWD) | ACCEPT | Critical |
+| ID    | Scenario                                | Expected                      | Priority |
+| ----- | --------------------------------------- | ----------------------------- | -------- |
+| SQ-01 | Squad with 14 players                   | REJECT "Must have 15 players" | Critical |
+| SQ-02 | Squad with 16 players                   | REJECT "Must have 15 players" | Critical |
+| SQ-03 | Squad with 1 GK                         | REJECT "Must have 2 GKs"      | Critical |
+| SQ-04 | Squad with 3 GK                         | REJECT "Must have 2 GKs"      | Critical |
+| SQ-05 | Squad with 4 DEF                        | REJECT "Must have 5 DEFs"     | Critical |
+| SQ-06 | Squad with 4 Arsenal players            | REJECT "Max 3 from Arsenal"   | Critical |
+| SQ-07 | Valid squad (2 GK, 5 DEF, 5 MID, 3 FWD) | ACCEPT                        | Critical |
 
 ### D.2 Formation Tests
 
-| ID | Formation | Expected | Priority |
-|----|-----------|----------|----------|
-| FM-01 | 4-4-2 | ACCEPT | Critical |
-| FM-02 | 3-5-2 | ACCEPT | Critical |
-| FM-03 | 5-4-1 | ACCEPT | Critical |
-| FM-04 | 2-5-3 (only 2 DEF) | REJECT "Min 3 DEF" | Critical |
-| FM-05 | 4-1-5 (only 1 MID) | REJECT "Min 2 MID" | Critical |
-| FM-06 | 5-5-0 (no FWD) | REJECT "Min 1 FWD" | Critical |
-| FM-07 | 2 GK starting | REJECT "Exactly 1 GK" | Critical |
+| ID    | Formation          | Expected              | Priority |
+| ----- | ------------------ | --------------------- | -------- |
+| FM-01 | 4-4-2              | ACCEPT                | Critical |
+| FM-02 | 3-5-2              | ACCEPT                | Critical |
+| FM-03 | 5-4-1              | ACCEPT                | Critical |
+| FM-04 | 2-5-3 (only 2 DEF) | REJECT "Min 3 DEF"    | Critical |
+| FM-05 | 4-1-5 (only 1 MID) | REJECT "Min 2 MID"    | Critical |
+| FM-06 | 5-5-0 (no FWD)     | REJECT "Min 1 FWD"    | Critical |
+| FM-07 | 2 GK starting      | REJECT "Exactly 1 GK" | Critical |
 
 ### D.3 Transfer & Budget Tests
 
-| ID | Scenario | Expected | Priority |
-|----|----------|----------|----------|
-| TR-01 | 1 transfer with 1 FT | 0 hit | Critical |
-| TR-02 | 2 transfers with 1 FT | -4 hit | Critical |
-| TR-03 | 3 transfers with 1 FT | -8 hit | Critical |
-| TR-04 | Roll 4 FT → next GW | 5 FT (capped) | High |
-| TR-05 | Roll 5 FT → next GW | 5 FT (not 6) | High |
-| TR-06 | Buy £12m with £10m available | REJECT | Critical |
+| ID    | Scenario                     | Expected      | Priority |
+| ----- | ---------------------------- | ------------- | -------- |
+| TR-01 | 1 transfer with 1 FT         | 0 hit         | Critical |
+| TR-02 | 2 transfers with 1 FT        | -4 hit        | Critical |
+| TR-03 | 3 transfers with 1 FT        | -8 hit        | Critical |
+| TR-04 | Roll 4 FT → next GW          | 5 FT (capped) | High     |
+| TR-05 | Roll 5 FT → next GW          | 5 FT (not 6)  | High     |
+| TR-06 | Buy £12m with £10m available | REJECT        | Critical |
 
 ### D.4 Sale Price Tests (CRITICAL - Often Wrong)
 
-| ID | Bought | Current | Sale Price | Reason |
-|----|--------|---------|------------|--------|
-| SP-01 | £7.0m | £7.5m | £7.2m | Half of £0.5m = £0.2m |
-| SP-02 | £7.0m | £8.0m | £7.5m | Half of £1.0m = £0.5m |
-| SP-03 | £7.0m | £6.5m | £6.5m | Full loss on drops |
-| SP-04 | £7.0m | £7.0m | £7.0m | No change |
+| ID    | Bought | Current | Sale Price | Reason                |
+| ----- | ------ | ------- | ---------- | --------------------- |
+| SP-01 | £7.0m  | £7.5m   | £7.2m      | Half of £0.5m = £0.2m |
+| SP-02 | £7.0m  | £8.0m   | £7.5m      | Half of £1.0m = £0.5m |
+| SP-03 | £7.0m  | £6.5m   | £6.5m      | Full loss on drops    |
+| SP-04 | £7.0m  | £7.0m   | £7.0m      | No change             |
 
 ### D.5 Points Calculation Tests
 
-| ID | Scenario | Points | Priority |
-|----|----------|--------|----------|
-| PT-01 | MID 90 mins, 1 goal | 2 + 5 = 7 | Critical |
-| PT-02 | DEF 90 mins, clean sheet | 2 + 4 = 6 | Critical |
+| ID    | Scenario                 | Points            | Priority |
+| ----- | ------------------------ | ----------------- | -------- |
+| PT-01 | MID 90 mins, 1 goal      | 2 + 5 = 7         | Critical |
+| PT-02 | DEF 90 mins, clean sheet | 2 + 4 = 6         | Critical |
 | PT-03 | DEF 59 mins, clean sheet | 1 + 0 = 1 (no CS) | Critical |
-| PT-04 | DEF 60 mins, clean sheet | 2 + 4 = 6 | Critical |
-| PT-05 | GK 6 saves | 2 + 2 = 4 | High |
-| PT-06 | Yellow + straight red | -1 + -3 = -4 | High |
-| PT-07 | 2 yellows = red | -1 + -2 = -3 | High |
-| PT-08 | 0 minutes played | 0 | Critical |
+| PT-04 | DEF 60 mins, clean sheet | 2 + 4 = 6         | Critical |
+| PT-05 | GK 6 saves               | 2 + 2 = 4         | High     |
+| PT-06 | Yellow + straight red    | -1 + -3 = -4      | High     |
+| PT-07 | 2 yellows = red          | -1 + -2 = -3      | High     |
+| PT-08 | 0 minutes played         | 0                 | Critical |
 
 ### D.6 Captain Tests
 
-| ID | Scenario | Expected | Priority |
-|----|----------|----------|----------|
-| CP-01 | Captain scores 6 | 12 (doubled) | Critical |
-| CP-02 | Captain 0 mins, VC scores 5 | VC = 10 | Critical |
-| CP-03 | Captain 1 min, scores 1 | 2 (still doubled) | Critical |
-| CP-04 | Captain 0, VC 0 | 0 doubled | Critical |
-| CP-05 | Set captain from bench | REJECT | Critical |
-| CP-06 | Triple Captain scores 6 | 18 | Critical |
+| ID    | Scenario                    | Expected          | Priority |
+| ----- | --------------------------- | ----------------- | -------- |
+| CP-01 | Captain scores 6            | 12 (doubled)      | Critical |
+| CP-02 | Captain 0 mins, VC scores 5 | VC = 10           | Critical |
+| CP-03 | Captain 1 min, scores 1     | 2 (still doubled) | Critical |
+| CP-04 | Captain 0, VC 0             | 0 doubled         | Critical |
+| CP-05 | Set captain from bench      | REJECT            | Critical |
+| CP-06 | Triple Captain scores 6     | 18                | Critical |
 
 ### D.7 Chip Tests
 
-| ID | Scenario | Expected | Priority |
-|----|----------|----------|----------|
-| CH-01 | WC in GW5, WC again GW10 | REJECT (WC1 used) | Critical |
-| CH-02 | BB + TC same GW | REJECT (1 chip/GW) | Critical |
-| CH-03 | WC, make 10 transfers | 0 hit | Critical |
-| CH-04 | Free Hit, next GW | Team reverts | Critical |
-| CH-05 | Unused Set 1 chip after GW19 | Expired | High |
+| ID    | Scenario                     | Expected           | Priority |
+| ----- | ---------------------------- | ------------------ | -------- |
+| CH-01 | WC in GW5, WC again GW10     | REJECT (WC1 used)  | Critical |
+| CH-02 | BB + TC same GW              | REJECT (1 chip/GW) | Critical |
+| CH-03 | WC, make 10 transfers        | 0 hit              | Critical |
+| CH-04 | Free Hit, next GW            | Team reverts       | Critical |
+| CH-05 | Unused Set 1 chip after GW19 | Expired            | High     |
 
 ### D.8 Auto-Sub Tests
 
-| ID | Starting | Bench | Non-Player | Expected Sub |
-|----|----------|-------|------------|--------------|
-| AS-01 | 3-5-2, 1 DEF out | [GK,FWD,FWD,DEF] | DEF | DEF slot 4 (skip FWDs) |
-| AS-02 | 4-4-2, GK out | [GK,DEF,MID,FWD] | GK | Bench GK |
-| AS-03 | 3-5-2, 1 DEF out | [GK,FWD,FWD,FWD] | DEF | No valid sub |
+| ID    | Starting         | Bench            | Non-Player | Expected Sub           |
+| ----- | ---------------- | ---------------- | ---------- | ---------------------- |
+| AS-01 | 3-5-2, 1 DEF out | [GK,FWD,FWD,DEF] | DEF        | DEF slot 4 (skip FWDs) |
+| AS-02 | 4-4-2, GK out    | [GK,DEF,MID,FWD] | GK         | Bench GK               |
+| AS-03 | 3-5-2, 1 DEF out | [GK,FWD,FWD,FWD] | DEF        | No valid sub           |
 
 ### D.9 User Auth Tests
 
-| ID | Scenario | Expected | Priority |
-|----|----------|----------|----------|
-| UA-01 | Admin → admin panel | ACCEPT | Critical |
-| UA-02 | User → admin panel | 403 Forbidden | Critical |
-| UA-03 | User A → User B data | 403 Forbidden | Critical |
-| UA-04 | No token → /api/me | 401 Unauthorized | Critical |
+| ID    | Scenario             | Expected         | Priority |
+| ----- | -------------------- | ---------------- | -------- |
+| UA-01 | Admin → admin panel  | ACCEPT           | Critical |
+| UA-02 | User → admin panel   | 403 Forbidden    | Critical |
+| UA-03 | User A → User B data | 403 Forbidden    | Critical |
+| UA-04 | No token → /api/me   | 401 Unauthorized | Critical |
 
 ---
 
 ### D.10 Test Execution Checklist
 
 **Before ANY release:**
+
 ```
 [ ] All SQ tests pass (Squad)
 [ ] All FM tests pass (Formation)
@@ -3611,16 +3760,16 @@ ALL must pass: YES
 
 > **PURPOSE**: Mistakes from previous attempts. DO NOT repeat.
 
-| Anti-Pattern | Correct Approach |
-|--------------|------------------|
-| Allowing 4+ from same team | Always validate team count |
-| Recommending bench player as captain | Validate captain in starting XI |
-| Wrong sale price calculation | Use half-profit rule, rounded down |
-| Showing invalid recommendations | Validate ALL through Rules Engine |
-| Not testing edge cases | 100% test coverage on Rules Engine |
-| Mixing UI and business logic | Separate Rules Engine |
-| No user data isolation | Filter by user_id, use RLS |
-| Hardcoding FPL rules | Configurable rules engine |
+| Anti-Pattern                         | Correct Approach                   |
+| ------------------------------------ | ---------------------------------- |
+| Allowing 4+ from same team           | Always validate team count         |
+| Recommending bench player as captain | Validate captain in starting XI    |
+| Wrong sale price calculation         | Use half-profit rule, rounded down |
+| Showing invalid recommendations      | Validate ALL through Rules Engine  |
+| Not testing edge cases               | 100% test coverage on Rules Engine |
+| Mixing UI and business logic         | Separate Rules Engine              |
+| No user data isolation               | Filter by user_id, use RLS         |
+| Hardcoding FPL rules                 | Configurable rules engine          |
 
 ---
 
@@ -3634,6 +3783,6 @@ ALL must pass: YES
 
 ---
 
-*Document Version: 1.0*
-*Last Updated: January 2026*
-*Author: Claude (AI Assistant)*
+_Document Version: 1.0_
+_Last Updated: January 2026_
+_Author: Claude (AI Assistant)_

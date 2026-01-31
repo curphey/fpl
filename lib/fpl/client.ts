@@ -13,6 +13,7 @@ import type {
   ManagerPicks,
   LeagueStandings,
 } from "./types";
+import { SERVER_CACHE_TTL } from "@/lib/cache-config";
 
 const FPL_API_BASE = "https://fantasy.premierleague.com/api";
 
@@ -104,7 +105,7 @@ async function fetchFPL<T>(
   options?: RequestInit & { cacheTtl?: number },
 ): Promise<T> {
   const { cacheTtl, ...fetchOptions } = options ?? {};
-  const ttl = cacheTtl ?? 300_000; // default 5 minutes
+  const ttl = cacheTtl ?? SERVER_CACHE_TTL.default;
 
   // Check in-memory cache first
   const cached = getCached<T>(endpoint);
@@ -172,7 +173,7 @@ export const fplClient = {
    */
   async getLiveGameweek(gameweek: number): Promise<LiveGameweek> {
     return fetchFPL<LiveGameweek>(`/event/${gameweek}/live/`, {
-      cacheTtl: 60_000,
+      cacheTtl: SERVER_CACHE_TTL.live,
     });
   },
 

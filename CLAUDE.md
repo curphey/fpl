@@ -169,3 +169,243 @@ next.config.ts          # Next.js config (image optimization, PWA headers)
 - **Pre-commit hooks:** lint-staged runs ESLint and Prettier on staged files, then runs tests.
 - **Null/undefined handling:** Use `null` for "no value" in API responses and data that explicitly has no value. Use `undefined` for optional parameters and omitted fields. This provides clearer semantics between "value is explicitly empty" vs "value was not provided."
 - **API validation:** All API routes use Zod schemas from `lib/api/validation.ts` for runtime input validation. Use `validationErrorResponse()` for consistent error formatting.
+
+## API Reference
+
+### Rate Limits
+
+All API routes are rate-limited using Upstash Redis with in-memory fallback:
+
+| Tier            | Limit            | Endpoints                                                                                        |
+| --------------- | ---------------- | ------------------------------------------------------------------------------------------------ |
+| `fpl`           | 100 requests/min | `/api/fpl/*` proxy routes                                                                        |
+| `claude`        | 10 requests/min  | `/api/optimize`, `/api/simulate`, `/api/rival-analysis`, `/api/injury-prediction`, `/api/news/*` |
+| `notifications` | 20 requests/min  | `/api/notifications/*`                                                                           |
+
+### Error Response Format
+
+All API errors return a consistent JSON format:
+
+```json
+{
+  "error": "Human-readable error message",
+  "code": "ERROR_CODE",
+  "details": {} // Optional additional context
+}
+```
+
+Common error codes:
+
+- `VALIDATION_ERROR` - Invalid request body/parameters
+- `RATE_LIMITED` - Rate limit exceeded
+- `NOT_FOUND` - Resource not found
+- `UNAUTHORIZED` - Missing or invalid API key
+- `FPL_API_ERROR` - Upstream FPL API error
+- `INTERNAL_ERROR` - Server error
+
+### FPL Proxy Endpoints
+
+All FPL proxy routes cache responses server-side and validate parameters.
+
+#### GET /api/fpl/bootstrap-static
+
+Returns all static FPL data including players, teams, and gameweeks.
+
+- **Cache TTL:** 5 minutes
+- **Response:** `BootstrapStatic` (see `lib/fpl/types.ts`)
+
+#### GET /api/fpl/fixtures
+
+Returns all fixtures for the season.
+
+- **Cache TTL:** 5 minutes
+- **Query params:** `event` (optional, filter by gameweek 1-38)
+- **Response:** `Fixture[]`
+
+#### GET /api/fpl/element-summary/[id]
+
+Returns detailed player data including history and fixtures.
+
+- **Parameters:** `id` - Player element ID (1-800)
+- **Cache TTL:** 5 minutes
+- **Response:** `ElementSummary`
+
+#### GET /api/fpl/event/[gw]/live
+
+Returns live gameweek data with player scores.
+
+- **Parameters:** `gw` - Gameweek number (1-38)
+- **Cache TTL:** 1 minute (during matches), 5 minutes (otherwise)
+- **Response:** `LiveGameweek`
+
+#### GET /api/fpl/entry/[id]
+
+Returns manager entry information.
+
+- **Parameters:** `id` - Manager ID (1-15,000,000)
+- **Cache TTL:** 5 minutes
+- **Response:** `ManagerEntry`
+
+#### GET /api/fpl/entry/[id]/history
+
+Returns manager's season history and past seasons.
+
+- **Parameters:** `id` - Manager ID
+- **Cache TTL:** 5 minutes
+- **Response:** `ManagerHistory`
+
+#### GET /api/fpl/entry/[id]/event/[gw]/picks
+
+Returns manager's picks for a specific gameweek.
+
+- **Parameters:** `id` - Manager ID, `gw` - Gameweek (1-38)
+- **Cache TTL:** 5 minutes
+- **Response:** `ManagerPicks`
+
+#### GET /api/fpl/leagues-classic/[id]/standings
+
+Returns classic league standings.
+
+- **Parameters:** `id` - League ID
+- **Query params:** `page` (optional, default 1)
+- **Cache TTL:** 5 minutes
+- **Response:** `LeagueStandings`
+
+### AI Endpoints
+
+All AI endpoints use Claude with extended thinking for complex analysis.
+
+#### POST /api/optimize
+
+Claude-powered transfer optimization.
+
+**Request body:**
+
+```typescript
+{
+  type: "transfer" | "chip" | "wildcard",
+  query: string,              // 1-1000 chars, user's optimization request
+  constraints?: {
+    budget?: number,          // Available budget in 0.1m units
+    maxTransfers?: number,    // Max transfers to suggest
+    excludePlayers?: number[] // Player IDs to exclude
+  },
+  currentTeam?: {
+    players: number[],        // Current squad player IDs
+    bank: number,             // Bank balance
+    freeTransfers: number
+  },
+  leagueContext?: {
+    rank?: number,
+    totalManagers?: number,
+    gameweeksRemaining?: number
+  }
+}
+```
+
+**Response:**
+
+```typescript
+{
+  recommendations: Array<{
+    type: "transfer_in" | "transfer_out" | "captain" | "chip",
+    playerId?: number,
+    playerName?: string,
+    reasoning: string,
+    priority: "high" | "medium" | "low"
+  }>,
+  summary: string,
+  thinkingProcess?: string  // Extended thinking output
+}
+```
+
+#### POST /api/simulate
+
+GW decision simulator with scenario analysis.
+
+**Request body:**
+
+```typescript
+{
+  action: "transfer" | "captain" | "chip" | "bench",
+  options: string[],          // Options to compare
+  currentTeam: { ... },       // Squad details
+  gameweek: number,
+  additionalContext?: string
+}
+```
+
+#### POST /api/rival-analysis
+
+Analyzes rival managers and suggests counter-strategies.
+
+**Request body:**
+
+```typescript
+{
+  managerId: number,
+  rivalIds: number[],
+  gameweek: number,
+  leagueContext?: { ... }
+}
+```
+
+#### POST /api/injury-prediction
+
+Predicts injury return timelines based on news and historical data.
+
+**Request body:**
+
+```typescript
+{
+  playerId: number,
+  injuryDetails?: string
+}
+```
+
+### News Endpoints
+
+#### GET /api/news
+
+Search FPL-related news using Claude web search.
+
+- **Query params:** `q` (search query), `category` (optional filter)
+- **Response:** `NewsItem[]`
+
+#### GET /api/news/injuries
+
+Get current injury updates across all teams.
+
+- **Response:** `InjuryUpdate[]`
+
+#### GET /api/news/team/[team]
+
+Get team-specific news.
+
+- **Parameters:** `team` - Team short name (e.g., "ARS", "MCI")
+- **Response:** `NewsItem[]`
+
+### Notification Endpoints
+
+#### POST /api/notifications/send
+
+Send push notifications (server-to-server only).
+
+- **Auth:** Requires `x-api-key` header matching `NOTIFICATIONS_API_KEY`
+- **Request body:**
+
+```typescript
+{
+  type: "deadline" | "price_change" | "injury" | "league_update" | "transfer_rec" | "weekly_summary",
+  criteria?: {
+    managerIds?: number[],    // Specific managers to notify
+    all?: boolean             // Notify all subscribed users
+  },
+  data: {
+    title: string,
+    body: string,
+    url?: string,
+    // Type-specific fields...
+  }
+}
+```

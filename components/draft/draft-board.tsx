@@ -3,7 +3,7 @@
 import { memo, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { initializeDraftBoard, markUserPicks } from "@/lib/fpl/draft-model";
-import type { DraftState } from "@/lib/fpl/draft-types";
+import type { DraftState, DraftPlayer } from "@/lib/fpl/draft-types";
 
 interface DraftBoardProps {
   state: DraftState;

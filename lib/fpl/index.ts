@@ -69,6 +69,7 @@ export {
 // Hooks (client-side only)
 export {
   useBootstrapStatic,
+  useEnrichedBootstrapStatic,
   useFixtures,
   useGameweekFixtures,
   usePlayerSummary,
@@ -77,10 +78,15 @@ export {
   useManagerHistory,
   useManagerPicks,
   useLeagueStandings,
+  type EnrichedBootstrapStatic,
 } from "./hooks/use-fpl";
 export { useRivalPicks } from "./hooks/use-rival-picks";
 export {
   useLeagueAnalysis,
   type RivalCount,
 } from "./hooks/use-league-analysis";
+export {
+  useAggregatedRivalData,
+  usePrefetchAggregatedRivalData,
+} from "./hooks/use-aggregated-rival-data";
 export { usePlayerComparison } from "./hooks/use-player-comparison";

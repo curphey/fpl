@@ -11,9 +11,12 @@ vi.mock("@/lib/fpl/client", () => ({
   },
   FPLApiError: class FPLApiError extends Error {
     statusCode: number;
-    constructor(message: string, statusCode: number) {
+    endpoint: string;
+    constructor(message: string, statusCode: number, endpoint: string = "") {
       super(message);
+      this.name = "FPLApiError";
       this.statusCode = statusCode;
+      this.endpoint = endpoint;
     }
   },
 }));
@@ -107,7 +110,7 @@ describe("API Route Validation", () => {
       const data = await response.json();
 
       expect(response.status).toBe(404);
-      expect(data.error).toBe("Manager not found");
+      expect(data.error).toContain("not found");
     });
   });
 

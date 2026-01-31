@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { runOptimization } from "@/lib/claude/client";
 import { fplClient, getCurrentGameweek } from "@/lib/fpl/client";
 import type { OptimizeRequest } from "@/lib/claude/types";
-import {
-  optimizeRequestSchema,
-  validationErrorResponse,
-} from "@/lib/api/validation";
+import { optimizeRequestSchema } from "@/lib/api/validation";
 import { withRateLimit } from "@/lib/api/rate-limit";
+import {
+  createValidationErrorResponse,
+  createErrorResponse,
+  createErrorFromUnknown,
+} from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 export const maxDuration = 60; // Allow up to 60 seconds for extended thinking
@@ -24,17 +26,15 @@ export async function POST(request: NextRequest) {
     // Validate request with Zod
     const parseResult = optimizeRequestSchema.safeParse(rawBody);
     if (!parseResult.success) {
-      return NextResponse.json(validationErrorResponse(parseResult.error), {
-        status: 400,
-      });
+      return createValidationErrorResponse(parseResult.error);
     }
     const body = parseResult.data as OptimizeRequest;
 
     // Check for API key
     if (!process.env.ANTHROPIC_API_KEY) {
-      return NextResponse.json(
-        { error: "Claude API not configured", code: "API_ERROR" },
-        { status: 503 },
+      return createErrorResponse(
+        "Claude API not configured",
+        "SERVICE_UNAVAILABLE",
       );
     }
 
@@ -107,34 +107,17 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Optimization error:", error);
 
-    if (error instanceof Error) {
-      if (error.message.includes("rate")) {
-        return NextResponse.json(
-          {
-            error: "Rate limited. Please try again later.",
-            code: "RATE_LIMITED",
-          },
-          { status: 429 },
-        );
-      }
-      if (
-        error.message.includes("timeout") ||
-        error.message.includes("Timeout")
-      ) {
-        return NextResponse.json(
-          { error: "Request timed out. Try a simpler query.", code: "TIMEOUT" },
-          { status: 504 },
-        );
-      }
-      return NextResponse.json(
-        { error: error.message, code: "API_ERROR" },
-        { status: 500 },
+    // Handle timeout errors specifically
+    if (
+      error instanceof Error &&
+      (error.message.includes("timeout") || error.message.includes("Timeout"))
+    ) {
+      return createErrorResponse(
+        "Request timed out. Try a simpler query.",
+        "SERVICE_UNAVAILABLE",
       );
     }
 
-    return NextResponse.json(
-      { error: "An unexpected error occurred", code: "API_ERROR" },
-      { status: 500 },
-    );
+    return createErrorFromUnknown(error, "running optimization");
   }
 }

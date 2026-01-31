@@ -2,22 +2,10 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
+import { STALE_TIMES } from "@/lib/cache-config";
 
-// Default stale times for different data types
-export const STALE_TIMES = {
-  // Bootstrap data changes rarely during a gameweek
-  bootstrap: 5 * 60 * 1000, // 5 minutes
-  // Fixtures don't change often
-  fixtures: 10 * 60 * 1000, // 10 minutes
-  // Live data should be more fresh
-  live: 30 * 1000, // 30 seconds
-  // Manager data can be cached longer
-  manager: 2 * 60 * 1000, // 2 minutes
-  // League standings change after gameweeks
-  league: 5 * 60 * 1000, // 5 minutes
-  // Player summaries are relatively stable
-  playerSummary: 5 * 60 * 1000, // 5 minutes
-} as const;
+// Re-export STALE_TIMES for backwards compatibility
+export { STALE_TIMES };
 
 export function QueryProvider({ children }: { children: ReactNode }) {
   const [queryClient] = useState(

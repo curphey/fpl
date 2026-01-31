@@ -11,11 +11,25 @@ import type {
   ManagerPicks,
   LeagueStandings,
 } from "../types";
+import type { EnrichedPlayer } from "../utils";
 import { STALE_TIMES } from "@/lib/query";
+
+/**
+ * Bootstrap data with server-enriched player data.
+ * Elements array contains EnrichedPlayer objects with pre-computed values.
+ */
+export interface EnrichedBootstrapStatic extends Omit<
+  BootstrapStatic,
+  "elements"
+> {
+  elements: EnrichedPlayer[];
+  enriched: true;
+}
 
 // Query keys for cache management
 export const queryKeys = {
   bootstrap: ["bootstrap-static"] as const,
+  bootstrapEnriched: ["bootstrap-static", "enriched"] as const,
   fixtures: (gameweek?: number) =>
     gameweek ? (["fixtures", gameweek] as const) : (["fixtures"] as const),
   playerSummary: (playerId: number) => ["player-summary", playerId] as const,
@@ -66,6 +80,29 @@ export function useBootstrapStatic(): UseFplDataResult<BootstrapStatic> {
   const query = useQuery({
     queryKey: queryKeys.bootstrap,
     queryFn: () => fetchFplData<BootstrapStatic>("/api/fpl/bootstrap-static"),
+    staleTime: STALE_TIMES.bootstrap,
+  });
+  return useQueryAdapter(query);
+}
+
+/**
+ * Hook to fetch bootstrap static data with server-enriched players.
+ * Player data includes pre-computed values (form, xG, xA, team names, etc.)
+ * This eliminates client-side enrichment overhead.
+ *
+ * @example
+ * ```tsx
+ * const { data } = useEnrichedBootstrapStatic();
+ * // data.elements[0].form_value, data.elements[0].team_name available
+ * ```
+ */
+export function useEnrichedBootstrapStatic(): UseFplDataResult<EnrichedBootstrapStatic> {
+  const query = useQuery({
+    queryKey: queryKeys.bootstrapEnriched,
+    queryFn: () =>
+      fetchFplData<EnrichedBootstrapStatic>(
+        "/api/fpl/bootstrap-static?enrich=true",
+      ),
     staleTime: STALE_TIMES.bootstrap,
   });
   return useQueryAdapter(query);

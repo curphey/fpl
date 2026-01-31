@@ -7,6 +7,11 @@ import { MessageList } from "./message-list";
 import { SuggestedQuestions } from "./suggested-questions";
 import { ApiKeyInput } from "./api-key-input";
 import type { ChatMessage, StreamEvent, ToolCall } from "@/lib/chat/types";
+import {
+  loadChatHistory,
+  saveChatHistory,
+  clearChatHistory,
+} from "@/lib/chat/storage";
 
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
@@ -18,7 +23,28 @@ export function ChatContainer() {
   const [isLoading, setIsLoading] = useState(false);
   const [showThinking, setShowThinking] = useState(false);
   const [userApiKey, setUserApiKey] = useState<string | null>(null);
+  const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Load chat history from localStorage on mount
+  useEffect(() => {
+    const savedMessages = loadChatHistory();
+    if (savedMessages.length > 0) {
+      setMessages(savedMessages);
+    }
+    setIsHistoryLoaded(true);
+  }, []);
+
+  // Save messages to localStorage when they change (after initial load)
+  useEffect(() => {
+    if (isHistoryLoaded && messages.length > 0) {
+      // Only save when not streaming
+      const hasStreamingMessage = messages.some((m) => m.isStreaming);
+      if (!hasStreamingMessage) {
+        saveChatHistory(messages);
+      }
+    }
+  }, [messages, isHistoryLoaded]);
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -202,11 +228,12 @@ export function ChatContainer() {
     [sendMessage],
   );
 
-  const clearChat = useCallback(() => {
+  const startNewChat = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
     setMessages([]);
+    clearChatHistory();
   }, []);
 
   // Cleanup on unmount
@@ -267,13 +294,14 @@ export function ChatContainer() {
             Thinking
           </button>
 
-          {/* Clear chat */}
+          {/* New Chat */}
           {messages.length > 0 && (
             <button
-              onClick={clearChat}
+              onClick={startNewChat}
               className="rounded px-2 py-1 text-xs text-fpl-muted transition-colors hover:bg-fpl-card-alt hover:text-fpl-text"
+              title="Start a new conversation"
             >
-              Clear
+              New Chat
             </button>
           )}
         </div>

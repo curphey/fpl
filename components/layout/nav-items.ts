@@ -13,7 +13,8 @@ export interface NavItem {
     | "team"
     | "optimize"
     | "notifications"
-    | "expected";
+    | "expected"
+    | "simulator";
 }
 
 export const navItems: NavItem[] = [
@@ -32,5 +33,6 @@ export const secondaryNavItems: NavItem[] = [
   { label: "Leagues", href: "/leagues", icon: "leagues" },
   { label: "Chips", href: "/chips", icon: "chips" },
   { label: "AI Optimizer", href: "/optimize", icon: "optimize" },
+  { label: "AI Simulator", href: "/simulator", icon: "simulator" },
   { label: "Notifications", href: "/notifications", icon: "notifications" },
 ];

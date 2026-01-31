@@ -12,8 +12,8 @@ Fantasy Premier League analytics dashboard built with Next.js.
 - **Database:** Supabase PostgreSQL (`profiles` table for cross-device manager ID sync, `notification_preferences` and `notification_history` for notifications)
 - **Hosting:** Netlify (via `@netlify/plugin-nextjs`)
 - **CI/CD:** GitHub Actions (auto-deploy on push to `main`)
-- **Testing:** Vitest with 159+ tests
-- **AI:** Claude API (Sonnet for news search, extended thinking for optimization)
+- **Testing:** Vitest with 383+ tests
+- **AI:** Claude API (Sonnet for news search, extended thinking for optimization/simulation)
 - **PWA:** Service worker, offline support, push notifications
 - **Linting:** ESLint 9 + Prettier + lint-staged + Husky
 
@@ -43,6 +43,9 @@ app/                    # Next.js App Router pages and API routes
       entry/[id]/event/[gw]/picks/ # Manager picks for gameweek
       leagues-classic/[id]/standings/ # League standings
     optimize/           # Claude AI optimization endpoint
+    simulate/           # GW Decision Simulator endpoint (Claude extended thinking)
+    rival-analysis/     # Rival Gameplan Analyzer endpoint (Claude extended thinking)
+    injury-prediction/  # Injury Return Predictor endpoint (Claude extended thinking)
     news/               # Claude-powered FPL news search
       injuries/         # Injury updates endpoint
       team/[team]/      # Team news endpoint
@@ -63,6 +66,7 @@ app/                    # Next.js App Router pages and API routes
   leagues/analyze/page.tsx # Mini-League Analyzer (rival picks, EO, differentials, chip tracking)
   team/page.tsx         # My Team (pitch view, squad value tracker)
   optimize/page.tsx     # AI Optimizer (Claude extended thinking)
+  simulator/page.tsx    # AI Simulator (decision simulator, rival analyzer, injury predictor)
   notifications/page.tsx # Notification preferences and history
 components/
   ui/                   # Reusable primitives (Card, Badge, DataTable, StatCard, Skeleton variants, ErrorState)
@@ -78,6 +82,7 @@ components/
   league-analyzer/      # Analyzer tabs, rival picks section, differentials, swing scenarios
   team/                 # Team header, pitch view, gameweek summary/nav, squad value tracker
   optimize/             # Optimize form, thinking display, recommendations display
+  simulator/            # Decision simulator, rival analyzer, injury predictor components
   notifications/        # Notification preferences form, notification history list
   news/                 # News feed, injury tracker components
   pwa/                  # Service worker registration, pull-to-refresh
@@ -111,6 +116,9 @@ lib/claude/
   news-types.ts         # News item, category, injury update types
   news-client.ts        # Claude web search for FPL news (searchFPLNews, getInjuryUpdates, getTeamNews)
   hooks.ts              # React hooks for news (useNews, useInjuryUpdates, useTeamNews)
+  simulator-types.ts    # Types for decision simulator, rival analyzer, injury predictor
+  simulator-client.ts   # Claude API client for simulateDecision, analyzeRival, predictInjuryReturn
+  simulator-hooks.ts    # React hooks for simulator features (useSimulation, useRivalAnalysis, useInjuryPrediction)
 lib/notifications/
   types.ts              # Notification preference and history types
   hooks.ts              # useNotificationPreferences, useNotificationHistory, usePushNotificationStatus, subscribeToPushNotifications

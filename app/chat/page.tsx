@@ -1,17 +1,38 @@
+"use client";
+
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { ChatContainer } from "@/components/chat";
 
-export const metadata = {
-  title: "AI Assistant | FPL Insights",
-  description:
-    "Ask questions about your FPL team and get AI-powered advice on transfers, captain picks, and more.",
-};
+function ChatPageContent() {
+  const searchParams = useSearchParams();
+  const initialMessage = searchParams.get("q") || undefined;
+  const autoSubmit = searchParams.get("auto") === "1";
 
-export default function ChatPage() {
   return (
     <div className="mx-auto h-[calc(100vh-8rem)] max-w-4xl">
       <div className="h-full overflow-hidden rounded-lg border border-fpl-border bg-fpl-card">
-        <ChatContainer />
+        <ChatContainer
+          initialMessage={initialMessage}
+          autoSubmit={autoSubmit}
+        />
       </div>
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto h-[calc(100vh-8rem)] max-w-4xl">
+          <div className="flex h-full items-center justify-center rounded-lg border border-fpl-border bg-fpl-card">
+            <div className="text-fpl-muted">Loading chat...</div>
+          </div>
+        </div>
+      }
+    >
+      <ChatPageContent />
+    </Suspense>
   );
 }

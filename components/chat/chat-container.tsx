@@ -17,7 +17,17 @@ function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 }
 
-export function ChatContainer() {
+interface ChatContainerProps {
+  /** Pre-fill the chat input with this message */
+  initialMessage?: string;
+  /** Auto-submit the initial message */
+  autoSubmit?: boolean;
+}
+
+export function ChatContainer({
+  initialMessage,
+  autoSubmit = false,
+}: ChatContainerProps) {
   const { managerId } = useManagerContext();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -25,6 +35,9 @@ export function ChatContainer() {
   const [userApiKey, setUserApiKey] = useState<string | null>(null);
   const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Track if we've processed the initial message
+  const [initialMessageProcessed, setInitialMessageProcessed] = useState(false);
 
   // Load chat history from localStorage on mount
   useEffect(() => {
@@ -34,6 +47,29 @@ export function ChatContainer() {
     }
     setIsHistoryLoaded(true);
   }, []);
+
+  // Handle initial message from URL params
+  useEffect(() => {
+    if (
+      initialMessage &&
+      isHistoryLoaded &&
+      !initialMessageProcessed &&
+      !isLoading
+    ) {
+      setInitialMessageProcessed(true);
+      if (autoSubmit) {
+        // Auto-send the message
+        sendMessage(initialMessage);
+      }
+    }
+  }, [
+    initialMessage,
+    autoSubmit,
+    isHistoryLoaded,
+    initialMessageProcessed,
+    isLoading,
+    sendMessage,
+  ]);
 
   // Save messages to localStorage when they change (after initial load)
   useEffect(() => {
@@ -342,7 +378,11 @@ export function ChatContainer() {
 
       {/* Input area */}
       <div className="border-t border-fpl-border p-4">
-        <ChatInput onSend={sendMessage} isLoading={isLoading} />
+        <ChatInput
+          onSend={sendMessage}
+          isLoading={isLoading}
+          initialValue={autoSubmit ? undefined : initialMessage}
+        />
       </div>
     </div>
   );

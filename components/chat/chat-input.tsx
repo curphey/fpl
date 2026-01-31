@@ -5,10 +5,14 @@ import { useState, useRef, useEffect, KeyboardEvent } from "react";
 interface ChatInputProps {
   onSend: (message: string) => void;
   isLoading: boolean;
+  /** Pre-fill the input with this value (only used on initial render) */
+  initialValue?: string;
 }
 
-export function ChatInput({ onSend, isLoading }: ChatInputProps) {
-  const [input, setInput] = useState("");
+export function ChatInput({ onSend, isLoading, initialValue }: ChatInputProps) {
+  // Initialize with prop value; changes to initialValue after mount are ignored
+  // (component should be remounted via key prop if reset is needed)
+  const [input, setInput] = useState(initialValue || "");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-resize textarea

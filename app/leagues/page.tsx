@@ -1,10 +1,11 @@
-'use client';
+"use client";
 
-import { useState, useMemo } from 'react';
-import { useManagerContext } from '@/lib/fpl/manager-context';
-import { ConnectPrompt } from '@/components/leagues/connect-prompt';
-import { LeagueList } from '@/components/leagues/league-list';
-import { LeagueStandingsTable } from '@/components/leagues/league-standings-table';
+import { useState, useMemo } from "react";
+import { useManagerContext } from "@/lib/fpl/manager-context";
+import { ConnectPrompt } from "@/components/leagues/connect-prompt";
+import { LeagueList } from "@/components/leagues/league-list";
+import { LeagueStandingsTable } from "@/components/leagues/league-standings-table";
+import { AskAiButton } from "@/components/chat";
 
 export default function LeaguesPage() {
   const { manager } = useManagerContext();
@@ -13,7 +14,7 @@ export default function LeaguesPage() {
   const [prevManagerId, setPrevManagerId] = useState<number | null>(null);
 
   const classicLeagues = useMemo(
-    () => manager?.leagues.classic.filter((l) => l.league_type !== 's') ?? [],
+    () => manager?.leagues.classic.filter((l) => l.league_type !== "s") ?? [],
     [manager],
   );
 
@@ -26,15 +27,29 @@ export default function LeaguesPage() {
 
   // Derive default selection from leagues list
   const activeLeagueId =
-    selectedLeagueId ?? (classicLeagues.length > 0 ? classicLeagues[0].id : null);
+    selectedLeagueId ??
+    (classicLeagues.length > 0 ? classicLeagues[0].id : null);
 
   if (!manager) {
     return <ConnectPrompt />;
   }
 
+  // Get the league name for the AI button
+  const selectedLeague = classicLeagues.find((l) => l.id === activeLeagueId);
+
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Leagues</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Leagues</h1>
+        {activeLeagueId && (
+          <AskAiButton
+            question={`Analyze my mini-league (ID: ${activeLeagueId}${selectedLeague ? `, "${selectedLeague.name}"` : ""}) and show me rival picks, effective ownership, and differentials`}
+            label="Analyze rivals"
+            tooltip="Get AI analysis of your mini-league rivals"
+            autoSubmit
+          />
+        )}
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <div>

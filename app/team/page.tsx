@@ -18,6 +18,7 @@ import { PitchView } from "@/components/team/pitch-view";
 import { GameweekSummary } from "@/components/team/gameweek-summary";
 import { GameweekNav } from "@/components/team/gameweek-nav";
 import { SquadValueCard } from "@/components/team/squad-value";
+import { AskAiButton } from "@/components/chat";
 
 export default function TeamPage() {
   const { managerId, manager } = useManagerContext();
@@ -142,7 +143,15 @@ export default function TeamPage() {
 
   return (
     <div className="space-y-6">
-      <TeamHeader manager={manager} entryHistory={picksData.entry_history} />
+      <div className="flex items-start justify-between">
+        <TeamHeader manager={manager} entryHistory={picksData.entry_history} />
+        <AskAiButton
+          question="Analyze my team and suggest improvements"
+          label="Analyze my team"
+          tooltip="Get AI analysis of your current squad"
+          autoSubmit
+        />
+      </div>
 
       <GameweekNav
         gameweekName={gameweekName}

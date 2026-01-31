@@ -31,6 +31,7 @@ import { PriceChangesTable } from "@/components/transfers/price-changes";
 import { PriceAlertBanner } from "@/components/transfers/price-alert-banner";
 import { InjuryReturnsSection } from "@/components/transfers/injury-returns";
 import { MomentumTracker } from "@/components/transfers/momentum-tracker";
+import { AskAiButton } from "@/components/chat";
 
 type Tab = "recommendations" | "prices" | "injuries" | "momentum";
 type PositionFilter = "all" | PlayerPosition;
@@ -151,11 +152,19 @@ export default function TransfersPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-bold">Transfer Hub</h1>
-        <p className="text-sm text-fpl-muted">
-          Transfer targets, price changes, and injury returns
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-bold">Transfer Hub</h1>
+          <p className="text-sm text-fpl-muted">
+            Transfer targets, price changes, and injury returns
+          </p>
+        </div>
+        <AskAiButton
+          question="Suggest the best transfers for my team this week, considering form, fixtures, and value"
+          label="Suggest transfers"
+          tooltip="Get AI transfer suggestions"
+          autoSubmit
+        />
       </div>
 
       {/* Price Alert Banner - shown when manager has squad players likely to fall */}

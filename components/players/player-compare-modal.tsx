@@ -2,8 +2,9 @@
 
 import { memo, useCallback } from "react";
 import type { EnrichedPlayer } from "@/lib/fpl/utils";
-import { getPlayerDisplayName, getPlayerPrice } from "@/lib/fpl/utils";
+import { getPlayerDisplayName } from "@/lib/fpl/utils";
 import { PositionBadge } from "@/components/ui/badge";
+import { AskAiButton } from "@/components/chat";
 
 interface PlayerCompareModalProps {
   players: EnrichedPlayer[];
@@ -218,6 +219,17 @@ export function PlayerCompareModal({
             label="Clean Sheets"
             values={players.map((p) => p.clean_sheets)}
           />
+
+          {/* Ask AI button */}
+          <div className="mt-6 border-t border-fpl-border pt-4">
+            <AskAiButton
+              question={`Compare ${players.map((p) => getPlayerDisplayName(p)).join(" vs ")} in detail. Include recent form, upcoming fixtures, and which one is the better pick.`}
+              label="Ask AI for detailed comparison"
+              tooltip="Get AI analysis comparing these players"
+              autoSubmit
+              className="w-full justify-center"
+            />
+          </div>
         </div>
       </div>
     </div>

@@ -15,6 +15,7 @@ import {
   notificationSendSchema,
   validationErrorResponse,
 } from "@/lib/api/validation";
+import { withRateLimit } from "@/lib/api/rate-limit";
 
 // Lazy initialization for build time
 let vapidConfigured = false;
@@ -75,6 +76,12 @@ interface SendResult {
  * Protected by API key for server-to-server calls.
  */
 export async function POST(request: NextRequest) {
+  // Check rate limit (20 requests per minute for notification endpoints)
+  const rateLimitResponse = await withRateLimit(request, "notifications");
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
   // Validate API key using constant-time comparison to prevent timing attacks
   const apiKey = request.headers.get("x-api-key");
   if (!timingSafeCompare(apiKey, process.env.NOTIFICATIONS_API_KEY)) {

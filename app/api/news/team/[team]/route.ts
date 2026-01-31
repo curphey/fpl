@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTeamNews } from "@/lib/claude/news-client";
+import { withRateLimit } from "@/lib/api/rate-limit";
 
 /**
  * GET /api/news/team/[team]
@@ -15,6 +16,12 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ team: string }> },
 ) {
+  // Check rate limit (10 requests per minute for Claude endpoints)
+  const rateLimitResponse = await withRateLimit(request, "claude");
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
   const { team } = await params;
   const searchParams = request.nextUrl.searchParams;
   const gwParam = searchParams.get("gw");

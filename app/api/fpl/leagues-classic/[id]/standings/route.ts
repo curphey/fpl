@@ -5,6 +5,7 @@ import {
   pageSchema,
   validationErrorResponse,
 } from "@/lib/api/validation";
+import { withRateLimit } from "@/lib/api/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -13,6 +14,12 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  // Check rate limit (100 requests per minute for FPL proxy endpoints)
+  const rateLimitResponse = await withRateLimit(request, "fpl");
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
   try {
     const { id } = await params;
 

@@ -5,6 +5,7 @@ import { getToolDefinitions } from "@/lib/chat/tools";
 import { executeTool, createToolContext } from "@/lib/chat/tool-executor";
 import { buildChatSystemPrompt } from "@/lib/chat/prompts";
 import type { ChatToolName, StreamEvent } from "@/lib/chat/types";
+import { withRateLimit } from "@/lib/api/rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -33,6 +34,12 @@ function sendEvent(
 }
 
 export async function POST(request: NextRequest) {
+  // Check rate limit (10 requests per minute for Claude endpoints)
+  const rateLimitResponse = await withRateLimit(request, "claude");
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
   let body;
   try {
     const rawBody = await request.json();

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getInjuryUpdates } from "@/lib/claude/news-client";
+import { withRateLimit } from "@/lib/api/rate-limit";
 
 /**
  * GET /api/news/injuries
@@ -9,6 +10,12 @@ import { getInjuryUpdates } from "@/lib/claude/news-client";
  * - players: comma-separated player names (optional, defaults to all flagged players)
  */
 export async function GET(request: NextRequest) {
+  // Check rate limit (10 requests per minute for Claude endpoints)
+  const rateLimitResponse = await withRateLimit(request, "claude");
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
   const searchParams = request.nextUrl.searchParams;
   const playersParam = searchParams.get("players");
 

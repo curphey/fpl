@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fplClient, FPLApiError } from "@/lib/fpl/client";
+import { withRateLimit } from "@/lib/api/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -8,6 +9,12 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; gw: string }> },
 ) {
+  // Check rate limit (100 requests per minute for FPL proxy endpoints)
+  const rateLimitResponse = await withRateLimit(request, "fpl");
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
   try {
     const { id, gw } = await params;
     const managerId = parseInt(id, 10);

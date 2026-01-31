@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchFPLNews } from "@/lib/claude/news-client";
 import type { NewsSearchRequest, NewsCategory } from "@/lib/claude/news-types";
+import { withRateLimit } from "@/lib/api/rate-limit";
 
 /**
  * GET /api/news
@@ -14,6 +15,12 @@ import type { NewsSearchRequest, NewsCategory } from "@/lib/claude/news-types";
  * - limit: max results (default 10)
  */
 export async function GET(request: NextRequest) {
+  // Check rate limit (10 requests per minute for Claude endpoints)
+  const rateLimitResponse = await withRateLimit(request, "claude");
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
   const searchParams = request.nextUrl.searchParams;
 
   const query = searchParams.get("q") || undefined;

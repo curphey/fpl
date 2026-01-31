@@ -1,6 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
+// Mock the rate limit to always allow requests
+vi.mock("@/lib/api/rate-limit", () => ({
+  withRateLimit: vi.fn().mockResolvedValue(null),
+  checkRateLimit: vi.fn().mockResolvedValue({
+    success: true,
+    limit: 100,
+    remaining: 99,
+    reset: Date.now() + 60000,
+  }),
+}));
+
 // Mock the FPL client
 vi.mock("@/lib/fpl/client", () => ({
   fplClient: {
@@ -78,7 +89,10 @@ describe("API Routes", () => {
     it("returns bootstrap data successfully", async () => {
       mockedFplClient.getBootstrapStatic.mockResolvedValue(mockBootstrapData);
 
-      const response = await getBootstrapStatic();
+      const request = new NextRequest(
+        "http://localhost/api/fpl/bootstrap-static",
+      );
+      const response = await getBootstrapStatic(request);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -92,7 +106,10 @@ describe("API Routes", () => {
         new Error("Network error"),
       );
 
-      const response = await getBootstrapStatic();
+      const request = new NextRequest(
+        "http://localhost/api/fpl/bootstrap-static",
+      );
+      const response = await getBootstrapStatic(request);
       const data = await response.json();
 
       expect(response.status).toBe(500);
@@ -104,7 +121,10 @@ describe("API Routes", () => {
         new FPLApiError("Service unavailable", 503),
       );
 
-      const response = await getBootstrapStatic();
+      const request = new NextRequest(
+        "http://localhost/api/fpl/bootstrap-static",
+      );
+      const response = await getBootstrapStatic(request);
       const data = await response.json();
 
       expect(response.status).toBe(503);

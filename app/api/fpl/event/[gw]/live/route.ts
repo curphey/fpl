@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fplClient, FPLApiError } from "@/lib/fpl/client";
 import { gameweekSchema, validationErrorResponse } from "@/lib/api/validation";
+import { withRateLimit } from "@/lib/api/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 60; // Cache for 1 minute during live games
@@ -9,6 +10,12 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ gw: string }> },
 ) {
+  // Check rate limit (100 requests per minute for FPL proxy endpoints)
+  const rateLimitResponse = await withRateLimit(request, "fpl");
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
   try {
     const { gw } = await params;
 

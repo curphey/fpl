@@ -6,11 +6,18 @@ import {
   optimizeRequestSchema,
   validationErrorResponse,
 } from "@/lib/api/validation";
+import { withRateLimit } from "@/lib/api/rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60; // Allow up to 60 seconds for extended thinking
 
 export async function POST(request: NextRequest) {
+  // Check rate limit (10 requests per minute for Claude endpoints)
+  const rateLimitResponse = await withRateLimit(request, "claude");
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
   try {
     const rawBody = await request.json();
 

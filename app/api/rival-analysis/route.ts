@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { analyzeRival } from "@/lib/claude/simulator-client";
 import { z } from "zod";
+import { withRateLimit } from "@/lib/api/rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -54,6 +55,12 @@ const rivalAnalysisRequestSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  // Check rate limit (10 requests per minute for Claude endpoints)
+  const rateLimitResponse = await withRateLimit(request, "claude");
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
   try {
     const rawBody = await request.json();
 

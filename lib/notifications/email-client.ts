@@ -5,6 +5,7 @@ import type {
   PriceChangeData,
   InjuryNewsData,
   LeagueUpdateData,
+  WeeklySummaryData,
 } from "./types";
 
 // Lazy initialization
@@ -212,6 +213,181 @@ function generateEmailHtml(
       break;
     }
 
+    case "weekly_summary": {
+      const d = data as WeeklySummaryData | undefined;
+      const overallRankIcon =
+        d && d.rank_change < 0 ? "📈" : d && d.rank_change > 0 ? "📉" : "➡️";
+      content = d
+        ? `
+        <div style="padding: 32px; background: #0f0f23;">
+          <!-- Header greeting -->
+          <h2 style="color: #04f5ff; margin: 0 0 8px 0; font-size: 22px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            📊 Your Weekly FPL Summary
+          </h2>
+          <p style="color: #888; margin: 0 0 24px 0; font-size: 14px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            Hi ${d.manager_name}! Here's your personalized FPL insights for Gameweek ${d.gameweek}.
+          </p>
+
+          <!-- Gameweek Recap -->
+          <div style="background: #1a1a2e; border-radius: 8px; padding: 20px; margin: 0 0 20px 0;">
+            <h3 style="color: #00ff87; margin: 0 0 16px 0; font-size: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+              ⚽ GW${d.gameweek} Recap
+            </h3>
+            <div style="display: flex; flex-wrap: wrap; gap: 16px;">
+              <div style="flex: 1; min-width: 120px;">
+                <p style="color: #888; margin: 0 0 4px 0; font-size: 12px;">GW Points</p>
+                <p style="color: #e0e0e0; margin: 0; font-size: 24px; font-weight: 700;">${d.gw_points}</p>
+              </div>
+              <div style="flex: 1; min-width: 120px;">
+                <p style="color: #888; margin: 0 0 4px 0; font-size: 12px;">Overall Rank</p>
+                <p style="color: #e0e0e0; margin: 0; font-size: 24px; font-weight: 700;">
+                  ${d.overall_rank.toLocaleString()}
+                  <span style="font-size: 14px; color: ${d.rank_change < 0 ? "#00ff87" : d.rank_change > 0 ? "#ff6b6b" : "#888"};">
+                    ${overallRankIcon}
+                  </span>
+                </p>
+              </div>
+              <div style="flex: 1; min-width: 120px;">
+                <p style="color: #888; margin: 0 0 4px 0; font-size: 12px;">Captain</p>
+                <p style="color: #e0e0e0; margin: 0; font-size: 16px; font-weight: 600;">${d.captain_name} (${d.captain_points}pts)</p>
+              </div>
+            </div>
+            <p style="color: #e0e0e0; margin: 16px 0 0 0; font-size: 14px; line-height: 1.6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+              ${d.ai_recap}
+            </p>
+          </div>
+
+          <!-- Transfer Suggestions -->
+          <div style="background: #1a1a2e; border-radius: 8px; padding: 20px; margin: 0 0 20px 0;">
+            <h3 style="color: #04f5ff; margin: 0 0 12px 0; font-size: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+              💡 Transfer Suggestions
+            </h3>
+            <p style="color: #e0e0e0; margin: 0; font-size: 14px; line-height: 1.6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+              ${d.ai_transfer_suggestions}
+            </p>
+            <a href="${APP_URL}/transfers" style="display: inline-block; background: transparent; color: #04f5ff; padding: 8px 0; text-decoration: none; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-top: 12px;">
+              View all transfer recommendations →
+            </a>
+          </div>
+
+          <!-- Captain Picks -->
+          <div style="background: #1a1a2e; border-radius: 8px; padding: 20px; margin: 0 0 20px 0;">
+            <h3 style="color: #ffd93d; margin: 0 0 12px 0; font-size: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+              👑 Captain Picks for Next GW
+            </h3>
+            <p style="color: #e0e0e0; margin: 0; font-size: 14px; line-height: 1.6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+              ${d.ai_captain_picks}
+            </p>
+            <a href="${APP_URL}/captain" style="display: inline-block; background: transparent; color: #ffd93d; padding: 8px 0; text-decoration: none; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-top: 12px;">
+              View captain selector →
+            </a>
+          </div>
+
+          <!-- Chip Advice -->
+          ${
+            d.ai_chip_advice
+              ? `
+          <div style="background: #1a1a2e; border-radius: 8px; padding: 20px; margin: 0 0 20px 0;">
+            <h3 style="color: #ff6b6b; margin: 0 0 12px 0; font-size: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+              🎯 Chip Strategy
+            </h3>
+            <p style="color: #e0e0e0; margin: 0; font-size: 14px; line-height: 1.6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+              ${d.ai_chip_advice}
+            </p>
+            <a href="${APP_URL}/chips" style="display: inline-block; background: transparent; color: #ff6b6b; padding: 8px 0; text-decoration: none; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-top: 12px;">
+              View chip advisor →
+            </a>
+          </div>
+          `
+              : ""
+          }
+
+          <!-- Price Alerts -->
+          ${
+            d.price_risers.length > 0 || d.price_fallers.length > 0
+              ? `
+          <div style="background: #1a1a2e; border-radius: 8px; padding: 20px; margin: 0 0 20px 0;">
+            <h3 style="color: #e0e0e0; margin: 0 0 12px 0; font-size: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+              💰 Price Change Alerts
+            </h3>
+            ${
+              d.price_risers.length > 0
+                ? `
+            <p style="color: #888; margin: 0 0 8px 0; font-size: 12px;">Likely to rise:</p>
+            <p style="color: #00ff87; margin: 0 0 12px 0; font-size: 14px;">
+              ${d.price_risers.map((p) => `${p.name} (${p.probability}%)`).join(", ")}
+            </p>
+            `
+                : ""
+            }
+            ${
+              d.price_fallers.length > 0
+                ? `
+            <p style="color: #888; margin: 0 0 8px 0; font-size: 12px;">Likely to fall:</p>
+            <p style="color: #ff6b6b; margin: 0; font-size: 14px;">
+              ${d.price_fallers.map((p) => `${p.name} (${p.probability}%)`).join(", ")}
+            </p>
+            `
+                : ""
+            }
+          </div>
+          `
+              : ""
+          }
+
+          <!-- Mini-League Summary -->
+          ${
+            d.leagues.length > 0
+              ? `
+          <div style="background: #1a1a2e; border-radius: 8px; padding: 20px; margin: 0 0 20px 0;">
+            <h3 style="color: #e0e0e0; margin: 0 0 12px 0; font-size: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+              🏆 Mini-League Update
+            </h3>
+            ${d.leagues
+              .slice(0, 3)
+              .map(
+                (l) => `
+              <div style="border-bottom: 1px solid #333; padding: 12px 0;">
+                <p style="color: #e0e0e0; margin: 0 0 4px 0; font-size: 14px; font-weight: 600;">${l.name}</p>
+                <p style="color: #888; margin: 0; font-size: 13px;">
+                  Rank: <strong style="color: #00ff87;">${l.rank}</strong>
+                  ${l.rank_change !== 0 ? `(${l.rank_change > 0 ? "↓" : "↑"}${Math.abs(l.rank_change)})` : ""}
+                  • Gap to ${l.top_rival}: <strong>${l.gap_to_top > 0 ? `-${l.gap_to_top}` : `+${Math.abs(l.gap_to_top)}`}</strong> pts
+                </p>
+              </div>
+            `,
+              )
+              .join("")}
+            <a href="${APP_URL}/leagues" style="display: inline-block; background: transparent; color: #04f5ff; padding: 8px 0; text-decoration: none; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-top: 12px;">
+              View all leagues →
+            </a>
+          </div>
+          `
+              : ""
+          }
+
+          <!-- CTA -->
+          <a href="${APP_URL}" style="display: inline-block; background: #00ff87; color: #37003c; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-top: 8px;">
+            Open FPL Insights
+          </a>
+        </div>
+      `
+        : `
+        <div style="padding: 32px; background: #0f0f23;">
+          <h2 style="color: #04f5ff; margin: 0 0 16px 0; font-size: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            📊 ${title}
+          </h2>
+          <p style="color: #e0e0e0; font-size: 16px; line-height: 1.6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            Your weekly FPL insights are ready. Check the app for personalized recommendations.
+          </p>
+          <a href="${APP_URL}" style="display: inline-block; background: #00ff87; color: #37003c; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-top: 16px;">
+            Open FPL Insights
+          </a>
+        </div>
+      `;
+      break;
+    }
+
     default:
       content = `
         <div style="padding: 32px; background: #0f0f23;">
@@ -304,6 +480,66 @@ function generateEmailText(
         text += `Gap to leader: ${d.gap_to_leader > 0 ? `-${d.gap_to_leader}` : `+${Math.abs(d.gap_to_leader)}`} points\n\n`;
       }
       text += `Analyze Your Leagues: ${APP_URL}/leagues/analyze\n`;
+      break;
+    }
+    case "weekly_summary": {
+      const d = data as WeeklySummaryData | undefined;
+      if (d) {
+        text += `Hi ${d.manager_name}!\n\n`;
+        text += `GAMEWEEK ${d.gameweek} RECAP\n`;
+        text += `-`.repeat(30) + `\n`;
+        text += `GW Points: ${d.gw_points}\n`;
+        text += `Overall Rank: ${d.overall_rank.toLocaleString()}`;
+        text +=
+          d.rank_change !== 0
+            ? ` (${d.rank_change < 0 ? "↑" : "↓"}${Math.abs(d.rank_change).toLocaleString()})\n`
+            : "\n";
+        text += `Captain: ${d.captain_name} (${d.captain_points} pts)\n\n`;
+        text += `${d.ai_recap}\n\n`;
+
+        text += `TRANSFER SUGGESTIONS\n`;
+        text += `-`.repeat(30) + `\n`;
+        text += `${d.ai_transfer_suggestions}\n\n`;
+        text += `View recommendations: ${APP_URL}/transfers\n\n`;
+
+        text += `CAPTAIN PICKS\n`;
+        text += `-`.repeat(30) + `\n`;
+        text += `${d.ai_captain_picks}\n\n`;
+        text += `View captain selector: ${APP_URL}/captain\n\n`;
+
+        if (d.ai_chip_advice) {
+          text += `CHIP STRATEGY\n`;
+          text += `-`.repeat(30) + `\n`;
+          text += `${d.ai_chip_advice}\n\n`;
+        }
+
+        if (d.price_risers.length > 0 || d.price_fallers.length > 0) {
+          text += `PRICE ALERTS\n`;
+          text += `-`.repeat(30) + `\n`;
+          if (d.price_risers.length > 0) {
+            text += `Likely to rise: ${d.price_risers.map((p) => `${p.name} (${p.probability}%)`).join(", ")}\n`;
+          }
+          if (d.price_fallers.length > 0) {
+            text += `Likely to fall: ${d.price_fallers.map((p) => `${p.name} (${p.probability}%)`).join(", ")}\n`;
+          }
+          text += `\n`;
+        }
+
+        if (d.leagues.length > 0) {
+          text += `MINI-LEAGUE UPDATE\n`;
+          text += `-`.repeat(30) + `\n`;
+          for (const l of d.leagues.slice(0, 3)) {
+            text += `${l.name}: Rank ${l.rank}`;
+            text +=
+              l.rank_change !== 0
+                ? ` (${l.rank_change > 0 ? "↓" : "↑"}${Math.abs(l.rank_change)})`
+                : "";
+            text += ` | Gap: ${l.gap_to_top > 0 ? `-${l.gap_to_top}` : `+${Math.abs(l.gap_to_top)}`} pts\n`;
+          }
+          text += `\n`;
+        }
+      }
+      text += `Open FPL Insights: ${APP_URL}\n`;
       break;
     }
     default:

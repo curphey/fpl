@@ -45,6 +45,8 @@ const QUIET_HOURS_TYPES: NotificationType[] = [
   "price_change",
   "injury",
   "league_update",
+  "transfer_rec",
+  "weekly_summary",
 ];
 
 /**

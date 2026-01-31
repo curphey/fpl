@@ -46,7 +46,8 @@ export type NotificationType =
   | "price_change"
   | "injury"
   | "transfer_rec"
-  | "league_update";
+  | "league_update"
+  | "weekly_summary";
 
 export type NotificationChannel = "email" | "push";
 
@@ -123,4 +124,37 @@ export interface LeagueUpdateData {
   rank_change: number;
   points_scored: number;
   gap_to_leader: number;
+}
+
+export interface WeeklySummaryData {
+  manager_name: string;
+  gameweek: number;
+
+  // Gameweek recap
+  gw_points: number;
+  gw_rank: number;
+  overall_points: number;
+  overall_rank: number;
+  rank_change: number;
+  captain_name: string;
+  captain_points: number;
+
+  // AI-generated sections
+  ai_recap: string;
+  ai_transfer_suggestions: string;
+  ai_captain_picks: string;
+  ai_chip_advice: string;
+
+  // Price alerts
+  price_risers: Array<{ name: string; team: string; probability: number }>;
+  price_fallers: Array<{ name: string; team: string; probability: number }>;
+
+  // Mini-league summary
+  leagues: Array<{
+    name: string;
+    rank: number;
+    rank_change: number;
+    top_rival: string;
+    gap_to_top: number;
+  }>;
 }

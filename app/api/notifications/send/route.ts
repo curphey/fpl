@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import webpush from "web-push";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type {
   NotificationType,
   NotificationPreferences,
@@ -16,13 +15,16 @@ import {
   validationErrorResponse,
 } from "@/lib/api/validation";
 import { withRateLimit } from "@/lib/api/rate-limit";
+import {
+  getAllEnabledPushSubscriptions,
+  logNotification,
+  upsertPreference,
+} from "@/lib/db/notifications";
 
 // Lazy initialization for build time
 let vapidConfigured = false;
-let db: SupabaseClient | null = null;
 
-function initializeServices() {
-  // Initialize web-push with VAPID keys
+function initializeVapid() {
   const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
   const VAPID_SUBJECT =
@@ -33,27 +35,16 @@ function initializeServices() {
     vapidConfigured = true;
   }
 
-  // Initialize Supabase admin client
-  if (!db) {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (supabaseUrl && supabaseServiceKey) {
-      db = createClient(supabaseUrl, supabaseServiceKey);
-    }
-  }
-
-  return { vapidConfigured, db };
+  return vapidConfigured;
 }
 
 interface SendNotificationRequest {
-  user_id?: string;
+  session_id?: string;
   type: NotificationType;
   title: string;
   body: string;
   url?: string;
   data?: Record<string, unknown>;
-  // If no user_id, can specify criteria to select users
   criteria?: {
     push_enabled?: boolean;
     push_price_changes?: boolean;
@@ -76,33 +67,23 @@ interface SendResult {
  * Protected by API key for server-to-server calls.
  */
 export async function POST(request: NextRequest) {
-  // Check rate limit (20 requests per minute for notification endpoints)
+  // Check rate limit
   const rateLimitResponse = await withRateLimit(request, "notifications");
   if (rateLimitResponse) {
     return rateLimitResponse;
   }
 
-  // Validate API key using constant-time comparison to prevent timing attacks
+  // Validate API key
   const apiKey = request.headers.get("x-api-key");
   if (!timingSafeCompare(apiKey, process.env.NOTIFICATIONS_API_KEY)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Initialize services
-  const { vapidConfigured: isVapidConfigured, db: db } = initializeServices();
-
-  // Check VAPID configuration
+  // Initialize VAPID
+  const isVapidConfigured = initializeVapid();
   if (!isVapidConfigured) {
     return NextResponse.json(
       { error: "Push notifications not configured (missing VAPID keys)" },
-      { status: 503 },
-    );
-  }
-
-  // Check Supabase configuration
-  if (!db) {
-    return NextResponse.json(
-      { error: "Database not configured" },
       { status: 503 },
     );
   }
@@ -120,7 +101,7 @@ export async function POST(request: NextRequest) {
 
     const body = parseResult.data as SendNotificationRequest;
     const {
-      user_id,
+      session_id,
       type,
       title,
       body: notificationBody,
@@ -129,51 +110,46 @@ export async function POST(request: NextRequest) {
       criteria,
     } = body;
 
-    // Build query for notification preferences
-    // Include quiet hours fields for filtering
-    let query = db
-      .from("notification_preferences")
-      .select(
-        "user_id, push_subscription, quiet_hours_start, quiet_hours_end, timezone",
-      )
-      .eq("push_enabled", true)
-      .not("push_subscription", "is", null);
+    // Get all enabled push subscriptions from SQLite
+    let subscriptions = getAllEnabledPushSubscriptions();
 
-    // Filter by specific user if provided
-    if (user_id) {
-      query = query.eq("user_id", user_id);
+    // Filter by specific session if provided
+    if (session_id) {
+      subscriptions = subscriptions.filter((s) => s.session_id === session_id);
     }
 
     // Filter by notification type preference
     if (criteria) {
-      if (criteria.push_price_changes !== undefined) {
-        query = query.eq("push_price_changes", criteria.push_price_changes);
-      }
-      if (criteria.push_injury_news !== undefined) {
-        query = query.eq("push_injury_news", criteria.push_injury_news);
-      }
-      if (criteria.push_deadline_reminder !== undefined) {
-        query = query.eq(
-          "push_deadline_reminder",
-          criteria.push_deadline_reminder,
-        );
-      }
-      if (criteria.push_league_updates !== undefined) {
-        query = query.eq("push_league_updates", criteria.push_league_updates);
-      }
+      subscriptions = subscriptions.filter((sub) => {
+        if (
+          criteria.push_price_changes !== undefined &&
+          sub.push_price_changes !== criteria.push_price_changes
+        ) {
+          return false;
+        }
+        if (
+          criteria.push_injury_news !== undefined &&
+          sub.push_injury_news !== criteria.push_injury_news
+        ) {
+          return false;
+        }
+        if (
+          criteria.push_deadline_reminder !== undefined &&
+          sub.push_deadline_reminder !== criteria.push_deadline_reminder
+        ) {
+          return false;
+        }
+        if (
+          criteria.push_league_updates !== undefined &&
+          sub.push_league_updates !== criteria.push_league_updates
+        ) {
+          return false;
+        }
+        return true;
+      });
     }
 
-    const { data: subscriptions, error: fetchError } = await query;
-
-    if (fetchError) {
-      console.error("Error fetching subscriptions:", fetchError);
-      return NextResponse.json(
-        { error: "Failed to fetch subscriptions" },
-        { status: 500 },
-      );
-    }
-
-    if (!subscriptions || subscriptions.length === 0) {
+    if (subscriptions.length === 0) {
       return NextResponse.json({
         success: 0,
         failed: 0,
@@ -181,7 +157,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Filter out users in quiet hours (unless this notification type bypasses quiet hours)
+    // Filter out users in quiet hours
     const now = new Date();
     const filteredSubscriptions = shouldRespectQuietHours(type)
       ? subscriptions.filter((sub) => {
@@ -214,63 +190,58 @@ export async function POST(request: NextRequest) {
 
     // Send notifications in parallel
     const results: SendResult = { success: 0, failed: 0, errors: [] };
-    const historyRecords: Array<{
-      user_id: string;
-      notification_type: string;
-      channel: string;
-      title: string;
-      body: string;
-      data: Record<string, unknown> | null;
-    }> = [];
 
     await Promise.all(
-      filteredSubscriptions.map(
-        async ({ user_id: recipientId, push_subscription }) => {
-          const subscription = push_subscription as PushSubscriptionJSON;
+      filteredSubscriptions.map(async (sub) => {
+        const pushSubJson = sub.push_subscription
+          ? (JSON.parse(sub.push_subscription) as PushSubscriptionJSON)
+          : null;
 
-          try {
-            await webpush.sendNotification(
-              {
-                endpoint: subscription.endpoint,
-                keys: subscription.keys,
-              },
-              payload,
-            );
+        if (!pushSubJson) {
+          results.failed++;
+          results.errors.push(`Session ${sub.session_id}: No subscription`);
+          return;
+        }
 
-            results.success++;
-            historyRecords.push({
-              user_id: recipientId,
-              notification_type: type,
-              channel: "push",
-              title,
-              body: notificationBody,
-              data: data || null,
+        try {
+          await webpush.sendNotification(
+            {
+              endpoint: pushSubJson.endpoint,
+              keys: pushSubJson.keys,
+            },
+            payload,
+          );
+
+          results.success++;
+
+          // Log notification
+          logNotification(
+            sub.session_id,
+            type,
+            "push",
+            title,
+            notificationBody,
+            data,
+          );
+        } catch (error) {
+          results.failed++;
+          const errorMessage =
+            error instanceof Error ? error.message : "Unknown error";
+          results.errors.push(`Session ${sub.session_id}: ${errorMessage}`);
+
+          // If subscription is invalid/expired, disable it
+          if (
+            error instanceof webpush.WebPushError &&
+            (error.statusCode === 404 || error.statusCode === 410)
+          ) {
+            upsertPreference(sub.session_id, {
+              push_enabled: false,
+              push_subscription: null,
             });
-          } catch (error) {
-            results.failed++;
-            const errorMessage =
-              error instanceof Error ? error.message : "Unknown error";
-            results.errors.push(`User ${recipientId}: ${errorMessage}`);
-
-            // If subscription is invalid/expired, remove it
-            if (
-              error instanceof webpush.WebPushError &&
-              (error.statusCode === 404 || error.statusCode === 410)
-            ) {
-              await db
-                .from("notification_preferences")
-                .update({ push_enabled: false, push_subscription: null })
-                .eq("user_id", recipientId);
-            }
           }
-        },
-      ),
+        }
+      }),
     );
-
-    // Save notification history
-    if (historyRecords.length > 0) {
-      await db.from("notification_history").insert(historyRecords);
-    }
 
     return NextResponse.json(results);
   } catch (error) {

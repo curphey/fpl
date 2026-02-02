@@ -19,6 +19,7 @@ import {
   buildWildcardPrompt,
   buildSystemPrompt,
 } from "./prompts";
+import { getAnthropicApiKey } from "@/lib/db/settings";
 
 /**
  * Claude API configuration constants for optimization requests.
@@ -60,9 +61,11 @@ export async function runOptimization(
 ): Promise<OptimizeResponse> {
   const startTime = Date.now();
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = getAnthropicApiKey();
   if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY not configured");
+    throw new Error(
+      "Anthropic API key not configured. Please add your API key in Settings.",
+    );
   }
 
   const client = new Anthropic({ apiKey });

@@ -8,14 +8,14 @@ Fantasy Premier League analytics dashboard built with Next.js.
 - **Language:** TypeScript 5 (strict mode)
 - **Styling:** Tailwind CSS v4 (PostCSS plugin, `@theme inline` for custom tokens)
 - **React:** 19
-- **Auth:** Supabase Google OAuth (optional — pages remain public)
-- **Database:** Supabase PostgreSQL (`profiles` table for cross-device manager ID sync, `notification_preferences` and `notification_history` for notifications)
-- **Hosting:** Netlify (via `@netlify/plugin-nextjs`)
-- **CI/CD:** GitHub Actions (auto-deploy on push to `main`)
+- **Database:** SQLite (file-based, via better-sqlite3)
+- **Hosting:** Docker container (standalone Next.js build)
+- **CI/CD:** GitHub Actions (build & push to GHCR on push to `main`)
 - **Testing:** Vitest with 383+ tests
 - **AI:** Claude API (Sonnet for news search, extended thinking for optimization/simulation)
 - **PWA:** Service worker, offline support, push notifications
 - **Linting:** ESLint 9 + Prettier + lint-staged + Husky
+- **Scheduler:** node-cron for background tasks
 
 ## Commands
 
@@ -27,6 +27,9 @@ Fantasy Premier League analytics dashboard built with Next.js.
 - `npm run test:coverage` — run tests with coverage report
 - `npm start` — serve production build
 - `npm run mcp:start` — run MCP server for Claude Code FPL data access
+- `npm run docker:build` — build Docker image
+- `npm run docker:run` — run Docker container (mounts ./data for SQLite persistence)
+- `npm run docker:dev` — run development environment with Docker Compose
 
 ## Project Structure
 
@@ -49,8 +52,11 @@ app/                    # Next.js App Router pages and API routes
     news/               # Claude-powered FPL news search
       injuries/         # Injury updates endpoint
       team/[team]/      # Team news endpoint
-    notifications/send/ # Push notification sending endpoint
-  auth/callback/        # Supabase OAuth callback route
+    notifications/
+      send/             # Push notification sending endpoint
+      preferences/      # Notification preferences CRUD
+      history/          # Notification history
+    session/            # Session management API
   news/page.tsx         # News feed with search and filters
   offline/page.tsx      # Offline fallback page (PWA)
   globals.css           # Tailwind + CSS custom properties (dark theme)
@@ -70,7 +76,7 @@ app/                    # Next.js App Router pages and API routes
   notifications/page.tsx # Notification preferences and history
 components/
   ui/                   # Reusable primitives (Card, Badge, DataTable, StatCard, Skeleton variants, ErrorState)
-  layout/               # App shell, header, sidebar, mobile nav, nav-items, nav-icon, auth-button, manager-input
+  layout/               # App shell, header, sidebar, mobile nav, nav-items, nav-icon, manager-input
   dashboard/            # Dashboard sections (gameweek banner, stats, top players, fixtures, progress)
   fixtures/             # Fixture planner grid, best teams ranking, fixture swing alerts
   transfers/            # Transfer table, price changes table, price alerts, timing advice, injury returns
@@ -86,6 +92,12 @@ components/
   notifications/        # Notification preferences form, notification history list
   news/                 # News feed, injury tracker components
   pwa/                  # Service worker registration, pull-to-refresh
+lib/db/
+  client.ts             # SQLite connection and schema initialization
+  sessions.ts           # Session repository (browser session tracking with FPL manager ID)
+  notifications.ts      # Notification preferences and history repository
+  manager-cache.ts      # FPL API response cache
+  index.ts              # Barrel exports
 lib/fpl/
   types.ts              # TypeScript interfaces for FPL API (691 lines)
   client.ts             # Server-side FPL API client with caching
@@ -107,7 +119,7 @@ lib/fpl/
   rules-engine.ts       # FPL rules (squad composition, formations, chips)
   squad-value.ts        # Squad value calculation and tracking
   league-analyzer.ts    # Mini-league analyzer (rival picks, EO, differentials, chip tracking)
-  manager-context.tsx   # Manager ID context with Supabase sync
+  manager-context.tsx   # Manager ID context with SQLite session sync
   index.ts              # Barrel exports
 lib/claude/
   types.ts              # Optimization request/response types
@@ -124,15 +136,17 @@ lib/notifications/
   hooks.ts              # useNotificationPreferences, useNotificationHistory, usePushNotificationStatus, subscribeToPushNotifications
   email-client.ts       # Resend email service with HTML templates for all notification types
   quiet-hours.ts        # Quiet hours enforcement with timezone support
+lib/scheduler/
+  index.ts              # node-cron scheduler initialization
+  deadline-reminder.ts  # Hourly deadline check and reminders
+  weekly-summary.ts     # Tuesday 10am UTC weekly AI summary
+  league-updates.ts     # Every 6 hours post-gameweek league updates
 lib/utils/
   timing-safe.ts        # Constant-time string comparison for API key validation
-lib/supabase/
-  types.ts              # Profile interface matching the profiles table
-  client.ts             # Browser-side Supabase client
-  server.ts             # Server-side Supabase client (createServerClient with cookies)
-middleware.ts           # Refreshes Supabase auth session on every request
-supabase/
-  migrations/           # SQL migrations (profiles, notification_preferences, notification_history)
+instrumentation.ts      # Next.js instrumentation (starts scheduler on server boot)
+middleware.ts           # Simplified middleware (no auth)
+data/                   # SQLite database directory (gitignored)
+  .gitignore            # Ignores *.db, *.db-wal, *.db-shm
 public/
   manifest.json         # PWA manifest
   sw.js                 # Service worker (caching, push notifications)
@@ -140,18 +154,17 @@ public/
 scripts/
   generate-icons.mjs    # Generate PWA icons from SVG using Sharp
 .github/
-  workflows/deploy.yml  # GitHub Actions CI/CD pipeline (lint → test → build → deploy)
-netlify/
-  functions/            # Netlify scheduled functions
-    scheduled-deadline-reminder.ts  # Hourly check, sends 24h/1h deadline reminders
-    scheduled-weekly-summary.ts     # Tuesday 10am UTC, weekly transfer recommendations
-    scheduled-league-updates.ts     # Every 6 hours, post-gameweek league updates
+  workflows/ci.yml      # GitHub Actions CI/CD pipeline (lint → test → build Docker → push GHCR)
 mcp-server/
   index.ts              # MCP server for Claude Code FPL data access (8 tools, 3 resources)
   package.json          # MCP server package config
-netlify.toml            # Netlify build config, Next.js plugin, and functions directory
+Dockerfile              # Multi-stage production build
+Dockerfile.dev          # Development Dockerfile with hot reload
+docker-compose.yml      # Production Docker Compose
+docker-compose.dev.yml  # Development Docker Compose
+.dockerignore           # Docker build exclusions
 vitest.config.ts        # Vitest configuration
-next.config.ts          # Next.js config (image optimization, PWA headers)
+next.config.ts          # Next.js config (standalone output, image optimization, PWA headers)
 ```
 
 ## Conventions
@@ -162,13 +175,77 @@ next.config.ts          # Next.js config (image optimization, PWA headers)
 - **Theme:** Dark-only (no light/dark toggle); PL brand palette
 - **Data fetching:** Client-side hooks in `lib/fpl/hooks/`; API routes proxy to FPL API with caching
 - **No external UI libraries:** All components built from scratch with Tailwind
-- **Auth is optional:** All pages remain public. Signed-in users get cross-device manager ID persistence via Supabase.
-- **Supabase clients:** Use `@/lib/supabase/client` in client components, `@/lib/supabase/server` in server components/route handlers
-- **Environment variables:** Supabase vars use `NEXT_PUBLIC_` prefix (needed client-side). `ANTHROPIC_API_KEY` for Claude AI. `NOTIFICATIONS_API_KEY` for scheduled functions. `RESEND_API_KEY` for email notifications. `NEXT_PUBLIC_APP_URL` for email links. Never commit `.env*` files.
+- **Sessions:** Browser sessions tracked via localStorage + SQLite. Manager ID persists in session for cross-tab sync.
+- **Database:** SQLite file at `./data/fpl.db`. Schema auto-created on first run. Use Docker volume for persistence.
+- **Environment variables:** `ANTHROPIC_API_KEY` for Claude AI. `NOTIFICATIONS_API_KEY` for scheduled functions. `RESEND_API_KEY` for email. `DATABASE_PATH` for SQLite location. `NEXT_PUBLIC_APP_URL` for email links. Never commit `.env*` files.
 - **Testing:** Unit tests in `__tests__/` directories adjacent to source files. Use Vitest with mock factories.
 - **Pre-commit hooks:** lint-staged runs ESLint and Prettier on staged files, then runs tests.
 - **Null/undefined handling:** Use `null` for "no value" in API responses and data that explicitly has no value. Use `undefined` for optional parameters and omitted fields. This provides clearer semantics between "value is explicitly empty" vs "value was not provided."
 - **API validation:** All API routes use Zod schemas from `lib/api/validation.ts` for runtime input validation. Use `validationErrorResponse()` for consistent error formatting.
+
+## Docker Deployment
+
+### Build and Run
+
+```bash
+# Build the Docker image
+npm run docker:build
+
+# Run with SQLite persistence
+npm run docker:run
+
+# Or use Docker Compose
+docker compose up -d
+```
+
+### Environment Variables
+
+Create a `.env` file based on `.env.example`:
+
+```bash
+# Required for AI features
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Optional: Push notifications
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=mailto:admin@example.com
+
+# Optional: Scheduled notifications
+NOTIFICATIONS_API_KEY=
+
+# Optional: Email notifications
+RESEND_API_KEY=
+FROM_EMAIL=noreply@example.com
+
+# Database (defaults to ./data/fpl.db)
+DATABASE_PATH=/app/data/fpl.db
+
+# App URL for emails
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+### SQLite Persistence
+
+The SQLite database is stored in `./data/fpl.db`. When using Docker, mount this directory as a volume:
+
+```yaml
+volumes:
+  - ./data:/app/data
+```
+
+### Verify Installation
+
+```bash
+# Check database exists
+ls -la data/fpl.db
+
+# View tables
+sqlite3 data/fpl.db ".tables"
+
+# Check sessions
+sqlite3 data/fpl.db "SELECT * FROM sessions;"
+```
 
 ## API Reference
 
@@ -385,7 +462,54 @@ Get team-specific news.
 - **Parameters:** `team` - Team short name (e.g., "ARS", "MCI")
 - **Response:** `NewsItem[]`
 
+### Session Endpoints
+
+#### GET /api/session
+
+Get session by ID.
+
+- **Query params:** `id` - Session UUID
+- **Response:** `Session`
+
+#### POST /api/session
+
+Create a new session.
+
+- **Response:** `Session`
+
+#### PATCH /api/session
+
+Update session (e.g., set FPL manager ID).
+
+- **Request body:** `{ id: string, fpl_manager_id?: number, display_name?: string }`
+
 ### Notification Endpoints
+
+#### GET /api/notifications/preferences
+
+Get notification preferences for a session.
+
+- **Query params:** `sessionId` - Session UUID
+- **Response:** `NotificationPreferences`
+
+#### POST /api/notifications/preferences
+
+Update notification preferences.
+
+- **Request body:** `{ sessionId: string, ...preferences }`
+
+#### GET /api/notifications/history
+
+Get notification history for a session.
+
+- **Query params:** `sessionId`, `limit` (default 50)
+- **Response:** `NotificationHistory[]`
+
+#### PATCH /api/notifications/history
+
+Mark notification as read.
+
+- **Request body:** `{ sessionId: string, notificationId: string }`
 
 #### POST /api/notifications/send
 
@@ -398,14 +522,14 @@ Send push notifications (server-to-server only).
 {
   type: "deadline" | "price_change" | "injury" | "league_update" | "transfer_rec" | "weekly_summary",
   criteria?: {
-    managerIds?: number[],    // Specific managers to notify
-    all?: boolean             // Notify all subscribed users
+    push_deadline_reminder?: boolean,
+    push_price_changes?: boolean,
+    push_injury_news?: boolean,
+    push_league_updates?: boolean
   },
-  data: {
-    title: string,
-    body: string,
-    url?: string,
-    // Type-specific fields...
-  }
+  title: string,
+  body: string,
+  url?: string,
+  data?: Record<string, unknown>
 }
 ```

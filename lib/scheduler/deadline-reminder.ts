@@ -1,6 +1,4 @@
-import type { Config } from "@netlify/functions";
-
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://fplinsights.com";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 const NOTIFICATIONS_API_KEY = process.env.NOTIFICATIONS_API_KEY;
 const FPL_API_BASE = "https://fantasy.premierleague.com/api";
 
@@ -17,15 +15,15 @@ interface BootstrapStatic {
 }
 
 /**
- * Scheduled function to check for upcoming deadlines and send reminders.
- * Runs every hour.
+ * Check for upcoming deadlines and send reminders.
+ * Called hourly by the scheduler.
  */
-export default async function handler() {
+export async function checkDeadlineReminders(): Promise<void> {
   console.log("Deadline reminder check started");
 
   if (!NOTIFICATIONS_API_KEY) {
     console.error("NOTIFICATIONS_API_KEY not configured");
-    return new Response("Configuration error", { status: 503 });
+    return;
   }
 
   try {
@@ -51,7 +49,7 @@ export default async function handler() {
 
     if (!nextGameweek) {
       console.log("No upcoming deadline found");
-      return new Response("No upcoming deadline", { status: 200 });
+      return;
     }
 
     const deadline = new Date(nextGameweek.deadline_time);
@@ -109,8 +107,8 @@ export default async function handler() {
                 gameweek: nextGameweek.id,
                 deadline: deadline.toISOString(),
                 hoursRemaining: hours,
-                transfers_made: 0, // Would need user-specific data
-                captain: "Not set", // Would need user-specific data
+                transfers_made: 0,
+                captain: "Not set",
               },
             }),
           },
@@ -121,32 +119,11 @@ export default async function handler() {
       }
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        gameweek: nextGameweek.id,
-        hoursUntilDeadline,
-      }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
+    console.log("Deadline reminder check completed", {
+      gameweek: nextGameweek.id,
+      hoursUntilDeadline,
+    });
   } catch (error) {
     console.error("Error in deadline reminder:", error);
-    return new Response(
-      JSON.stringify({
-        error: error instanceof Error ? error.message : "Unknown error",
-      }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
   }
 }
-
-// Schedule: Run every hour
-export const config: Config = {
-  schedule: "0 * * * *",
-};

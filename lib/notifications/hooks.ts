@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useState, useEffect, useCallback } from "react";
+import { useManagerContext } from "@/lib/fpl/manager-context";
 import type {
   NotificationPreferences,
   NotificationPreferencesUpdate,
@@ -17,20 +17,19 @@ interface UseNotificationPreferencesResult {
 }
 
 export function useNotificationPreferences(): UseNotificationPreferencesResult {
+  const { sessionId } = useManagerContext();
   const [preferences, setPreferences] =
     useState<NotificationPreferences | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [fetchKey, setFetchKey] = useState(0);
 
-  const supabase = useMemo(() => createClient(), []);
-
   const refetch = useCallback(() => {
     setFetchKey((k) => k + 1);
   }, []);
 
   useEffect(() => {
-    if (!supabase) {
+    if (!sessionId) {
       setIsLoading(false);
       return;
     }
@@ -42,25 +41,20 @@ export function useNotificationPreferences(): UseNotificationPreferencesResult {
       setError(null);
 
       try {
-        const {
-          data: { user },
-        } = await supabase!.auth.getUser();
-        if (!user) {
-          setPreferences(null);
-          setIsLoading(false);
-          return;
+        const res = await fetch(
+          `/api/notifications/preferences?sessionId=${encodeURIComponent(sessionId!)}`,
+        );
+
+        if (!res.ok) {
+          if (res.status === 404) {
+            // No preferences yet, that's okay
+            setPreferences(null);
+            return;
+          }
+          throw new Error("Failed to fetch preferences");
         }
 
-        const { data, error: fetchError } = await supabase!
-          .from("notification_preferences")
-          .select("*")
-          .eq("user_id", user.id)
-          .single();
-
-        if (fetchError && fetchError.code !== "PGRST116") {
-          throw fetchError;
-        }
-
+        const data = await res.json();
         if (!cancelled) {
           setPreferences(data);
         }
@@ -84,36 +78,26 @@ export function useNotificationPreferences(): UseNotificationPreferencesResult {
     return () => {
       cancelled = true;
     };
-  }, [supabase, fetchKey]);
+  }, [sessionId, fetchKey]);
 
   const updatePreferences = useCallback(
     async (updates: NotificationPreferencesUpdate) => {
-      if (!supabase) throw new Error("Supabase not configured");
+      if (!sessionId) throw new Error("No session");
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      const res = await fetch("/api/notifications/preferences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, ...updates }),
+      });
 
-      const { error: updateError } = await supabase
-        .from("notification_preferences")
-        .upsert(
-          {
-            user_id: user.id,
-            ...updates,
-            updated_at: new Date().toISOString(),
-          },
-          {
-            onConflict: "user_id",
-          },
-        );
-
-      if (updateError) throw updateError;
+      if (!res.ok) {
+        throw new Error("Failed to update preferences");
+      }
 
       // Refetch to get updated data
       refetch();
     },
-    [supabase, refetch],
+    [sessionId, refetch],
   );
 
   return { preferences, isLoading, error, updatePreferences, refetch };
@@ -130,19 +114,18 @@ interface UseNotificationHistoryResult {
 export function useNotificationHistory(
   limit: number = 50,
 ): UseNotificationHistoryResult {
+  const { sessionId } = useManagerContext();
   const [history, setHistory] = useState<NotificationHistory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [fetchKey, setFetchKey] = useState(0);
-
-  const supabase = useMemo(() => createClient(), []);
 
   const refetch = useCallback(() => {
     setFetchKey((k) => k + 1);
   }, []);
 
   useEffect(() => {
-    if (!supabase) {
+    if (!sessionId) {
       setIsLoading(false);
       return;
     }
@@ -154,26 +137,17 @@ export function useNotificationHistory(
       setError(null);
 
       try {
-        const {
-          data: { user },
-        } = await supabase!.auth.getUser();
-        if (!user) {
-          setHistory([]);
-          setIsLoading(false);
-          return;
+        const res = await fetch(
+          `/api/notifications/history?sessionId=${encodeURIComponent(sessionId!)}&limit=${limit}`,
+        );
+
+        if (!res.ok) {
+          throw new Error("Failed to fetch history");
         }
 
-        const { data, error: fetchError } = await supabase!
-          .from("notification_history")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("sent_at", { ascending: false })
-          .limit(limit);
-
-        if (fetchError) throw fetchError;
-
+        const data = await res.json();
         if (!cancelled) {
-          setHistory(data ?? []);
+          setHistory(data);
         }
       } catch (err) {
         if (!cancelled) {
@@ -193,18 +167,21 @@ export function useNotificationHistory(
     return () => {
       cancelled = true;
     };
-  }, [supabase, limit, fetchKey]);
+  }, [sessionId, limit, fetchKey]);
 
   const markAsRead = useCallback(
     async (notificationId: string) => {
-      if (!supabase) throw new Error("Supabase not configured");
+      if (!sessionId) throw new Error("No session");
 
-      const { error: updateError } = await supabase
-        .from("notification_history")
-        .update({ read_at: new Date().toISOString() })
-        .eq("id", notificationId);
+      const res = await fetch("/api/notifications/history", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, notificationId }),
+      });
 
-      if (updateError) throw updateError;
+      if (!res.ok) {
+        throw new Error("Failed to mark as read");
+      }
 
       // Update local state
       setHistory((prev) =>
@@ -215,7 +192,7 @@ export function useNotificationHistory(
         ),
       );
     },
-    [supabase],
+    [sessionId],
   );
 
   return { history, isLoading, error, markAsRead, refetch };
@@ -340,3 +317,4 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 
 // Re-export PushSubscriptionJSON type for external use
 import type { PushSubscriptionJSON } from "./types";
+export type { PushSubscriptionJSON };

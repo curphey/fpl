@@ -12,6 +12,7 @@ import type {
   InjuryUpdate,
   TeamNewsUpdate,
 } from "./news-types";
+import { getAnthropicApiKey } from "@/lib/db/settings";
 
 const MODEL = "claude-sonnet-4-20250514";
 const MAX_TOKENS = 8000;
@@ -177,9 +178,11 @@ export async function searchFPLNews(
     return { ...cached, cached: true };
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = getAnthropicApiKey();
   if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY not configured");
+    throw new Error(
+      "Anthropic API key not configured. Please add your API key in Settings.",
+    );
   }
 
   const client = new Anthropic({ apiKey });
@@ -226,9 +229,11 @@ export async function searchFPLNews(
 export async function getInjuryUpdates(
   players?: string[],
 ): Promise<InjuryUpdate[]> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = getAnthropicApiKey();
   if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY not configured");
+    throw new Error(
+      "Anthropic API key not configured. Please add your API key in Settings.",
+    );
   }
 
   const client = new Anthropic({ apiKey });
@@ -287,9 +292,11 @@ export async function getTeamNews(
   team: string,
   gameweek: number,
 ): Promise<TeamNewsUpdate | null> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = getAnthropicApiKey();
   if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY not configured");
+    throw new Error(
+      "Anthropic API key not configured. Please add your API key in Settings.",
+    );
   }
 
   const client = new Anthropic({ apiKey });

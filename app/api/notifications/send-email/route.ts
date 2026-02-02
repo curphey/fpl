@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { sendBatchEmails } from "@/lib/notifications/email-client";
 import type {
   NotificationType,
@@ -11,26 +10,16 @@ import {
 } from "@/lib/notifications/quiet-hours";
 import { timingSafeCompare } from "@/lib/utils/timing-safe";
 import { withRateLimit } from "@/lib/api/rate-limit";
-
-let db: SupabaseClient | null = null;
-
-function getDb(): SupabaseClient | null {
-  if (!db) {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (supabaseUrl && supabaseServiceKey) {
-      db = createClient(supabaseUrl, supabaseServiceKey);
-    }
-  }
-  return db;
-}
+import {
+  getAllEnabledEmailSubscriptions,
+  logNotification,
+} from "@/lib/db/notifications";
 
 interface SendEmailRequest {
-  user_id?: string;
+  session_id?: string;
   type: NotificationType;
   title: string;
   data?: Record<string, unknown>;
-  // If no user_id, can specify criteria to select users
   criteria?: {
     email_enabled?: boolean;
     email_deadline_reminder?: boolean;
@@ -46,13 +35,13 @@ interface SendEmailRequest {
  * Protected by API key for server-to-server calls.
  */
 export async function POST(request: NextRequest) {
-  // Check rate limit (20 requests per minute for notification endpoints)
+  // Check rate limit
   const rateLimitResponse = await withRateLimit(request, "notifications");
   if (rateLimitResponse) {
     return rateLimitResponse;
   }
 
-  // Validate API key using constant-time comparison to prevent timing attacks
+  // Validate API key
   const apiKey = request.headers.get("x-api-key");
   if (!timingSafeCompare(apiKey, process.env.NOTIFICATIONS_API_KEY)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -66,17 +55,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const database = getDb();
-  if (!database) {
-    return NextResponse.json(
-      { error: "Database not configured" },
-      { status: 503 },
-    );
-  }
-
   try {
     const body: SendEmailRequest = await request.json();
-    const { user_id, type, title, data, criteria } = body;
+    const { session_id, type, title, data, criteria } = body;
 
     // Validate required fields
     if (!type || !title) {
@@ -86,51 +67,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Build query for notification preferences
-    // Include quiet hours fields for filtering
-    let query = database
-      .from("notification_preferences")
-      .select(
-        "user_id, email_address, quiet_hours_start, quiet_hours_end, timezone",
-      )
-      .eq("email_enabled", true)
-      .not("email_address", "is", null);
+    // Get all enabled email subscriptions from SQLite
+    let recipients = getAllEnabledEmailSubscriptions();
 
-    // Filter by specific user if provided
-    if (user_id) {
-      query = query.eq("user_id", user_id);
+    // Filter by specific session if provided
+    if (session_id) {
+      recipients = recipients.filter((r) => r.session_id === session_id);
     }
 
     // Filter by notification type preference
     if (criteria) {
-      if (criteria.email_deadline_reminder !== undefined) {
-        query = query.eq(
-          "email_deadline_reminder",
-          criteria.email_deadline_reminder,
-        );
-      }
-      if (criteria.email_weekly_summary !== undefined) {
-        query = query.eq("email_weekly_summary", criteria.email_weekly_summary);
-      }
-      if (criteria.email_transfer_recommendations !== undefined) {
-        query = query.eq(
-          "email_transfer_recommendations",
-          criteria.email_transfer_recommendations,
-        );
-      }
+      recipients = recipients.filter((r) => {
+        if (
+          criteria.email_deadline_reminder !== undefined &&
+          r.email_deadline_reminder !== criteria.email_deadline_reminder
+        ) {
+          return false;
+        }
+        if (
+          criteria.email_weekly_summary !== undefined &&
+          r.email_weekly_summary !== criteria.email_weekly_summary
+        ) {
+          return false;
+        }
+        if (
+          criteria.email_transfer_recommendations !== undefined &&
+          r.email_transfer_recommendations !==
+            criteria.email_transfer_recommendations
+        ) {
+          return false;
+        }
+        return true;
+      });
     }
 
-    const { data: recipients, error: fetchError } = await query;
-
-    if (fetchError) {
-      console.error("Error fetching recipients:", fetchError);
-      return NextResponse.json(
-        { error: "Failed to fetch recipients" },
-        { status: 500 },
-      );
-    }
-
-    if (!recipients || recipients.length === 0) {
+    if (recipients.length === 0) {
       return NextResponse.json({
         success: 0,
         failed: 0,
@@ -138,7 +109,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Filter out users in quiet hours (unless this notification type bypasses quiet hours)
+    // Filter out users in quiet hours
     const now = new Date();
     const filteredRecipients = shouldRespectQuietHours(type)
       ? recipients.filter((r) => {
@@ -171,17 +142,8 @@ export async function POST(request: NextRequest) {
     const results = await sendBatchEmails(payloads);
 
     // Log to notification history
-    const historyRecords = filteredRecipients.map((r) => ({
-      user_id: r.user_id,
-      notification_type: type,
-      channel: "email" as const,
-      title,
-      body: title, // For emails, body is same as title in history
-      data: data || null,
-    }));
-
-    if (historyRecords.length > 0) {
-      await database.from("notification_history").insert(historyRecords);
+    for (const r of filteredRecipients) {
+      logNotification(r.session_id, type, "email", title, title, data);
     }
 
     return NextResponse.json(results);

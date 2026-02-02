@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import Anthropic from "@anthropic-ai/sdk";
 import { sendEmail } from "@/lib/notifications/email-client";
 import type { WeeklySummaryData } from "@/lib/notifications/types";
@@ -9,21 +8,15 @@ import {
 } from "@/lib/notifications/quiet-hours";
 import { timingSafeCompare } from "@/lib/utils/timing-safe";
 import { withRateLimit } from "@/lib/api/rate-limit";
+import {
+  getAllEnabledEmailSubscriptions,
+  logNotification,
+  type NotificationPreference,
+} from "@/lib/db/notifications";
+import { getSession } from "@/lib/db/sessions";
+import { getAnthropicApiKey } from "@/lib/db/settings";
 
 const FPL_API_BASE = "https://fantasy.premierleague.com/api";
-
-let db: SupabaseClient | null = null;
-
-function getDb(): SupabaseClient | null {
-  if (!db) {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (supabaseUrl && supabaseServiceKey) {
-      db = createClient(supabaseUrl, supabaseServiceKey);
-    }
-  }
-  return db;
-}
 
 interface FPLManager {
   id: number;
@@ -123,7 +116,6 @@ function predictPriceChanges(elements: FPLBootstrap["elements"]): {
     const netTransfers = el.transfers_in_event - el.transfers_out_event;
     const ownership = parseFloat(el.selected_by_percent);
 
-    // Simplified price change prediction
     if (netTransfers > 100000 && ownership < 30) {
       risers.push({
         name: el.web_name,
@@ -163,7 +155,7 @@ async function generateAIInsights(
   captain: string;
   chips: string;
 }> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = getAnthropicApiKey();
   if (!apiKey) {
     return {
       recap: `You scored ${gwPoints} points this gameweek. Your overall rank is now ${overallRank.toLocaleString()}.`,
@@ -257,7 +249,7 @@ Return as JSON:
  * Protected by API key for server-to-server calls.
  */
 export async function POST(request: NextRequest) {
-  // Check rate limit (20 requests per minute for notification endpoints)
+  // Check rate limit
   const rateLimitResponse = await withRateLimit(request, "notifications");
   if (rateLimitResponse) {
     return rateLimitResponse;
@@ -272,14 +264,6 @@ export async function POST(request: NextRequest) {
   if (!process.env.RESEND_API_KEY) {
     return NextResponse.json(
       { error: "Email service not configured" },
-      { status: 503 },
-    );
-  }
-
-  const database = getDb();
-  if (!database) {
-    return NextResponse.json(
-      { error: "Database not configured" },
       { status: 503 },
     );
   }
@@ -305,28 +289,15 @@ export async function POST(request: NextRequest) {
     const teamMap = new Map(bootstrap.teams.map((t) => [t.id, t.short_name]));
     const playerMap = new Map(bootstrap.elements.map((e) => [e.id, e]));
 
-    // Get users who opted in for weekly summary
-    const { data: recipients, error: fetchError } = await database
-      .from("notification_preferences")
-      .select(
-        "user_id, email_address, quiet_hours_start, quiet_hours_end, timezone",
-      )
-      .eq("email_enabled", true)
-      .eq("email_weekly_summary", true)
-      .not("email_address", "is", null);
-
-    if (fetchError || !recipients) {
-      console.error("Error fetching recipients:", fetchError);
-      return NextResponse.json(
-        { error: "Failed to fetch recipients" },
-        { status: 500 },
-      );
-    }
+    // Get users who opted in for weekly summary from SQLite
+    const allRecipients = getAllEnabledEmailSubscriptions().filter(
+      (r) => r.email_weekly_summary,
+    );
 
     // Filter out users in quiet hours
     const now = new Date();
     const filteredRecipients = shouldRespectQuietHours("weekly_summary")
-      ? recipients.filter((r) => {
+      ? allRecipients.filter((r) => {
           const prefs = {
             quiet_hours_start: r.quiet_hours_start,
             quiet_hours_end: r.quiet_hours_end,
@@ -337,7 +308,7 @@ export async function POST(request: NextRequest) {
             now,
           );
         })
-      : recipients;
+      : allRecipients;
 
     if (filteredRecipients.length === 0) {
       return NextResponse.json({
@@ -347,19 +318,30 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Get FPL manager IDs from profiles
-    const userIds = filteredRecipients.map((r) => r.user_id);
-    const { data: profiles } = await database
-      .from("profiles")
-      .select("id, fpl_manager_id, display_name")
-      .in("id", userIds)
-      .not("fpl_manager_id", "is", null);
+    // Get sessions with FPL manager IDs
+    const recipientsWithManagerId: Array<
+      NotificationPreference & {
+        fpl_manager_id: number;
+        display_name: string | null;
+      }
+    > = [];
 
-    if (!profiles || profiles.length === 0) {
+    for (const r of filteredRecipients) {
+      const session = getSession(r.session_id);
+      if (session?.fpl_manager_id) {
+        recipientsWithManagerId.push({
+          ...r,
+          fpl_manager_id: session.fpl_manager_id,
+          display_name: session.display_name,
+        });
+      }
+    }
+
+    if (recipientsWithManagerId.length === 0) {
       return NextResponse.json({
         success: 0,
         failed: 0,
-        message: "No profiles with FPL manager IDs found",
+        message: "No sessions with FPL manager IDs found",
       });
     }
 
@@ -374,16 +356,11 @@ export async function POST(request: NextRequest) {
     const results = { success: 0, failed: 0, errors: [] as string[] };
 
     // Process each user
-    for (const profile of profiles) {
-      const recipient = filteredRecipients.find(
-        (r) => r.user_id === profile.id,
-      );
-      if (!recipient) continue;
-
+    for (const recipient of recipientsWithManagerId) {
       try {
         // Fetch manager data
         const manager = await fetchFPL<FPLManager>(
-          `/entry/${profile.fpl_manager_id}/`,
+          `/entry/${recipient.fpl_manager_id}/`,
         );
         if (!manager) {
           results.failed++;
@@ -395,12 +372,12 @@ export async function POST(request: NextRequest) {
 
         // Fetch picks for current GW
         const picks = await fetchFPL<FPLPicks>(
-          `/entry/${profile.fpl_manager_id}/event/${currentGw.id}/picks/`,
+          `/entry/${recipient.fpl_manager_id}/event/${currentGw.id}/picks/`,
         );
 
         // Fetch history for rank change
         const history = await fetchFPL<FPLHistory>(
-          `/entry/${profile.fpl_manager_id}/history/`,
+          `/entry/${recipient.fpl_manager_id}/history/`,
         );
 
         // Calculate rank change
@@ -419,8 +396,10 @@ export async function POST(request: NextRequest) {
         const captainPoints = captainPlayer ? captainPlayer.total_points : 0;
 
         // Generate AI insights
+        const managerDisplayName =
+          recipient.display_name || manager.player_first_name;
         const aiInsights = await generateAIInsights(
-          profile.display_name || manager.player_first_name,
+          managerDisplayName,
           manager.summary_event_points,
           manager.summary_overall_rank,
           rankChange,
@@ -444,7 +423,7 @@ export async function POST(request: NextRequest) {
 
         // Build email data
         const summaryData: WeeklySummaryData = {
-          manager_name: profile.display_name || manager.player_first_name,
+          manager_name: managerDisplayName,
           gameweek: currentGw.id,
           gw_points: manager.summary_event_points,
           gw_rank: manager.summary_event_rank,
@@ -474,14 +453,14 @@ export async function POST(request: NextRequest) {
           results.success++;
 
           // Log to notification history
-          await database.from("notification_history").insert({
-            user_id: profile.id,
-            notification_type: "weekly_summary",
-            channel: "email",
-            title: `Your GW${currentGw.id} Summary`,
-            body: `Weekly FPL summary for ${profile.display_name || manager.player_first_name}`,
-            data: { gameweek: currentGw.id },
-          });
+          logNotification(
+            recipient.session_id,
+            "weekly_summary",
+            "email",
+            `Your GW${currentGw.id} Summary`,
+            `Weekly FPL summary for ${managerDisplayName}`,
+            { gameweek: currentGw.id },
+          );
         } else {
           results.failed++;
           results.errors.push(

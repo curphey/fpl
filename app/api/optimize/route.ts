@@ -9,6 +9,7 @@ import {
   createErrorResponse,
   createErrorFromUnknown,
 } from "@/lib/api/errors";
+import { hasAnthropicApiKey } from "@/lib/db/settings";
 
 export const runtime = "nodejs";
 export const maxDuration = 60; // Allow up to 60 seconds for extended thinking
@@ -31,9 +32,9 @@ export async function POST(request: NextRequest) {
     const body = parseResult.data as OptimizeRequest;
 
     // Check for API key
-    if (!process.env.ANTHROPIC_API_KEY) {
+    if (!hasAnthropicApiKey()) {
       return createErrorResponse(
-        "Claude API not configured",
+        "Anthropic API key not configured. Please add your API key in Settings.",
         "SERVICE_UNAVAILABLE",
       );
     }

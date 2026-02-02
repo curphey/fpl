@@ -15,6 +15,7 @@ import type {
   InjuryPredictionResponse,
   InjuryPrediction,
 } from "./simulator-types";
+import { getAnthropicApiKey } from "@/lib/db/settings";
 
 // =============================================================================
 // GW Decision Simulator
@@ -94,9 +95,11 @@ export async function simulateDecision(
 ): Promise<SimulationResponse> {
   const startTime = Date.now();
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = getAnthropicApiKey();
   if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY not configured");
+    throw new Error(
+      "Anthropic API key not configured. Please add your API key in Settings.",
+    );
   }
 
   const client = new Anthropic({ apiKey });
@@ -268,9 +271,11 @@ export async function analyzeRival(
 ): Promise<RivalAnalysisResponse> {
   const startTime = Date.now();
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = getAnthropicApiKey();
   if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY not configured");
+    throw new Error(
+      "Anthropic API key not configured. Please add your API key in Settings.",
+    );
   }
 
   const client = new Anthropic({ apiKey });
@@ -410,9 +415,11 @@ export async function predictInjuryReturn(
 ): Promise<InjuryPredictionResponse> {
   const startTime = Date.now();
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = getAnthropicApiKey();
   if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY not configured");
+    throw new Error(
+      "Anthropic API key not configured. Please add your API key in Settings.",
+    );
   }
 
   const client = new Anthropic({ apiKey });

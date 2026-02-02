@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { analyzeRival } from "@/lib/claude/simulator-client";
 import { z } from "zod";
 import { withRateLimit } from "@/lib/api/rate-limit";
+import { hasAnthropicApiKey } from "@/lib/db/settings";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -76,9 +77,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!process.env.ANTHROPIC_API_KEY) {
+    if (!hasAnthropicApiKey()) {
       return NextResponse.json(
-        { error: "Claude API not configured", code: "API_ERROR" },
+        {
+          error:
+            "Anthropic API key not configured. Please add your API key in Settings.",
+          code: "API_ERROR",
+        },
         { status: 503 },
       );
     }

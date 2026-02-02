@@ -1,6 +1,6 @@
 export interface NotificationPreferences {
   id: string;
-  user_id: string;
+  session_id: string;
 
   // Email preferences
   email_enabled: boolean;
@@ -30,7 +30,7 @@ export interface NotificationPreferences {
 
 export interface NotificationHistory {
   id: string;
-  user_id: string;
+  session_id: string;
   notification_type: NotificationType;
   channel: NotificationChannel;
   title: string;
@@ -38,7 +38,6 @@ export interface NotificationHistory {
   data: Record<string, unknown> | null;
   sent_at: string;
   read_at: string | null;
-  clicked_at: string | null;
 }
 
 export type NotificationType =

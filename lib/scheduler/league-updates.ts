@@ -1,6 +1,4 @@
-import type { Config } from "@netlify/functions";
-
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://fplinsights.com";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 const NOTIFICATIONS_API_KEY = process.env.NOTIFICATIONS_API_KEY;
 const FPL_API_BASE = "https://fantasy.premierleague.com/api";
 
@@ -18,15 +16,15 @@ interface BootstrapStatic {
 }
 
 /**
- * Scheduled function to send league update notifications after gameweeks finish.
- * Runs every 6 hours to check for newly finished gameweeks.
+ * Send league update notifications after gameweeks finish.
+ * Called every 6 hours by the scheduler.
  */
-export default async function handler() {
+export async function checkLeagueUpdates(): Promise<void> {
   console.log("League updates check started");
 
   if (!NOTIFICATIONS_API_KEY) {
     console.error("NOTIFICATIONS_API_KEY not configured");
-    return new Response("Configuration error", { status: 503 });
+    return;
   }
 
   try {
@@ -53,7 +51,7 @@ export default async function handler() {
 
     if (!lastFinishedGW) {
       console.log("No finished gameweeks found");
-      return new Response("No finished gameweeks", { status: 200 });
+      return;
     }
 
     // Check if this GW just finished (within last 6 hours)
@@ -66,7 +64,7 @@ export default async function handler() {
 
     if (!justFinished) {
       console.log(`GW${lastFinishedGW.id} finished but not recently`);
-      return new Response("No recent GW finish", { status: 200 });
+      return;
     }
 
     console.log(`GW${lastFinishedGW.id} recently finished, sending updates`);
@@ -92,32 +90,11 @@ export default async function handler() {
     const pushResult = await pushResponse.json();
     console.log("Push notification result:", pushResult);
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        gameweek: lastFinishedGW.id,
-        result: pushResult,
-      }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
+    console.log("League updates check completed", {
+      gameweek: lastFinishedGW.id,
+      result: pushResult,
+    });
   } catch (error) {
     console.error("Error checking league updates:", error);
-    return new Response(
-      JSON.stringify({
-        error: error instanceof Error ? error.message : "Unknown error",
-      }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
   }
 }
-
-// Schedule: Run every 6 hours
-export const config: Config = {
-  schedule: "0 */6 * * *",
-};

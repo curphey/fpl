@@ -6,6 +6,7 @@ import { executeTool, createToolContext } from "@/lib/chat/tool-executor";
 import { buildChatSystemPrompt } from "@/lib/chat/prompts";
 import type { ChatToolName, StreamEvent } from "@/lib/chat/types";
 import { withRateLimit } from "@/lib/api/rate-limit";
+import { getAnthropicApiKey } from "@/lib/db/settings";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -57,13 +58,13 @@ export async function POST(request: NextRequest) {
 
   const { messages, managerId, showThinking, apiKey: userApiKey } = body;
 
-  // Use user-provided key or fall back to environment variable
-  const apiKey = userApiKey || process.env.ANTHROPIC_API_KEY;
+  // Use user-provided key or fall back to stored setting
+  const apiKey = userApiKey || getAnthropicApiKey();
   if (!apiKey) {
     return new Response(
       JSON.stringify({
         error:
-          "No API key configured. Please add your Anthropic API key using the 'API Key' button.",
+          "No API key configured. Please add your Anthropic API key in Settings.",
         code: "API_KEY_MISSING",
       }),
       { status: 401, headers: { "Content-Type": "application/json" } },

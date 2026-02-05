@@ -41,11 +41,12 @@ Thank you for your interest in contributing to FPL Insights! This document provi
 
 ### Environment Variables
 
-For local development, you'll need:
+For local development, you may need:
 
-- `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anonymous key
 - `ANTHROPIC_API_KEY` - (Optional) For AI features
+- `DATABASE_PATH` - (Optional) SQLite database path, defaults to `./data/fpl.db`
+
+The app works without any environment variables for basic functionality. AI features require an Anthropic API key.
 
 ## Code Style
 

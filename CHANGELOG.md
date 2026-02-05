@@ -49,10 +49,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 #### Infrastructure
 
-- Supabase PostgreSQL for user profiles and notification preferences
-- Google OAuth authentication (optional)
-- Netlify hosting with `@netlify/plugin-nextjs`
-- GitHub Actions CI/CD pipeline
+- SQLite file-based database for sessions and preferences
+- Docker-first deployment architecture
+- GitHub Actions CI/CD pipeline (build & push to GHCR)
 - MCP server for Claude Code FPL data access
 
 #### Developer Experience

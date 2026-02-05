@@ -231,7 +231,7 @@ Table row components are recreated on every render.
 
 **Implementation:**
 
-- Store FPL seasons 2016-2024 in Supabase
+- Store FPL seasons 2016-2024 in SQLite database
 - Compare player trajectories across seasons
 - Identify seasonal patterns (e.g., "defenders peak in Feb-Mar")
 
@@ -491,7 +491,7 @@ describe("CaptainCard", () => {
 ### Priority 3: Integration Tests
 
 - Test data flow from hooks to components
-- Test manager context provider with Supabase mock
+- Test manager context provider with SQLite mock
 - Test notification subscription flow
 
 ### Priority 4: E2E Tests

@@ -120,19 +120,35 @@ Full draft support with:
 ### Privacy
 
 - **No FPL credentials needed** - We only use your public Manager ID
-- **Optional sign-in** - Google auth is only for cross-device sync
-- **Your data stays yours** - We don't store your team data server-side
+- **Local data storage** - All data stored locally in SQLite
+- **Your data stays yours** - No server-side data collection
 
 ---
 
 ## Quick Start
+
+### Using Docker (Recommended)
 
 ```bash
 # Clone the repository
 git clone https://github.com/yourusername/fpl.git
 cd fpl
 
-# Install dependencies
+# Start with Docker Compose
+docker compose up -d
+
+# Open the app
+open http://localhost:3000
+```
+
+Your data is stored in `./data/fpl.db` and persists between restarts.
+
+### Local Development
+
+```bash
+# Clone and install
+git clone https://github.com/yourusername/fpl.git
+cd fpl
 npm install
 
 # Copy environment template
@@ -144,7 +160,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000)
 
-**For production deployment, see the [Deployment Guide](./docs/DEPLOYMENT.md).**
+**For detailed installation instructions, see the [Installation Guide](./INSTALL.md).**
 
 ---
 
@@ -176,25 +192,26 @@ Open [http://localhost:3000](http://localhost:3000)
 | **Language**  | TypeScript 5 (strict mode)              |
 | **Styling**   | Tailwind CSS v4                         |
 | **UI**        | React 19, custom components             |
-| **Auth**      | Supabase (Google OAuth)                 |
-| **Database**  | Supabase PostgreSQL                     |
+| **Database**  | SQLite (file-based)                     |
 | **AI**        | Claude API (Sonnet + Extended Thinking) |
-| **Hosting**   | Netlify                                 |
-| **Testing**   | Vitest (676+ tests)                     |
+| **Hosting**   | Docker (GHCR)                           |
+| **Testing**   | Vitest (383+ tests)                     |
 
 ---
 
 ## Commands
 
-| Command                 | Description              |
-| ----------------------- | ------------------------ |
-| `npm run dev`           | Start development server |
-| `npm run build`         | Production build         |
-| `npm run lint`          | Run ESLint               |
-| `npm test`              | Run unit tests           |
-| `npm run test:watch`    | Run tests in watch mode  |
-| `npm run test:coverage` | Run tests with coverage  |
-| `npm run test:e2e`      | Run Playwright E2E tests |
+| Command                 | Description               |
+| ----------------------- | ------------------------- |
+| `npm run dev`           | Start development server  |
+| `npm run build`         | Production build          |
+| `npm run lint`          | Run ESLint                |
+| `npm test`              | Run unit tests            |
+| `npm run test:watch`    | Run tests in watch mode   |
+| `npm run test:coverage` | Run tests with coverage   |
+| `npm run docker:build`  | Build Docker image        |
+| `npm run docker:run`    | Run Docker container      |
+| `docker compose up -d`  | Start with Docker Compose |
 
 ---
 

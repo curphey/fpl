@@ -2,6 +2,23 @@
 
 This guide will walk you through setting up FPL Insights using Docker Desktop.
 
+---
+
+## What is Docker?
+
+**Docker** is a tool that packages applications with everything they need to run. Think of it like a shipping container for software - it works the same way on any computer.
+
+**Why use Docker?**
+
+- **No setup headaches** - You don't need to install Node.js, databases, or other dependencies
+- **Works everywhere** - Same experience on Mac, Windows, or Linux
+- **Easy updates** - Just pull the new image and restart
+- **Clean uninstall** - Delete the container and it's gone, no leftover files
+
+**Don't want to use Docker?** You can also run the app directly with Node.js. See the [Local Development](#alternative-local-development-without-docker) section at the bottom.
+
+---
+
 ## Prerequisites
 
 ### 1. Install Docker Desktop
@@ -240,3 +257,58 @@ Then open [http://localhost:3000](http://localhost:3000).
 | View logs      | `docker logs fpl-insights`       |
 | Open app       | http://localhost:3000            |
 | Your data      | `./data/fpl.db`                  |
+
+---
+
+## Alternative: Local Development (Without Docker)
+
+If you prefer to run the app directly without Docker:
+
+### Prerequisites
+
+- Node.js 20 or higher ([download here](https://nodejs.org/))
+- npm (comes with Node.js)
+- Git
+
+### Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/your-username/fpl-insights.git
+cd fpl-insights
+
+# Install dependencies
+npm install
+
+# Copy environment template (optional - app works without it)
+cp .env.example .env.local
+
+# Start development server
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000)
+
+### Production Build
+
+```bash
+# Build for production
+npm run build
+
+# Start production server
+npm start
+```
+
+### Environment Variables
+
+Create a `.env.local` file for local development:
+
+```env
+# Optional: For AI features
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Optional: Database location (defaults to ./data/fpl.db)
+DATABASE_PATH=./data/fpl.db
+```
+
+The app works without any environment variables for basic functionality.

@@ -1,314 +1,151 @@
 # FPL Insights - Installation Guide
 
-This guide will walk you through setting up FPL Insights using Docker Desktop.
+Get FPL Insights running on your machine. Choose Docker (recommended) or local Node.js.
 
 ---
 
-## What is Docker?
+## Option 1: Docker (Recommended)
 
-**Docker** is a tool that packages applications with everything they need to run. Think of it like a shipping container for software - it works the same way on any computer.
-
-**Why use Docker?**
-
-- **No setup headaches** - You don't need to install Node.js, databases, or other dependencies
-- **Works everywhere** - Same experience on Mac, Windows, or Linux
-- **Easy updates** - Just pull the new image and restart
-- **Clean uninstall** - Delete the container and it's gone, no leftover files
-
-**Don't want to use Docker?** You can also run the app directly with Node.js. See the [Local Development](#alternative-local-development-without-docker) section at the bottom.
-
----
-
-## Prerequisites
+Docker packages the app with everything it needs — no Node.js, database, or dependency setup required.
 
 ### 1. Install Docker Desktop
 
-1. Go to [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/)
-2. Download Docker Desktop for Mac
-3. Run the installer and follow the prompts
-4. After installation, open Docker Desktop and wait for it to fully start (you'll see "Docker Desktop is running" in the menu bar)
+Download and install from [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/).
 
-### 2. Install Git (if not already installed)
+After installation, open Docker Desktop and wait for it to fully start ("Docker Desktop is running" in the menu bar).
 
-Open Terminal and run:
+### 2. Clone and Start
 
 ```bash
-git --version
-```
+git clone https://github.com/yourusername/fpl.git
+cd fpl
 
-If Git isn't installed, you'll be prompted to install the Xcode Command Line Tools. Follow the prompts.
-
-### 3. Clone FPL Insights
-
-```bash
-git clone https://github.com/your-username/fpl-insights.git
-cd fpl-insights
-```
-
----
-
-## Setup Using Docker Desktop GUI
-
-### Step 1: Build the Docker Image
-
-1. **Open Terminal** in the `fpl-insights` folder:
-   - Open Finder and navigate to your `fpl-insights` folder
-   - Right-click the folder → Services → New Terminal at Folder
-   - Or open Terminal and type `cd ` then drag the folder into Terminal
-
-2. **Build the image:**
-
-   ```bash
-   docker build -t fpl-insights .
-   ```
-
-   This will take 2-5 minutes the first time. You'll see lots of text scrolling by - this is normal.
-
-3. **Verify the build in Docker Desktop:**
-   - Open Docker Desktop
-   - Click on **Images** in the left sidebar
-   - You should see `fpl-insights` listed
-
-### Step 2: Run the Container
-
-1. In Docker Desktop, go to **Images**
-2. Find `fpl-insights` in the list
-3. Hover over it and click the **Run** button (▶️)
-4. Click **Optional settings** to expand the options
-5. Configure the following:
-
-   | Setting                     | Value                                                                                                                     |
-   | --------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-   | **Container name**          | `fpl-insights`                                                                                                            |
-   | **Host port**               | `3000`                                                                                                                    |
-   | **Volumes: Host path**      | Click the folder icon and select a folder called `data` inside your `fpl-insights` folder (create it if it doesn't exist) |
-   | **Volumes: Container path** | `/app/data`                                                                                                               |
-
-6. Click **Run**
-
-7. The container will start. Click on `fpl-insights` under **Containers** to see the logs.
-
-### Step 3: Open the App
-
-1. Go to [http://localhost:3000](http://localhost:3000) in your browser
-2. Enter your FPL Manager ID in the header (find it on the FPL website in your team URL)
-
-### Step 4: Configure AI Features
-
-1. Go to **Settings** (gear icon in the header)
-2. Enter your Anthropic API key
-   - Get one from [console.anthropic.com](https://console.anthropic.com/)
-   - Sign up or log in
-   - Go to API Keys and create a new key
-   - Copy the key (starts with `sk-ant-`)
-3. Click **Save**
-
-The AI features (transfer suggestions, captain picks, optimization) will now work.
-
----
-
-## Managing Your Container
-
-### Using Docker Desktop GUI
-
-| Action                    | How to Do It                                                                             |
-| ------------------------- | ---------------------------------------------------------------------------------------- |
-| **Stop the app**          | Go to Containers → Click the ⏹️ stop button next to `fpl-insights`                       |
-| **Start the app**         | Go to Containers → Click the ▶️ play button next to `fpl-insights`                       |
-| **View logs**             | Go to Containers → Click on `fpl-insights` → Logs tab                                    |
-| **Delete container**      | Go to Containers → Click the 🗑️ delete button (your data in `data/` folder is preserved) |
-| **Rebuild after updates** | Delete the container, go to Images → Delete `fpl-insights` → Rebuild with Step 1         |
-
----
-
-## Updating FPL Insights
-
-When there's a new version:
-
-1. **Pull the latest code:**
-
-   ```bash
-   cd fpl-insights
-   git pull
-   ```
-
-2. **Stop and remove the old container:**
-   - Docker Desktop: Containers → Stop → Delete
-
-3. **Remove the old image:**
-   - Docker Desktop: Images → Delete `fpl-insights`
-
-4. **Rebuild and run:**
-   - Follow Step 1 and Step 2 again
-
-Your data (manager ID, settings) is stored in the `data/` folder and will be preserved.
-
----
-
-## Troubleshooting
-
-### "Port 3000 is already in use"
-
-Something else is using port 3000. Either:
-
-- Stop the other application using port 3000
-- Use a different port: In Docker Desktop, set Host port to `3001` instead (then access at http://localhost:3001)
-
-### "Cannot connect to the Docker daemon"
-
-Docker Desktop isn't running. Open Docker Desktop and wait for it to fully start.
-
-### Container stops immediately after starting
-
-Check the logs for errors:
-
-- Docker Desktop: Click on the container → Logs tab
-
-### AI features don't work
-
-Make sure you've added your Anthropic API key in Settings. Check your key at [console.anthropic.com](https://console.anthropic.com/).
-
----
-
-## Data Storage
-
-Your data is stored in the `data/` folder:
-
-- `fpl.db` - SQLite database with your sessions, settings, and preferences
-
-**To backup:** Copy the entire `data/` folder somewhere safe.
-
-**To restore:** Replace the `data/` folder with your backup and restart the container.
-
-**To reset:** Delete the `data/fpl.db` file and restart the container.
-
----
-
-## Alternative: Command Line Setup
-
-If you prefer using the terminal instead of Docker Desktop GUI:
-
-### Build
-
-```bash
-docker build -t fpl-insights .
-```
-
-### Run
-
-```bash
-docker run -d \
-  --name fpl-insights \
-  -p 3000:3000 \
-  -v "$(pwd)/data:/app/data" \
-  fpl-insights
-```
-
-### Manage
-
-```bash
-# Stop the container
-docker stop fpl-insights
-
-# Start the container again
-docker start fpl-insights
-
-# View logs
-docker logs fpl-insights
-
-# View logs in real-time
-docker logs -f fpl-insights
-
-# Remove the container (keeps your data)
-docker rm fpl-insights
-
-# Remove the image (to rebuild)
-docker rmi fpl-insights
-```
-
-### Using Docker Compose
-
-For an even simpler setup:
-
-```bash
-# Start
+# Start with Docker Compose
 docker compose up -d
+```
 
-# Stop
-docker compose down
+### 3. Open the App
 
-# Rebuild after updates
+Go to [http://localhost:3000](http://localhost:3000) and enter your FPL Manager ID.
+
+### 4. Configure AI Features (Optional)
+
+Create a `.env` file in the project root (or copy from `.env.example`):
+
+```bash
+cp .env.example .env
+```
+
+Add your Anthropic API key for AI-powered features:
+
+```env
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+Get a key from [console.anthropic.com](https://console.anthropic.com/) → API Keys → Create Key.
+
+Restart the container after adding the key:
+
+```bash
+docker compose down && docker compose up -d
+```
+
+### Managing Your Container
+
+| Task      | Command                                        |
+| --------- | ---------------------------------------------- |
+| Start     | `docker compose up -d`                         |
+| Stop      | `docker compose down`                          |
+| View logs | `docker compose logs -f`                       |
+| Rebuild   | `docker compose build && docker compose up -d` |
+| Open app  | http://localhost:3000                          |
+
+### Updating
+
+```bash
+git pull
 docker compose down
 docker compose build
 docker compose up -d
 ```
 
-Then open [http://localhost:3000](http://localhost:3000).
+Your data in `./data/` is preserved between updates.
 
 ---
 
-## Quick Reference
-
-| Task           | Command / Action                 |
-| -------------- | -------------------------------- |
-| Build image    | `docker build -t fpl-insights .` |
-| Run container  | `docker compose up -d`           |
-| Stop container | `docker compose down`            |
-| View logs      | `docker logs fpl-insights`       |
-| Open app       | http://localhost:3000            |
-| Your data      | `./data/fpl.db`                  |
-
----
-
-## Alternative: Local Development (Without Docker)
-
-If you prefer to run the app directly without Docker:
+## Option 2: Local Development (Without Docker)
 
 ### Prerequisites
 
-- Node.js 20 or higher ([download here](https://nodejs.org/))
+- Node.js 20+ ([download](https://nodejs.org/))
 - npm (comes with Node.js)
 - Git
 
 ### Setup
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-username/fpl-insights.git
-cd fpl-insights
-
-# Install dependencies
+git clone https://github.com/yourusername/fpl.git
+cd fpl
 npm install
 
-# Copy environment template (optional - app works without it)
+# Optional: copy environment template
 cp .env.example .env.local
 
 # Start development server
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+Open [http://localhost:3000](http://localhost:3000).
 
 ### Production Build
 
 ```bash
-# Build for production
 npm run build
-
-# Start production server
 npm start
 ```
 
-### Environment Variables
+---
 
-Create a `.env.local` file for local development:
+## Environment Variables
 
-```env
-# Optional: For AI features
-ANTHROPIC_API_KEY=sk-ant-...
+| Variable                       | Required | Default          | Description                 |
+| ------------------------------ | -------- | ---------------- | --------------------------- |
+| `ANTHROPIC_API_KEY`            | No\*     | -                | Required for AI features    |
+| `DATABASE_PATH`                | No       | `./data/fpl.db`  | SQLite database file path   |
+| `NEXT_PUBLIC_APP_URL`          | No       | `localhost:3000` | Base URL for the app        |
+| `NOTIFICATIONS_API_KEY`        | No       | -                | Scheduled notification auth |
+| `RESEND_API_KEY`               | No       | -                | Email notifications         |
+| `FROM_EMAIL`                   | No       | -                | Sender email address        |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | No       | -                | Push notifications          |
+| `VAPID_PRIVATE_KEY`            | No       | -                | Push notifications          |
+| `VAPID_SUBJECT`                | No       | -                | Push contact (mailto:)      |
 
-# Optional: Database location (defaults to ./data/fpl.db)
-DATABASE_PATH=./data/fpl.db
-```
+\*The app works without any environment variables. AI features require an Anthropic API key.
 
-The app works without any environment variables for basic functionality.
+---
+
+## Data Storage
+
+Your data is stored in `./data/fpl.db` (SQLite). Schema is auto-created on first run.
+
+- **Backup:** `cp data/fpl.db data/fpl.db.backup`
+- **Restore:** `cp data/fpl.db.backup data/fpl.db` then restart
+- **Reset:** Delete `data/fpl.db` and restart
+
+---
+
+## Troubleshooting
+
+| Problem                     | Solution                                                       |
+| --------------------------- | -------------------------------------------------------------- |
+| Port 3000 in use            | Use a different port: `-p 3001:3000` or change in compose file |
+| Docker daemon not running   | Open Docker Desktop and wait for it to start                   |
+| Container stops immediately | Check logs: `docker compose logs`                              |
+| AI features don't work      | Verify `ANTHROPIC_API_KEY` in `.env` file                      |
+| Database permission denied  | `chmod 755 data && chmod 644 data/fpl.db`                      |
+
+---
+
+**For development setup with Claude Code, TDD, and more, see [DEVELOPING.md](./DEVELOPING.md).**
+
+**For production deployment and CI/CD, see [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md).**

@@ -127,60 +127,36 @@ Full draft support with:
 
 ## Quick Start
 
-### Using Docker (Recommended)
-
 ```bash
-# Clone the repository
 git clone https://github.com/yourusername/fpl.git
 cd fpl
-
-# Start with Docker Compose
 docker compose up -d
-
-# Open the app
 open http://localhost:3000
 ```
 
-Your data is stored in `./data/fpl.db` and persists between restarts.
-
-### Local Development
-
-```bash
-# Clone and install
-git clone https://github.com/yourusername/fpl.git
-cd fpl
-npm install
-
-# Copy environment template
-cp .env.example .env.local
-
-# Start development server
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000)
-
-**For detailed installation instructions, see the [Installation Guide](./INSTALL.md).**
+**For detailed installation instructions (Docker and local), see [INSTALL.md](./INSTALL.md).**
 
 ---
 
 ## Documentation
 
-| Document                                     | Description                                     |
-| -------------------------------------------- | ----------------------------------------------- |
-| **[Deployment Guide](./docs/DEPLOYMENT.md)** | Step-by-step production deployment instructions |
-| **[User Guide](./docs/USER_GUIDE.md)**       | Complete guide to using all features            |
-| **[API Reference](./docs/API.md)**           | API endpoint documentation                      |
-| **[Contributing](./CONTRIBUTING.md)**        | How to contribute to the project                |
-| **[Changelog](./CHANGELOG.md)**              | Version history and changes                     |
+| Document                                     | Description                                  |
+| -------------------------------------------- | -------------------------------------------- |
+| **[Installation Guide](./INSTALL.md)**       | Docker and local setup instructions          |
+| **[Deployment Guide](./docs/DEPLOYMENT.md)** | Production deployment, CI/CD, and operations |
+| **[User Guide](./docs/USER_GUIDE.md)**       | Complete guide to using all features         |
+| **[API Reference](./docs/API.md)**           | API endpoint documentation                   |
+| **[Contributing](./CONTRIBUTING.md)**        | How to contribute to the project             |
+| **[Changelog](./CHANGELOG.md)**              | Version history and changes                  |
 
 ### For Developers
 
-| Document                                                            | Description                              |
-| ------------------------------------------------------------------- | ---------------------------------------- |
-| **[CLAUDE.md](./CLAUDE.md)**                                        | Project structure and coding conventions |
-| **[Architecture](./docs/archive/FPL_APPLICATION_SPECIFICATION.md)** | Original application specification       |
-| **[Roadmap](./docs/archive/FUTURE.md)**                             | Future features and improvements         |
+| Document                                                            | Description                                                 |
+| ------------------------------------------------------------------- | ----------------------------------------------------------- |
+| **[Developing Guide](./DEVELOPING.md)**                             | Claude Code setup, TDD workflow, Ralph Loops, dev practices |
+| **[CLAUDE.md](./CLAUDE.md)**                                        | Project structure, conventions, and API reference           |
+| **[Architecture](./docs/archive/FPL_APPLICATION_SPECIFICATION.md)** | Original application specification                          |
+| **[Roadmap](./docs/archive/FUTURE.md)**                             | Future features and improvements                            |
 
 ---
 

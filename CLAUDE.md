@@ -2,6 +2,34 @@
 
 Fantasy Premier League analytics dashboard built with Next.js.
 
+## Claude Code Setup
+
+This project includes pre-configured plugins via `.claude/settings.json`. When you open the repo in Claude Code, you'll be prompted to trust the project settings, which automatically enables:
+
+- **Superpowers** (obra/superpowers) — brainstorming, TDD enforcement, code review, git worktrees
+- **VoltAgent Subagents** (VoltAgent/awesome-claude-code-subagents) — 127+ specialized subagents for frontend, backend, testing, infrastructure, and more
+
+No manual plugin installation needed. Just accept the project settings prompt when opening the repo.
+
+See [DEVELOPING.md](./DEVELOPING.md) for full developer setup instructions including YOLO mode and Ralph Loops.
+
+## Development Methodology
+
+**TDD is mandatory for all code changes.** Follow RED-GREEN-REFACTOR:
+
+1. **RED** — Write a failing test first. Run it. It must fail.
+2. **GREEN** — Write the minimal code to make the test pass. Nothing more.
+3. **REFACTOR** — Clean up duplication and improve names. All tests must still pass.
+
+Rules:
+
+- No production code without a failing test first
+- Code written before tests must be deleted and rewritten test-first
+- All new features start with brainstorming, then planning, then TDD execution
+- Run code review between tasks
+- "Too simple to test" and "I already tested manually" are not valid excuses to skip TDD
+- The Superpowers plugin enforces this workflow automatically when installed
+
 ## Tech Stack
 
 - **Framework:** Next.js 16 (App Router)

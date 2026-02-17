@@ -1,50 +1,26 @@
 # FPL Insights Deployment Guide
 
-This guide walks you through deploying FPL Insights using Docker.
+Production deployment guide for FPL Insights using Docker.
+
+**For initial installation and setup, see [INSTALL.md](../INSTALL.md).**
 
 ---
 
 ## Table of Contents
 
-1. [Quick Start](#1-quick-start)
-2. [Docker Deployment](#2-docker-deployment)
-3. [Environment Variables](#3-environment-variables)
-4. [GitHub Actions CI/CD](#4-github-actions-cicd)
-5. [Optional Services](#5-optional-services)
-6. [Data Persistence](#6-data-persistence)
-7. [Verification](#7-verification)
-8. [Troubleshooting](#8-troubleshooting)
+1. [Docker Deployment](#1-docker-deployment)
+2. [Environment Variables](#2-environment-variables)
+3. [GitHub Actions CI/CD](#3-github-actions-cicd)
+4. [Optional Services](#4-optional-services)
+5. [Data Persistence](#5-data-persistence)
+6. [Verification](#6-verification)
+7. [Troubleshooting](#7-troubleshooting)
 
 ---
 
-## 1. Quick Start
+## 1. Docker Deployment
 
-**New to Docker?** See the detailed [Installation Guide](../INSTALL.md) for step-by-step instructions with Docker Desktop GUI.
-
-**Experienced with Docker?** Here's the fastest path:
-
-```bash
-# Clone and start
-git clone https://github.com/yourusername/fpl.git
-cd fpl
-docker compose up -d
-
-# Open the app
-open http://localhost:3000
-```
-
-That's it. The app runs with SQLite for data persistence.
-
----
-
-## 2. Docker Deployment
-
-### 2.1 Prerequisites
-
-- Docker 20+ or Docker Desktop
-- Git
-
-### 2.2 Using Docker Compose (Recommended)
+### 1.1 Using Docker Compose (Recommended)
 
 Docker Compose handles all configuration automatically:
 
@@ -65,7 +41,7 @@ The `docker-compose.yml` file includes:
 - Volume mounting for SQLite persistence (`./data:/app/data`)
 - Environment variable loading from `.env` file
 
-### 2.3 Using Docker Directly
+### 1.2 Using Docker Directly
 
 For more control, use Docker commands directly:
 
@@ -82,7 +58,7 @@ docker run -d \
   fpl-insights
 ```
 
-### 2.4 Development with Docker
+### 1.3 Development with Docker
 
 For development with hot reload:
 
@@ -95,7 +71,7 @@ docker build -f Dockerfile.dev -t fpl-insights:dev .
 docker run -p 3000:3000 -v "$(pwd):/app" fpl-insights:dev
 ```
 
-### 2.5 Production Build
+### 1.4 Production Build
 
 The production Dockerfile uses a multi-stage build for optimal image size:
 
@@ -117,9 +93,9 @@ docker run -d -p 3000:3000 -v "$(pwd)/data:/app/data" fpl-insights
 
 ---
 
-## 3. Environment Variables
+## 2. Environment Variables
 
-### 3.1 Configuration
+### 2.1 Configuration
 
 Create a `.env` file in the project root (or copy from `.env.example`):
 
@@ -127,7 +103,7 @@ Create a `.env` file in the project root (or copy from `.env.example`):
 cp .env.example .env
 ```
 
-### 3.2 Available Variables
+### 2.2 Available Variables
 
 | Variable                       | Required | Default                 | Description                         |
 | ------------------------------ | -------- | ----------------------- | ----------------------------------- |
@@ -143,7 +119,7 @@ cp .env.example .env
 
 \*The app works without any environment variables for basic functionality. AI features require an Anthropic API key.
 
-### 3.3 Example .env File
+### 2.3 Example .env File
 
 ```env
 # Required for AI features (optimizer, simulator, news search)
@@ -170,11 +146,11 @@ NOTIFICATIONS_API_KEY=your-random-secure-key
 
 ---
 
-## 4. GitHub Actions CI/CD
+## 3. GitHub Actions CI/CD
 
 The project includes a GitHub Actions workflow that automatically builds and pushes Docker images to GitHub Container Registry (GHCR) on every push to `main`.
 
-### 4.1 Workflow Overview
+### 3.1 Workflow Overview
 
 The CI/CD pipeline (`.github/workflows/ci.yml`) runs:
 
@@ -183,13 +159,13 @@ The CI/CD pipeline (`.github/workflows/ci.yml`) runs:
 3. **Build** - Docker image build
 4. **Push** - Push to GHCR (on main branch)
 
-### 4.2 Setup GHCR
+### 3.2 Setup GHCR
 
 1. Enable GitHub Container Registry for your repository
 2. The workflow uses `GITHUB_TOKEN` automatically for authentication
 3. Images are pushed to `ghcr.io/yourusername/fpl`
 
-### 4.3 Pull and Run from GHCR
+### 3.3 Pull and Run from GHCR
 
 ```bash
 # Pull the latest image
@@ -203,7 +179,7 @@ docker run -d \
   ghcr.io/yourusername/fpl:latest
 ```
 
-### 4.4 Required Repository Secrets
+### 3.4 Required Repository Secrets
 
 For full CI/CD functionality, add these secrets in GitHub (Settings > Secrets and variables > Actions):
 
@@ -219,9 +195,9 @@ Optional secrets for enhanced CI:
 
 ---
 
-## 5. Optional Services
+## 4. Optional Services
 
-### 5.1 Anthropic API (AI Features)
+### 4.1 Anthropic API (AI Features)
 
 Required for: AI Optimizer, Decision Simulator, Rival Analyzer, News Search
 
@@ -237,7 +213,7 @@ Set in your `.env` file:
 ANTHROPIC_API_KEY=sk-ant-api03-xxxxx
 ```
 
-### 5.2 Resend (Email Notifications)
+### 4.2 Resend (Email Notifications)
 
 Required for: Email deadline reminders, weekly summaries
 
@@ -253,7 +229,7 @@ RESEND_API_KEY=re_xxxxxxxxxxxxx
 FROM_EMAIL=FPL Insights <noreply@yourdomain.com>
 ```
 
-### 5.3 VAPID Keys (Push Notifications)
+### 4.3 VAPID Keys (Push Notifications)
 
 Generate VAPID keys for web push notifications:
 
@@ -271,15 +247,15 @@ VAPID_SUBJECT=mailto:admin@yourdomain.com
 
 ---
 
-## 6. Data Persistence
+## 5. Data Persistence
 
-### 6.1 SQLite Database
+### 5.1 SQLite Database
 
 FPL Insights uses SQLite for data storage. The database is stored at `./data/fpl.db` by default.
 
 **Schema is auto-created** on first run. No migrations needed.
 
-### 6.2 Docker Volume
+### 5.2 Docker Volume
 
 The `docker-compose.yml` mounts the data directory:
 
@@ -290,7 +266,7 @@ volumes:
 
 This ensures your data persists between container restarts and updates.
 
-### 6.3 Backup and Restore
+### 5.3 Backup and Restore
 
 **Backup:**
 
@@ -312,7 +288,7 @@ rm data/fpl.db
 docker restart fpl-insights
 ```
 
-### 6.4 Database Contents
+### 5.4 Database Contents
 
 The SQLite database stores:
 
@@ -323,7 +299,7 @@ The SQLite database stores:
 | `notification_history`     | Sent notification records            |
 | `manager_cache`            | Cached FPL API responses             |
 
-### 6.5 View Database Contents
+### 5.5 View Database Contents
 
 ```bash
 # List tables
@@ -338,9 +314,9 @@ sqlite3 data/fpl.db ".schema"
 
 ---
 
-## 7. Verification
+## 6. Verification
 
-### 7.1 Deployment Checklist
+### 6.1 Deployment Checklist
 
 After deployment, verify each feature:
 
@@ -350,7 +326,7 @@ After deployment, verify each feature:
 - [ ] **AI Optimizer works** (if Anthropic configured) - Test transfer optimization
 - [ ] **Database exists** - Check `data/fpl.db` file is created
 
-### 7.2 Test API Endpoints
+### 6.2 Test API Endpoints
 
 ```bash
 # Test bootstrap data
@@ -363,7 +339,7 @@ curl http://localhost:3000/api/fpl/fixtures | head
 curl http://localhost:3000/api/fpl/bootstrap-static | jq '.elements | length'
 ```
 
-### 7.3 Monitor Logs
+### 6.3 Monitor Logs
 
 ```bash
 # Docker Compose
@@ -378,7 +354,7 @@ docker logs --tail 100 fpl-insights
 
 ---
 
-## 8. Troubleshooting
+## 7. Troubleshooting
 
 ### Build Fails
 
@@ -465,6 +441,6 @@ docker restart fpl-insights
 
 If you encounter issues:
 
-1. Check this guide's [Troubleshooting](#8-troubleshooting) section
+1. Check this guide's [Troubleshooting](#7-troubleshooting) section
 2. Review container logs
 3. Open an issue on GitHub

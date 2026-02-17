@@ -1,0 +1,26 @@
+{
+  "enabledPlugins": {
+    "superpowers@superpowers-marketplace": true,
+    "voltagent-core-dev@awesome-claude-code-subagents": true,
+    "voltagent-qa-sec@awesome-claude-code-subagents": true,
+    "voltagent-lang@awesome-claude-code-subagents": true,
+    "voltagent-infra@awesome-claude-code-subagents": true,
+    "voltagent-data-ai@awesome-claude-code-subagents": true,
+    "voltagent-dev-exp@awesome-claude-code-subagents": true,
+    "voltagent-domains@awesome-claude-code-subagents": true
+  },
+  "extraKnownMarketplaces": {
+    "superpowers-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "obra/superpowers-marketplace"
+      }
+    },
+    "awesome-claude-code-subagents": {
+      "source": {
+        "source": "github",
+        "repo": "VoltAgent/awesome-claude-code-subagents"
+      }
+    }
+  }
+}

@@ -1,8 +1,9 @@
-import { timingSafeEqual } from "crypto";
+import { timingSafeEqual, createHash } from "crypto";
 
 /**
  * Constant-time string comparison to prevent timing attacks.
- * Returns true if strings are equal, false otherwise.
+ * Uses SHA-256 hashing to normalize input lengths before comparison,
+ * eliminating length-based timing leaks.
  */
 export function timingSafeCompare(
   a: string | null | undefined,
@@ -10,16 +11,9 @@ export function timingSafeCompare(
 ): boolean {
   if (!a || !b) return false;
 
-  // Ensure both strings are the same length for timingSafeEqual
-  const aBuffer = Buffer.from(a);
-  const bBuffer = Buffer.from(b);
+  // Hash both inputs to normalize to 32 bytes, preventing length-based leaks
+  const aHash = createHash("sha256").update(a).digest();
+  const bHash = createHash("sha256").update(b).digest();
 
-  if (aBuffer.length !== bBuffer.length) {
-    // Still do a comparison to maintain constant time
-    // Compare with itself to use similar CPU time
-    timingSafeEqual(aBuffer, aBuffer);
-    return false;
-  }
-
-  return timingSafeEqual(aBuffer, bBuffer);
+  return timingSafeEqual(aHash, bHash);
 }

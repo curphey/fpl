@@ -8,6 +8,18 @@ import type {
   WeeklySummaryData,
 } from "./types";
 
+/**
+ * Escape HTML special characters to prevent XSS in email templates.
+ */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // Lazy initialization
 let resendClient: Resend | null = null;
 
@@ -83,7 +95,7 @@ function generateEmailHtml(
                 Your current setup:
               </p>
               <p style="color: #e0e0e0; margin: 0; font-size: 14px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                Captain: <strong style="color: #00ff87;">${d.captain}</strong><br/>
+                Captain: <strong style="color: #00ff87;">${escapeHtml(d.captain)}</strong><br/>
                 Transfers made: <strong>${d.transfers_made}</strong>
               </p>
             </div>
@@ -110,7 +122,7 @@ function generateEmailHtml(
               ? `
             <div style="background: #1a1a2e; border-radius: 8px; padding: 16px; margin: 16px 0;">
               <p style="color: #e0e0e0; margin: 0; font-size: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                <strong style="color: ${d.direction === "rise" ? "#00ff87" : "#ff6b6b"};">${d.player_name}</strong> (${d.team})
+                <strong style="color: ${d.direction === "rise" ? "#00ff87" : "#ff6b6b"};">${escapeHtml(d.player_name)}</strong> (${escapeHtml(d.team)})
               </p>
               <p style="color: #888; margin: 8px 0 0 0; font-size: 14px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
                 Current price: £${(d.current_price / 10).toFixed(1)}m<br/>
@@ -141,12 +153,12 @@ function generateEmailHtml(
               ? `
             <div style="background: #1a1a2e; border-radius: 8px; padding: 16px; margin: 16px 0;">
               <p style="color: #e0e0e0; margin: 0; font-size: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                <strong>${d.player_name}</strong> (${d.team})
+                <strong>${escapeHtml(d.player_name)}</strong> (${escapeHtml(d.team)})
               </p>
               <p style="color: ${d.chance_of_playing !== null && d.chance_of_playing < 50 ? "#ff6b6b" : "#ffd93d"}; margin: 8px 0 0 0; font-size: 14px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                Status: ${d.status}
+                Status: ${escapeHtml(d.status)}
               </p>
-              ${d.news ? `<p style="color: #888; margin: 8px 0 0 0; font-size: 14px; font-style: italic;">"${d.news}"</p>` : ""}
+              ${d.news ? `<p style="color: #888; margin: 8px 0 0 0; font-size: 14px; font-style: italic;">"${escapeHtml(d.news)}"</p>` : ""}
               ${d.chance_of_playing !== null ? `<p style="color: #888; margin: 8px 0 0 0; font-size: 12px;">Chance of playing: ${d.chance_of_playing}%</p>` : ""}
             </div>
           `
@@ -191,7 +203,7 @@ function generateEmailHtml(
               ? `
             <div style="background: #1a1a2e; border-radius: 8px; padding: 16px; margin: 16px 0;">
               <p style="color: #e0e0e0; margin: 0; font-size: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                <strong>${d.league_name}</strong> - GW${d.gameweek}
+                <strong>${escapeHtml(d.league_name)}</strong> - GW${d.gameweek}
               </p>
               <p style="color: #888; margin: 12px 0 0 0; font-size: 14px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
                 Your rank: <strong style="color: #00ff87;">${d.your_rank.toLocaleString()}</strong>
@@ -225,7 +237,7 @@ function generateEmailHtml(
             📊 Your Weekly FPL Summary
           </h2>
           <p style="color: #888; margin: 0 0 24px 0; font-size: 14px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-            Hi ${d.manager_name}! Here's your personalized FPL insights for Gameweek ${d.gameweek}.
+            Hi ${escapeHtml(d.manager_name)}! Here's your personalized FPL insights for Gameweek ${d.gameweek}.
           </p>
 
           <!-- Gameweek Recap -->
@@ -249,11 +261,11 @@ function generateEmailHtml(
               </div>
               <div style="flex: 1; min-width: 120px;">
                 <p style="color: #888; margin: 0 0 4px 0; font-size: 12px;">Captain</p>
-                <p style="color: #e0e0e0; margin: 0; font-size: 16px; font-weight: 600;">${d.captain_name} (${d.captain_points}pts)</p>
+                <p style="color: #e0e0e0; margin: 0; font-size: 16px; font-weight: 600;">${escapeHtml(d.captain_name)} (${d.captain_points}pts)</p>
               </div>
             </div>
             <p style="color: #e0e0e0; margin: 16px 0 0 0; font-size: 14px; line-height: 1.6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-              ${d.ai_recap}
+              ${escapeHtml(d.ai_recap)}
             </p>
           </div>
 
@@ -263,7 +275,7 @@ function generateEmailHtml(
               💡 Transfer Suggestions
             </h3>
             <p style="color: #e0e0e0; margin: 0; font-size: 14px; line-height: 1.6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-              ${d.ai_transfer_suggestions}
+              ${escapeHtml(d.ai_transfer_suggestions)}
             </p>
             <a href="${APP_URL}/transfers" style="display: inline-block; background: transparent; color: #04f5ff; padding: 8px 0; text-decoration: none; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-top: 12px;">
               View all transfer recommendations →
@@ -276,7 +288,7 @@ function generateEmailHtml(
               👑 Captain Picks for Next GW
             </h3>
             <p style="color: #e0e0e0; margin: 0; font-size: 14px; line-height: 1.6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-              ${d.ai_captain_picks}
+              ${escapeHtml(d.ai_captain_picks)}
             </p>
             <a href="${APP_URL}/captain" style="display: inline-block; background: transparent; color: #ffd93d; padding: 8px 0; text-decoration: none; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-top: 12px;">
               View captain selector →
@@ -292,7 +304,7 @@ function generateEmailHtml(
               🎯 Chip Strategy
             </h3>
             <p style="color: #e0e0e0; margin: 0; font-size: 14px; line-height: 1.6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-              ${d.ai_chip_advice}
+              ${escapeHtml(d.ai_chip_advice)}
             </p>
             <a href="${APP_URL}/chips" style="display: inline-block; background: transparent; color: #ff6b6b; padding: 8px 0; text-decoration: none; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-top: 12px;">
               View chip advisor →
@@ -315,7 +327,7 @@ function generateEmailHtml(
                 ? `
             <p style="color: #888; margin: 0 0 8px 0; font-size: 12px;">Likely to rise:</p>
             <p style="color: #00ff87; margin: 0 0 12px 0; font-size: 14px;">
-              ${d.price_risers.map((p) => `${p.name} (${p.probability}%)`).join(", ")}
+              ${d.price_risers.map((p) => `${escapeHtml(p.name)} (${p.probability}%)`).join(", ")}
             </p>
             `
                 : ""
@@ -325,7 +337,7 @@ function generateEmailHtml(
                 ? `
             <p style="color: #888; margin: 0 0 8px 0; font-size: 12px;">Likely to fall:</p>
             <p style="color: #ff6b6b; margin: 0; font-size: 14px;">
-              ${d.price_fallers.map((p) => `${p.name} (${p.probability}%)`).join(", ")}
+              ${d.price_fallers.map((p) => `${escapeHtml(p.name)} (${p.probability}%)`).join(", ")}
             </p>
             `
                 : ""
@@ -348,11 +360,11 @@ function generateEmailHtml(
               .map(
                 (l) => `
               <div style="border-bottom: 1px solid #333; padding: 12px 0;">
-                <p style="color: #e0e0e0; margin: 0 0 4px 0; font-size: 14px; font-weight: 600;">${l.name}</p>
+                <p style="color: #e0e0e0; margin: 0 0 4px 0; font-size: 14px; font-weight: 600;">${escapeHtml(l.name)}</p>
                 <p style="color: #888; margin: 0; font-size: 13px;">
                   Rank: <strong style="color: #00ff87;">${l.rank}</strong>
                   ${l.rank_change !== 0 ? `(${l.rank_change > 0 ? "↓" : "↑"}${Math.abs(l.rank_change)})` : ""}
-                  • Gap to ${l.top_rival}: <strong>${l.gap_to_top > 0 ? `-${l.gap_to_top}` : `+${Math.abs(l.gap_to_top)}`}</strong> pts
+                  • Gap to ${escapeHtml(l.top_rival)}: <strong>${l.gap_to_top > 0 ? `-${l.gap_to_top}` : `+${Math.abs(l.gap_to_top)}`}</strong> pts
                 </p>
               </div>
             `,
@@ -392,7 +404,7 @@ function generateEmailHtml(
       content = `
         <div style="padding: 32px; background: #0f0f23;">
           <h2 style="color: #04f5ff; margin: 0 0 16px 0; font-size: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-            ${title}
+            ${escapeHtml(title)}
           </h2>
           <a href="${APP_URL}" style="display: inline-block; background: #00ff87; color: #37003c; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-top: 16px;">
             Open FPL Insights

@@ -3,6 +3,14 @@
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 
+function getSessionId(): string | null {
+  try {
+    return localStorage.getItem("fpl-session-id");
+  } catch {
+    return null;
+  }
+}
+
 export default function SettingsPage() {
   const [apiKey, setApiKey] = useState("");
   const [hasApiKey, setHasApiKey] = useState(false);
@@ -34,9 +42,13 @@ export default function SettingsPage() {
     setMessage(null);
 
     try {
+      const sessionId = getSessionId();
       const res = await fetch("/api/settings", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(sessionId ? { "x-session-id": sessionId } : {}),
+        },
         body: JSON.stringify({ anthropicApiKey: apiKey }),
       });
 
@@ -62,7 +74,11 @@ export default function SettingsPage() {
     setMessage(null);
 
     try {
-      const res = await fetch("/api/settings", { method: "DELETE" });
+      const sessionId = getSessionId();
+      const res = await fetch("/api/settings", {
+        method: "DELETE",
+        headers: sessionId ? { "x-session-id": sessionId } : {},
+      });
       const data = await res.json();
 
       if (!res.ok) {

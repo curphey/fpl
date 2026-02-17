@@ -2,17 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { searchFPLNews } from "@/lib/claude/news-client";
 import type { NewsSearchRequest, NewsCategory } from "@/lib/claude/news-types";
 import { withRateLimit } from "@/lib/api/rate-limit";
+import { createErrorFromUnknown } from "@/lib/api/errors";
+
+const VALID_CATEGORIES = new Set([
+  "injury",
+  "transfer",
+  "team_news",
+  "press_conference",
+  "suspension",
+  "general",
+]);
 
 /**
  * GET /api/news
  * Search for FPL news
  *
  * Query params:
- * - q: search query
- * - players: comma-separated player names
- * - teams: comma-separated team names
+ * - q: search query (max 500 chars)
+ * - players: comma-separated player names (max 10)
+ * - teams: comma-separated team names (max 20)
  * - categories: comma-separated categories (injury,transfer,team_news,press_conference,suspension,general)
- * - limit: max results (default 10)
+ * - limit: max results (1-50, default 10)
  */
 export async function GET(request: NextRequest) {
   // Check rate limit (10 requests per minute for Claude endpoints)
@@ -29,21 +39,64 @@ export async function GET(request: NextRequest) {
   const categoriesParam = searchParams.get("categories");
   const limitParam = searchParams.get("limit");
 
+  // Validate query length
+  if (query && query.length > 500) {
+    return NextResponse.json(
+      {
+        error: "Query too long (max 500 characters)",
+        code: "VALIDATION_ERROR",
+      },
+      { status: 400 },
+    );
+  }
+
+  const players = playersParam
+    ? playersParam
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .slice(0, 10)
+    : undefined;
+  const teams = teamsParam
+    ? teamsParam
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .slice(0, 20)
+    : undefined;
+
+  // Validate categories
+  let categories: NewsCategory[] | undefined;
+  if (categoriesParam) {
+    const raw = categoriesParam.split(",").map((s) => s.trim());
+    const invalid = raw.filter((c) => !VALID_CATEGORIES.has(c));
+    if (invalid.length > 0) {
+      return NextResponse.json(
+        {
+          error: `Invalid categories: ${invalid.join(", ")}`,
+          code: "VALIDATION_ERROR",
+        },
+        { status: 400 },
+      );
+    }
+    categories = raw as NewsCategory[];
+  }
+
+  // Validate and clamp limit
+  const maxResults = limitParam
+    ? Math.min(Math.max(parseInt(limitParam, 10) || 10, 1), 50)
+    : 10;
+
   const searchRequest: NewsSearchRequest = {
     query,
-    players: playersParam
-      ? playersParam.split(",").map((s) => s.trim())
-      : undefined,
-    teams: teamsParam ? teamsParam.split(",").map((s) => s.trim()) : undefined,
-    categories: categoriesParam
-      ? (categoriesParam.split(",").map((s) => s.trim()) as NewsCategory[])
-      : undefined,
-    maxResults: limitParam ? parseInt(limitParam, 10) : 10,
+    players,
+    teams,
+    categories,
+    maxResults,
   };
 
   // At least one search parameter required
   if (!query && !playersParam && !teamsParam && !categoriesParam) {
-    // Default to general FPL news
     searchRequest.query = "Premier League FPL news injuries transfers";
   }
 
@@ -52,17 +105,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(response);
   } catch (error) {
     console.error("News search error:", error);
-
-    if (error instanceof Error && error.message.includes("ANTHROPIC_API_KEY")) {
-      return NextResponse.json(
-        { error: "News search not configured" },
-        { status: 503 },
-      );
-    }
-
-    return NextResponse.json(
-      { error: "Failed to fetch news" },
-      { status: 500 },
-    );
+    return createErrorFromUnknown(error, "searching news");
   }
 }

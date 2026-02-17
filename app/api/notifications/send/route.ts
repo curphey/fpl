@@ -76,7 +76,10 @@ export async function POST(request: NextRequest) {
   // Validate API key
   const apiKey = request.headers.get("x-api-key");
   if (!timingSafeCompare(apiKey, process.env.NOTIFICATIONS_API_KEY)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Unauthorized", code: "UNAUTHORIZED" },
+      { status: 401 },
+    );
   }
 
   // Initialize VAPID

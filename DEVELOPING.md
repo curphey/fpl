@@ -16,7 +16,7 @@ This guide covers how to develop FPL Insights using Claude Code, the Superpowers
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/fpl.git
+git clone https://github.com/curphey/fpl.git
 cd fpl
 
 # Install dependencies

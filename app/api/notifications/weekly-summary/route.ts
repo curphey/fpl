@@ -258,12 +258,15 @@ export async function POST(request: NextRequest) {
   // Validate API key
   const apiKey = request.headers.get("x-api-key");
   if (!timingSafeCompare(apiKey, process.env.NOTIFICATIONS_API_KEY)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Unauthorized", code: "UNAUTHORIZED" },
+      { status: 401 },
+    );
   }
 
   if (!process.env.RESEND_API_KEY) {
     return NextResponse.json(
-      { error: "Email service not configured" },
+      { error: "Email service not configured", code: "SERVICE_UNAVAILABLE" },
       { status: 503 },
     );
   }

@@ -17,7 +17,7 @@ After installation, open Docker Desktop and wait for it to fully start ("Docker 
 ### 2. Clone and Start
 
 ```bash
-git clone https://github.com/yourusername/fpl.git
+git clone https://github.com/curphey/fpl.git
 cd fpl
 
 # Start with Docker Compose
@@ -84,7 +84,7 @@ Your data in `./data/` is preserved between updates.
 ### Setup
 
 ```bash
-git clone https://github.com/yourusername/fpl.git
+git clone https://github.com/curphey/fpl.git
 cd fpl
 npm install
 

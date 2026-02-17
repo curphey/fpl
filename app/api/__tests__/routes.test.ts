@@ -121,7 +121,8 @@ describe("API Routes", () => {
       const data = await response.json();
 
       expect(response.status).toBe(500);
-      expect(data.error).toBe("Failed to fetch bootstrap data");
+      expect(data.code).toBe("INTERNAL_ERROR");
+      expect(data.error).toBeDefined();
     });
 
     it("returns correct status code for FPL API errors", async () => {
@@ -135,8 +136,9 @@ describe("API Routes", () => {
       const response = await getBootstrapStatic(request);
       const data = await response.json();
 
-      expect(response.status).toBe(503);
-      expect(data.error).toBe("Service unavailable");
+      expect(response.status).toBe(502);
+      expect(data.code).toBe("FPL_API_ERROR");
+      expect(data.error).toContain("FPL API error");
     });
 
     it("returns enriched data when enrich=true", async () => {
@@ -257,7 +259,8 @@ describe("API Routes", () => {
       const data = await response.json();
 
       expect(response.status).toBe(500);
-      expect(data.error).toBe("Failed to fetch fixtures");
+      expect(data.code).toBe("INTERNAL_ERROR");
+      expect(data.error).toBeDefined();
     });
   });
 
@@ -475,7 +478,8 @@ describe("API Routes", () => {
       const data = await response.json();
 
       expect(response.status).toBe(404);
-      expect(data.error).toBe("Player not found");
+      expect(data.code).toBe("NOT_FOUND");
+      expect(data.error).toContain("not found");
     });
   });
 

@@ -9,11 +9,19 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Create data directory for SQLite
-RUN mkdir -p /app/data
+# Create data directory for SQLite and set up non-root user
+RUN mkdir -p /app/data && \
+    addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs && \
+    chown -R nextjs:nodejs /app/data
 
 EXPOSE 3000
 
 ENV NEXT_TELEMETRY_DISABLED=1
+
+USER nextjs
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/fpl/bootstrap-static || exit 1
 
 CMD ["npm", "run", "dev"]

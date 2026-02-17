@@ -163,20 +163,20 @@ The CI/CD pipeline (`.github/workflows/ci.yml`) runs:
 
 1. Enable GitHub Container Registry for your repository
 2. The workflow uses `GITHUB_TOKEN` automatically for authentication
-3. Images are pushed to `ghcr.io/yourusername/fpl`
+3. Images are pushed to `ghcr.io/curphey/fpl`
 
 ### 3.3 Pull and Run from GHCR
 
 ```bash
 # Pull the latest image
-docker pull ghcr.io/yourusername/fpl:latest
+docker pull ghcr.io/curphey/fpl:latest
 
 # Run the container
 docker run -d \
   --name fpl-insights \
   -p 3000:3000 \
   -v "$(pwd)/data:/app/data" \
-  ghcr.io/yourusername/fpl:latest
+  ghcr.io/curphey/fpl:latest
 ```
 
 ### 3.4 Required Repository Secrets

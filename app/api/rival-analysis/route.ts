@@ -3,6 +3,7 @@ import { analyzeRival } from "@/lib/claude/simulator-client";
 import { z } from "zod";
 import { withRateLimit } from "@/lib/api/rate-limit";
 import { hasAnthropicApiKey } from "@/lib/db/settings";
+import { createErrorFromUnknown } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -93,26 +94,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result);
   } catch (error) {
     console.error("Rival analysis error:", error);
-
-    if (error instanceof Error) {
-      if (error.message.includes("rate")) {
-        return NextResponse.json(
-          {
-            error: "Rate limited. Please try again later.",
-            code: "RATE_LIMITED",
-          },
-          { status: 429 },
-        );
-      }
-      return NextResponse.json(
-        { error: error.message, code: "API_ERROR" },
-        { status: 500 },
-      );
-    }
-
-    return NextResponse.json(
-      { error: "An unexpected error occurred", code: "API_ERROR" },
-      { status: 500 },
-    );
+    return createErrorFromUnknown(error, "analyzing rival");
   }
 }

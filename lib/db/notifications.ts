@@ -64,14 +64,35 @@ export function getPreferenceBySession(
   return convertPreference(row);
 }
 
+const ALLOWED_PREFERENCE_FIELDS = new Set([
+  "email_enabled",
+  "email_address",
+  "email_deadline_reminder",
+  "email_deadline_hours",
+  "email_weekly_summary",
+  "email_transfer_recommendations",
+  "push_enabled",
+  "push_subscription",
+  "push_deadline_reminder",
+  "push_deadline_hours",
+  "push_price_changes",
+  "push_injury_news",
+  "push_league_updates",
+  "quiet_hours_start",
+  "quiet_hours_end",
+  "timezone",
+]);
+
 export function upsertPreference(
   sessionId: string,
   data: Partial<Omit<NotificationPreference, "id" | "session_id">>,
 ) {
   const existing = getPreferenceBySession(sessionId);
   if (existing) {
-    // Update existing
-    const fields = Object.keys(data);
+    // Update existing — only allow known column names to prevent SQL injection
+    const fields = Object.keys(data).filter((f) =>
+      ALLOWED_PREFERENCE_FIELDS.has(f),
+    );
     if (fields.length === 0) return;
     const sql = `UPDATE notification_preferences SET ${fields.map((f) => `${f} = ?`).join(", ")}, updated_at = CURRENT_TIMESTAMP WHERE session_id = ?`;
     db.prepare(sql).run(

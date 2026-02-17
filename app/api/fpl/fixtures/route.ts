@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fplClient, FPLApiError } from "@/lib/fpl/client";
+import { fplClient } from "@/lib/fpl/client";
+import { gameweekSchema } from "@/lib/api/validation";
 import { withRateLimit } from "@/lib/api/rate-limit";
+import {
+  createValidationErrorResponse,
+  createErrorFromUnknown,
+} from "@/lib/api/errors";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 300;
 
 export async function GET(request: NextRequest) {
   // Check rate limit (100 requests per minute for FPL proxy endpoints)
@@ -16,24 +20,18 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const event = searchParams.get("event");
 
-    let data;
     if (event) {
-      data = await fplClient.getFixturesByGameweek(parseInt(event, 10));
-    } else {
-      data = await fplClient.getFixtures();
+      const parseResult = gameweekSchema.safeParse(event);
+      if (!parseResult.success) {
+        return createValidationErrorResponse(parseResult.error);
+      }
+      const data = await fplClient.getFixturesByGameweek(parseResult.data);
+      return NextResponse.json(data);
     }
 
+    const data = await fplClient.getFixtures();
     return NextResponse.json(data);
   } catch (error) {
-    if (error instanceof FPLApiError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.statusCode },
-      );
-    }
-    return NextResponse.json(
-      { error: "Failed to fetch fixtures" },
-      { status: 500 },
-    );
+    return createErrorFromUnknown(error, "fetching fixtures");
   }
 }

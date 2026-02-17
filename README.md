@@ -128,7 +128,7 @@ Full draft support with:
 ## Quick Start
 
 ```bash
-git clone https://github.com/yourusername/fpl.git
+git clone https://github.com/curphey/fpl.git
 cd fpl
 docker compose up -d
 open http://localhost:3000
@@ -171,7 +171,7 @@ open http://localhost:3000
 | **Database**  | SQLite (file-based)                     |
 | **AI**        | Claude API (Sonnet + Extended Thinking) |
 | **Hosting**   | Docker (GHCR)                           |
-| **Testing**   | Vitest (383+ tests)                     |
+| **Testing**   | Vitest (679+ tests)                     |
 
 ---
 

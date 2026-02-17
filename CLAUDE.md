@@ -39,7 +39,7 @@ Rules:
 - **Database:** SQLite (file-based, via better-sqlite3)
 - **Hosting:** Docker container (standalone Next.js build)
 - **CI/CD:** GitHub Actions (build & push to GHCR on push to `main`)
-- **Testing:** Vitest with 383+ tests
+- **Testing:** Vitest with 679+ tests
 - **AI:** Claude API (Sonnet for news search, extended thinking for optimization/simulation)
 - **PWA:** Service worker, offline support, push notifications
 - **Linting:** ESLint 9 + Prettier + lint-staged + Husky
@@ -172,7 +172,6 @@ lib/scheduler/
 lib/utils/
   timing-safe.ts        # Constant-time string comparison for API key validation
 instrumentation.ts      # Next.js instrumentation (starts scheduler on server boot)
-middleware.ts           # Simplified middleware (no auth)
 data/                   # SQLite database directory (gitignored)
   .gitignore            # Ignores *.db, *.db-wal, *.db-shm
 public/

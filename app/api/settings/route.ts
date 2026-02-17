@@ -4,6 +4,32 @@ import {
   setAnthropicApiKey,
   hasAnthropicApiKey,
 } from "@/lib/db/settings";
+import { getSession } from "@/lib/db/sessions";
+import { withRateLimit } from "@/lib/api/rate-limit";
+
+/**
+ * Validate that the request includes a valid session ID.
+ * Returns the session ID if valid, or a NextResponse error.
+ */
+function validateSession(request: NextRequest): string | NextResponse {
+  const sessionId = request.headers.get("x-session-id");
+  if (!sessionId) {
+    return NextResponse.json(
+      { error: "Missing session ID", code: "UNAUTHORIZED" },
+      { status: 401 },
+    );
+  }
+
+  const session = getSession(sessionId);
+  if (!session) {
+    return NextResponse.json(
+      { error: "Invalid session", code: "UNAUTHORIZED" },
+      { status: 401 },
+    );
+  }
+
+  return sessionId;
+}
 
 /**
  * GET /api/settings
@@ -19,9 +45,15 @@ export async function GET() {
 /**
  * POST /api/settings
  *
- * Update settings
+ * Update settings. Requires a valid session ID in x-session-id header.
  */
 export async function POST(request: NextRequest) {
+  const rateLimitResponse = await withRateLimit(request, "notifications");
+  if (rateLimitResponse) return rateLimitResponse;
+
+  const sessionResult = validateSession(request);
+  if (sessionResult instanceof NextResponse) return sessionResult;
+
   try {
     const body = await request.json();
     const { anthropicApiKey } = body;
@@ -93,9 +125,15 @@ export async function POST(request: NextRequest) {
 /**
  * DELETE /api/settings
  *
- * Clear the API key
+ * Clear the API key. Requires a valid session ID in x-session-id header.
  */
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
+  const rateLimitResponse = await withRateLimit(request, "notifications");
+  if (rateLimitResponse) return rateLimitResponse;
+
+  const sessionResult = validateSession(request);
+  if (sessionResult instanceof NextResponse) return sessionResult;
+
   setAnthropicApiKey(null);
   return NextResponse.json({
     success: true,

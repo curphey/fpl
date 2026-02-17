@@ -154,14 +154,20 @@ function getFromCache(key: string): NewsSearchResponse | null {
     newsCache.delete(key);
     return null;
   }
+  // Move to end of Map for LRU ordering (most recently used = last)
+  newsCache.delete(key);
+  newsCache.set(key, entry);
   return entry.data;
 }
 
 function setCache(key: string, data: NewsSearchResponse): void {
-  // Limit cache size
-  if (newsCache.size > 50) {
-    const oldestKey = newsCache.keys().next().value;
-    if (oldestKey) newsCache.delete(oldestKey);
+  // If key already exists, delete first so re-insert moves it to end
+  newsCache.delete(key);
+  // Evict least recently used entries (first in Map) until under limit
+  while (newsCache.size >= 50) {
+    const lruKey = newsCache.keys().next().value;
+    if (lruKey) newsCache.delete(lruKey);
+    else break;
   }
   newsCache.set(key, { data, expiry: Date.now() + CACHE_TTL_MS });
 }

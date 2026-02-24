@@ -92,7 +92,9 @@ export function predictPoints(
       );
 
       // Confidence based on sample size and form stability
-      const startRate = player.starts / Math.max(player.minutes / 90, 1);
+      // Use 0 when minutes === 0 to avoid inflated startRate from division by ~1
+      const startRate =
+        player.minutes > 0 ? player.starts / (player.minutes / 90) : 0;
       let confidence: "high" | "medium" | "low" = "low";
       if (startRate > 0.7 && form > 3 && player.minutes > 270) {
         confidence = "high";

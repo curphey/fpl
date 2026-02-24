@@ -1,5 +1,13 @@
 import type { Fixture, Team } from "./types";
 
+// FDR threshold constants — centralised to keep alert logic consistent
+const FDR_GREEN_RUN = 2.5; // avg FDR at or below this = favourable run
+const FDR_RED_RUN = 3.5; // avg FDR at or above this = tough run
+const FDR_CURRENT_GREEN = 2.2; // current window is a green run
+const FDR_CURRENT_RED = 3.8; // current window is a red run
+const FDR_TARGET_THRESHOLD = 2.8; // teams to actively target
+const FDR_AVOID_THRESHOLD = 3.5; // teams to avoid (same as RED_RUN)
+
 export interface TeamFdrWindow {
   teamId: number;
   teamName: string;
@@ -116,11 +124,11 @@ export function analyzeFixtureSwings(
       let severity: FixtureSwingAlert["severity"] = "medium";
       let message: string;
 
-      if (isImproving && next.avgFdr <= 2.5) {
+      if (isImproving && next.avgFdr <= FDR_GREEN_RUN) {
         alertType = "green_run";
         severity = "high";
         message = `${team.name} enters favorable run (FDR ${next.avgFdr.toFixed(1)}) from GW${nextStart}`;
-      } else if (!isImproving && next.avgFdr >= 3.5) {
+      } else if (!isImproving && next.avgFdr >= FDR_RED_RUN) {
         alertType = "red_run";
         severity = "high";
         message = `${team.name} faces tough fixtures (FDR ${next.avgFdr.toFixed(1)}) from GW${nextStart}`;
@@ -150,7 +158,10 @@ export function analyzeFixtureSwings(
     }
 
     // Also alert for current green/red runs
-    if (current.avgFdr <= 2.2 && current.fixtureCount >= windowSize - 1) {
+    if (
+      current.avgFdr <= FDR_CURRENT_GREEN &&
+      current.fixtureCount >= windowSize - 1
+    ) {
       const exists = alerts.find(
         (a) => a.teamId === team.id && a.alertType === "green_run",
       );
@@ -170,7 +181,7 @@ export function analyzeFixtureSwings(
         });
       }
     } else if (
-      current.avgFdr >= 3.8 &&
+      current.avgFdr >= FDR_CURRENT_RED &&
       current.fixtureCount >= windowSize - 1
     ) {
       const exists = alerts.find(
@@ -210,7 +221,8 @@ export function analyzeFixtureSwings(
   const bestTeamsToTarget = teamRankings
     .filter(
       (t) =>
-        t.currentFdr <= 2.8 || (t.trend === "improving" && t.change >= 0.8),
+        t.currentFdr <= FDR_TARGET_THRESHOLD ||
+        (t.trend === "improving" && t.change >= 0.8),
     )
     .slice(0, 6);
 
@@ -218,7 +230,8 @@ export function analyzeFixtureSwings(
   const teamsToAvoid = teamRankings
     .filter(
       (t) =>
-        t.currentFdr >= 3.5 || (t.trend === "worsening" && t.change <= -0.8),
+        t.currentFdr >= FDR_AVOID_THRESHOLD ||
+        (t.trend === "worsening" && t.change <= -0.8),
     )
     .sort((a, b) => b.currentFdr - a.currentFdr)
     .slice(0, 6);

@@ -434,10 +434,8 @@ export function analyzeLeague(
 
 // Use getPositionShortName from utils.ts (handles type safety)
 function getPositionShort(elementType: number): string {
-  if (elementType >= 1 && elementType <= 4) {
-    return getPositionShortName(elementType as 1 | 2 | 3 | 4);
-  }
-  return "???";
+  if (elementType < 1 || elementType > 4) return "???";
+  return getPositionShortName(elementType as 1 | 2 | 3 | 4);
 }
 
 // =============================================================================

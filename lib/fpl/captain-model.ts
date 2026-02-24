@@ -112,8 +112,12 @@ export function scoreCaptainOptions(
   teamMap: Map<number, { short_name: string }>,
   gwId: number,
 ): CaptainPick[] {
-  const maxForm = Math.max(...players.map((p) => getPlayerForm(p)), 1);
-  const maxXGI = Math.max(...players.map((p) => getPlayerXGI(p)), 0.1);
+  // Cache form and xgi values to avoid computing them twice per player
+  const formCache = new Map(players.map((p) => [p.id, getPlayerForm(p)]));
+  const xgiCache = new Map(players.map((p) => [p.id, getPlayerXGI(p)]));
+
+  const maxForm = Math.max(...formCache.values(), 1);
+  const maxXGI = Math.max(...xgiCache.values(), 0.1);
 
   return players
     .filter((p) => p.minutes > MIN_MINUTES_THRESHOLD)
@@ -122,8 +126,8 @@ export function scoreCaptainOptions(
       if (!fix) return null;
 
       const opponent = teamMap.get(fix.opponentId);
-      const form = getPlayerForm(player);
-      const xgi = getPlayerXGI(player);
+      const form = formCache.get(player.id) ?? 0;
+      const xgi = xgiCache.get(player.id) ?? 0;
       const setPiece = getSetPieceScore(player);
 
       // Normalize scores to 0-10 scale

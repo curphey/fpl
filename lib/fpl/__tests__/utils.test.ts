@@ -392,7 +392,8 @@ describe("Fixture Utilities", () => {
 
   describe("formatKickoffTime", () => {
     it("formats kickoff time", () => {
-      const result = formatKickoffTime("2024-01-15T15:00:00Z");
+      // Use noon UTC so the date stays Jan 15 in all timezones (UTC-12 to UTC+12)
+      const result = formatKickoffTime("2024-01-15T12:00:00Z");
       expect(result).toContain("15");
       expect(result).toContain("Jan");
     });
@@ -404,7 +405,8 @@ describe("Fixture Utilities", () => {
 
   describe("formatKickoffDate", () => {
     it("formats kickoff date only", () => {
-      const result = formatKickoffDate("2024-01-15T15:00:00Z");
+      // Use noon UTC so the date stays Jan 15 in all timezones (UTC-12 to UTC+12)
+      const result = formatKickoffDate("2024-01-15T12:00:00Z");
       expect(result).toContain("15");
       expect(result).toContain("Jan");
     });

@@ -63,11 +63,10 @@ export function predictPriceChanges(players: EnrichedPlayer[]): {
     const absRatio = Math.abs(transferRatio);
     let probability = Math.min(absRatio * 50, 0.95);
 
-    // Momentum boost: if already changed this event, higher chance of another
-    if (
-      Math.sign(costChangeMomentum) === Math.sign(netTransfers) &&
-      costChangeMomentum !== 0
-    ) {
+    // Momentum boost: if already changed this event in the same direction, higher chance of another
+    const momentumMatches =
+      costChangeMomentum !== 0 && costChangeMomentum > 0 === netTransfers > 0;
+    if (momentumMatches) {
       probability = Math.min(probability * 1.3, 0.95);
     }
 

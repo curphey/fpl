@@ -14,6 +14,7 @@ import {
   compareWithRival,
   generateSwingScenarios,
   analyzeLeague,
+  type EffectiveOwnership,
 } from "../league-analyzer";
 
 // Mock factories
@@ -678,6 +679,46 @@ describe("generateSwingScenarios", () => {
     // Should be sorted by worst case (most negative netImpact15)
     expect(scenarios[0].playerName).toBe("HighRisk");
     expect(scenarios[1].playerName).toBe("LowRisk");
+  });
+});
+
+describe("calculateEffectiveOwnership — position mapping", () => {
+  it("returns '???' for invalid element_type (out of range)", () => {
+    const userPicks = [createMockPick({ element: 1, multiplier: 1 })];
+    const rivals: ReturnType<
+      typeof import("../league-analyzer").buildRivalTeam
+    >[] = [];
+    const playerMap = new Map([
+      [1, createMockPlayer({ id: 1, element_type: 99 as unknown as 1 })], // intentionally invalid for test
+    ]);
+    const teamMap = new Map([[1, createMockTeam()]]);
+
+    const eo = calculateEffectiveOwnership(userPicks, [], playerMap, teamMap);
+    expect(eo.length).toBe(1);
+    expect((eo[0] as EffectiveOwnership).position).toBe("???");
+  });
+
+  it("returns correct short name for valid element types", () => {
+    const userPicks = [
+      createMockPick({ element: 1, multiplier: 1 }),
+      createMockPick({ element: 2, multiplier: 1 }),
+      createMockPick({ element: 3, multiplier: 1 }),
+      createMockPick({ element: 4, multiplier: 1 }),
+    ];
+    const playerMap = new Map([
+      [1, createMockPlayer({ id: 1, element_type: 1 })],
+      [2, createMockPlayer({ id: 2, element_type: 2 })],
+      [3, createMockPlayer({ id: 3, element_type: 3 })],
+      [4, createMockPlayer({ id: 4, element_type: 4 })],
+    ]);
+    const teamMap = new Map([[1, createMockTeam()]]);
+
+    const eo = calculateEffectiveOwnership(userPicks, [], playerMap, teamMap);
+    const positions = eo.map((e) => e.position).sort();
+    expect(positions).toContain("GK");
+    expect(positions).toContain("DEF");
+    expect(positions).toContain("MID");
+    expect(positions).toContain("FWD");
   });
 });
 

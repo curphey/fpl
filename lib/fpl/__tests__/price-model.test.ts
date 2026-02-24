@@ -171,6 +171,74 @@ describe("Price Model", () => {
       expect(fallers.length).toBe(0);
     });
 
+    it("momentum boost triggers definitively when signs match", () => {
+      // Use large ownership so estimatedOwners is big, keeping base probability below cap
+      const withMomentum = createMockEnrichedPlayer({
+        id: 1,
+        selected_by_percent: "50.0", // 50% → 5,000,000 estimated owners
+        transfers_in_event: 10000,
+        transfers_out_event: 5000, // net +5000 → ratio 0.001 → base prob ~0.05
+        cost_change_event: 1, // positive — same direction as net transfers
+      });
+      const withoutMomentum = createMockEnrichedPlayer({
+        id: 2,
+        selected_by_percent: "50.0",
+        transfers_in_event: 10000,
+        transfers_out_event: 5000,
+        cost_change_event: 0,
+      });
+
+      const { risers: withMom } = predictPriceChanges([withMomentum]);
+      const { risers: noMom } = predictPriceChanges([withoutMomentum]);
+
+      expect(withMom.length).toBe(1);
+      expect(noMom.length).toBe(1);
+      expect(withMom[0].probability).toBeGreaterThan(noMom[0].probability);
+    });
+
+    it("momentum boost does not trigger when costChangeMomentum is zero", () => {
+      const player = createMockEnrichedPlayer({
+        id: 1,
+        selected_by_percent: "50.0",
+        transfers_in_event: 10000,
+        transfers_out_event: 5000,
+        cost_change_event: 0,
+      });
+      const withMomentum = createMockEnrichedPlayer({
+        id: 2,
+        selected_by_percent: "50.0",
+        transfers_in_event: 10000,
+        transfers_out_event: 5000,
+        cost_change_event: 1,
+      });
+      const { risers: noMom } = predictPriceChanges([player]);
+      const { risers: withMom } = predictPriceChanges([withMomentum]);
+      expect(noMom[0].probability).toBeLessThan(withMom[0].probability);
+    });
+
+    it("momentum boost does not trigger when signs differ (opposite direction)", () => {
+      const player = createMockEnrichedPlayer({
+        id: 1,
+        selected_by_percent: "50.0",
+        transfers_in_event: 10000,
+        transfers_out_event: 5000, // net positive (rising)
+        cost_change_event: -1, // negative momentum (fell previously)
+      });
+      const noOpposeMomentum = createMockEnrichedPlayer({
+        id: 2,
+        selected_by_percent: "50.0",
+        transfers_in_event: 10000,
+        transfers_out_event: 5000,
+        cost_change_event: 0,
+      });
+
+      const { risers: opposite } = predictPriceChanges([player]);
+      const { risers: noMom } = predictPriceChanges([noOpposeMomentum]);
+
+      // Opposite momentum should give same probability as no momentum
+      expect(opposite[0].probability).toBe(noMom[0].probability);
+    });
+
     it("calculates probability with momentum boost", () => {
       const playerWithMomentum = createMockEnrichedPlayer({
         id: 1,

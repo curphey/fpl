@@ -1,6 +1,10 @@
 import type { EnrichedPlayer } from "./utils";
 import type { Fixture } from "./types";
 
+// FDR threshold for favourable fixtures in injury return scoring
+const FDR_EASY = 2.5;
+const FDR_FAVOURABLE = 3;
+
 export interface ReturningPlayer {
   player: EnrichedPlayer;
   status: "available" | "returning_soon";
@@ -129,10 +133,10 @@ export function findReturningPlayers(
     }
 
     // Upcoming fixtures
-    if (upcomingFdr <= 2.5) {
+    if (upcomingFdr <= FDR_EASY) {
       valueRating += 15;
       reasoning.push(`Easy upcoming fixtures (FDR ${upcomingFdr.toFixed(1)})`);
-    } else if (upcomingFdr <= 3) {
+    } else if (upcomingFdr <= FDR_FAVOURABLE) {
       valueRating += 8;
       reasoning.push(`Favorable fixtures (FDR ${upcomingFdr.toFixed(1)})`);
     }

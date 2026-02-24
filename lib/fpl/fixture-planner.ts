@@ -1,4 +1,7 @@
-import type { Fixture, Team, Gameweek } from './types';
+import type { Fixture, Team, Gameweek } from "./types";
+
+// Penalty score for teams with no fixtures (BGW) — pushes them below any real FDR score
+const BLANK_GW_PENALTY = 999;
 
 export interface FixtureCell {
   opponent: Team;
@@ -75,14 +78,16 @@ export function buildFixtureGrid(
 /**
  * Sort team rows by total difficulty (easiest first).
  */
-export function sortByEasiestFixtures(rows: TeamFixtureRow[]): TeamFixtureRow[] {
+export function sortByEasiestFixtures(
+  rows: TeamFixtureRow[],
+): TeamFixtureRow[] {
   return [...rows].sort((a, b) => {
     // More fixtures = better (DGWs), so penalize blanks
     const aCount = countFixtures(a);
     const bCount = countFixtures(b);
     // Lower average difficulty + more fixtures = better
-    const aScore = aCount === 0 ? 999 : a.totalDifficulty / aCount;
-    const bScore = bCount === 0 ? 999 : b.totalDifficulty / bCount;
+    const aScore = aCount === 0 ? BLANK_GW_PENALTY : a.totalDifficulty / aCount;
+    const bScore = bCount === 0 ? BLANK_GW_PENALTY : b.totalDifficulty / bCount;
     if (aScore !== bScore) return aScore - bScore;
     return bCount - aCount; // tie-break: more fixtures first
   });
@@ -101,12 +106,18 @@ function countFixtures(row: TeamFixtureRow): number {
  */
 export function getFDRColorClass(difficulty: number): string {
   switch (difficulty) {
-    case 1: return 'bg-emerald-600 text-white';
-    case 2: return 'bg-emerald-400/80 text-gray-900';
-    case 3: return 'bg-gray-400/80 text-gray-900';
-    case 4: return 'bg-orange-500/80 text-white';
-    case 5: return 'bg-red-600 text-white';
-    default: return 'bg-fpl-purple-light text-fpl-muted';
+    case 1:
+      return "bg-emerald-600 text-white";
+    case 2:
+      return "bg-emerald-400/80 text-gray-900";
+    case 3:
+      return "bg-gray-400/80 text-gray-900";
+    case 4:
+      return "bg-orange-500/80 text-white";
+    case 5:
+      return "bg-red-600 text-white";
+    default:
+      return "bg-fpl-purple-light text-fpl-muted";
   }
 }
 

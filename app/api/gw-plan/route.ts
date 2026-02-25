@@ -50,6 +50,9 @@ const postBodySchema = z.object({
 // =============================================================================
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  const rl = await rateLimit(request, "fpl");
+  if (rl) return rl;
+
   const { searchParams } = new URL(request.url);
   const rawQuery = {
     sessionId: searchParams.get("sessionId") ?? undefined,

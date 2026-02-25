@@ -106,7 +106,7 @@ export async function simulateDecision(
 
   const response = await client.messages.create({
     model: CLAUDE_CONFIG.MODEL,
-    max_tokens: 4000,
+    max_tokens: 12000,
     thinking: {
       type: "enabled",
       budget_tokens: 8000,
@@ -282,7 +282,7 @@ export async function analyzeRival(
 
   const response = await client.messages.create({
     model: CLAUDE_CONFIG.MODEL,
-    max_tokens: 4000,
+    max_tokens: 12000,
     thinking: {
       type: "enabled",
       budget_tokens: 8000,
@@ -426,7 +426,7 @@ export async function predictInjuryReturn(
 
   const response = await client.messages.create({
     model: CLAUDE_CONFIG.MODEL,
-    max_tokens: 4000,
+    max_tokens: 10000,
     thinking: {
       type: "enabled",
       budget_tokens: 6000,

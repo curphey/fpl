@@ -187,13 +187,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
 
     // Pre-filter transfer targets to only those the manager can afford.
-    // A target is affordable if: bank + max(selling_price of any squad player) >= target.now_cost
+    // Use bank + sum of top 2 selling prices to cover double-transfer scenarios
+    // (e.g. sell two players to fund one expensive target).
     const bank = picks.entry_history.bank;
-    const maxSellingPrice = picks.picks.reduce(
-      (max, p) => Math.max(max, p.selling_price),
-      0,
-    );
-    const maxAffordableCost = bank + maxSellingPrice;
+    const top2SellingPricesSum = picks.picks
+      .map((p) => p.selling_price)
+      .sort((a, b) => b - a)
+      .slice(0, 2)
+      .reduce((s, p) => s + p, 0);
+    const maxAffordableCost = bank + top2SellingPricesSum;
     const affordableTargets = transferTargets.filter(
       (r) => r.player.now_cost <= maxAffordableCost,
     );

@@ -89,6 +89,21 @@ describe("buildGwPlanPrompt", () => {
     const prompt = buildGwPlanPrompt(baseRequest);
     expect(prompt).toContain("affordable");
   });
+
+  it("explains the points hit mechanic", () => {
+    const prompt = buildGwPlanPrompt(baseRequest);
+    expect(prompt).toContain("4 points");
+  });
+
+  it("includes hitCost in the JSON schema", () => {
+    const prompt = buildGwPlanPrompt(baseRequest);
+    expect(prompt).toContain("hitCost");
+  });
+
+  it("mentions multi-transfer budget strategy", () => {
+    const prompt = buildGwPlanPrompt(baseRequest);
+    expect(prompt).toContain("multiple");
+  });
 });
 
 describe("parseGwPlanResult", () => {
@@ -101,6 +116,7 @@ describe("parseGwPlanResult", () => {
           playerOut: { id: 100, name: "Saka", predicted4GW: 18 },
           playerIn: { id: 200, name: "Palmer", predicted4GW: 26 },
           pointsGain: 8.0,
+          hitCost: 0,
           reasoning: "Palmer in form",
         },
       ],
@@ -111,7 +127,27 @@ describe("parseGwPlanResult", () => {
     expect(result.captain.name).toBe("Salah");
     expect(result.transfers).toHaveLength(1);
     expect(result.transfers[0].pointsGain).toBe(8.0);
+    expect(result.transfers[0].hitCost).toBe(0);
     expect(result.notes).toBe("No chip needed");
+  });
+
+  it("parses hitCost on transfers that take a hit", () => {
+    const json = JSON.stringify({
+      predictedTeamPoints: 55,
+      captain: { playerId: 1, name: "Salah", reasoning: "" },
+      transfers: [
+        {
+          playerOut: { id: 1, name: "A", predicted4GW: 10 },
+          playerIn: { id: 2, name: "B", predicted4GW: 18 },
+          pointsGain: 4.0,
+          hitCost: 4,
+          reasoning: "Worth the hit",
+        },
+      ],
+      notes: "",
+    });
+    const result = parseGwPlanResult(json);
+    expect(result.transfers[0].hitCost).toBe(4);
   });
 
   it("parses JSON wrapped in markdown code block", () => {

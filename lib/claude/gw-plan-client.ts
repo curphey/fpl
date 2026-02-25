@@ -68,9 +68,17 @@ const GW_PLAN_SYSTEM_PROMPT = `You are an expert Fantasy Premier League analyst.
 
 Key principles:
 1. Prioritise players with good upcoming fixtures and strong form
-2. Consider the cost of transfers (4-point hit) vs. the expected gain
-3. Recommend the captain with the highest ceiling for the gameweek
-4. CRITICAL: Only recommend affordable transfers. A transfer is affordable only if the selling price of the player out + bank balance >= cost of player in. Never recommend a transfer the manager cannot afford.
+2. CRITICAL: Only recommend affordable transfers. Check affordability carefully:
+   - Single transfer: selling price of player out + bank >= cost of player in
+   - Multiple transfers: sum of selling prices of ALL players out + bank >= sum of costs of ALL players in
+   - You may recommend selling multiple players (double or triple transfer) to fund an expensive target if the combined budget covers the cost
+3. Points hit: the manager has N free transfers (stated in the prompt). Each transfer beyond the free allocation costs exactly 4 points, deducted from their score.
+   - 1 free transfer, make 1 transfer: hitCost = 0
+   - 1 free transfer, make 2 transfers: hitCost = 4 (one hit)
+   - 1 free transfer, make 3 transfers: hitCost = 8 (two hits)
+   - Always factor the hit cost into pointsGain (i.e. pointsGain should already be net of the hit)
+4. Recommend the captain with the highest ceiling for the gameweek
+5. Only recommend a hit if the net pointsGain (after deducting hit cost) is clearly positive over 4 GWs
 
 Always respond with valid JSON matching the expected schema.`;
 
@@ -101,16 +109,20 @@ export function buildGwPlanPrompt(req: GwPlanRequest): string {
   return `Create a GW${req.gameweek} plan for this FPL manager.
 
 ## Current Squad
-Player selling prices are shown (£Xm) — this is what you would receive when selling them.
+Player selling prices are shown (£Xm) — this is what you receive when selling them.
 ${squadStr}
 
 ## Transfer Budget
 Free Transfers: ${req.freeTransfers}
 Bank: ${bankStr}
-Note: A transfer is only affordable if the selling price of the player out + bank >= cost of player in.
+Points hit: each transfer beyond ${req.freeTransfers} free transfer${req.freeTransfers === 1 ? "" : "s"} costs 4 points.
 
-## Top Transfer Targets (pre-filtered to affordable options only)
-Target costs are shown (£Xm) — all listed targets are affordable for at least one squad player.
+Affordability rules:
+- Single transfer: selling price of player out + bank >= cost of player in
+- Multiple transfers: you may sell multiple players to fund an expensive target — sum of selling prices of ALL players out + bank must cover sum of costs of ALL players in
+
+## Top Transfer Targets (pre-filtered to affordable options)
+Target costs are shown (£Xm). Targets requiring selling multiple players to afford are included where feasible.
 ${targetsStr}
 
 ## Captain Options
@@ -130,8 +142,9 @@ Respond with JSON matching this schema exactly:
     {
       "playerOut": { "id": <number>, "name": "<string>", "predicted4GW": <number> },
       "playerIn": { "id": <number>, "name": "<string>", "predicted4GW": <number> },
-      "pointsGain": <number — net gain over 4 GWs after hit cost if applicable>,
-      "reasoning": "<1-2 sentence explanation>"
+      "pointsGain": <number — net 4GW gain AFTER deducting hitCost>,
+      "hitCost": <number — 0 if within free transfers; 4 per extra transfer (e.g. 1 hit = 4, 2 hits = 8)>,
+      "reasoning": "<1-2 sentence explanation including whether a hit is taken>"
     }
   ],
   "notes": "<any additional strategic notes, chip suggestions, or warnings>"
@@ -155,7 +168,18 @@ export function parseGwPlanResult(text: string): GwPlanResult {
         name: "Unknown",
         reasoning: "Unable to parse captain",
       },
-      transfers: parsed.transfers ?? [],
+      transfers: (parsed.transfers ?? []).map(
+        (t: {
+          playerOut: { id: number; name: string; predicted4GW: number };
+          playerIn: { id: number; name: string; predicted4GW: number };
+          pointsGain: number;
+          hitCost?: number;
+          reasoning: string;
+        }) => ({
+          ...t,
+          hitCost: t.hitCost ?? 0,
+        }),
+      ),
       notes: parsed.notes ?? "",
     };
   } catch {

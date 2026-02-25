@@ -12,6 +12,8 @@ export interface GwPlanResult {
     playerOut: { id: number; name: string; predicted4GW: number };
     playerIn: { id: number; name: string; predicted4GW: number };
     pointsGain: number;
+    /** Points deducted for this transfer (0 = within free transfers, 4 = one hit, 8 = two hits) */
+    hitCost: number;
     reasoning: string;
   }>;
   notes: string;

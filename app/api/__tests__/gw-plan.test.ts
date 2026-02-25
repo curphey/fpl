@@ -278,7 +278,7 @@ describe("POST /api/gw-plan", () => {
     );
   });
 
-  it("filters transfer targets to only those affordable given bank + max selling price", async () => {
+  it("filters targets using bank + sum of top 2 selling prices, including double-transfer targets", async () => {
     mockGetSession.mockReturnValue({
       id: "sess1",
       fpl_manager_id: 12345,
@@ -292,7 +292,8 @@ describe("POST /api/gw-plan", () => {
       events: [],
     } as never);
     mockFixtures.mockResolvedValue([]);
-    // squad player worth £10.0m, bank is £0.5m → max spend = £10.5m
+    // 2 squad players: £10.0m + £8.0m; bank £0.5m
+    // top-2 sum = 180; maxAffordable = 5 + 180 = 185 (£18.5m)
     mockPicks.mockResolvedValue({
       picks: [
         {
@@ -302,36 +303,29 @@ describe("POST /api/gw-plan", () => {
           is_captain: false,
           is_vice_captain: false,
           selling_price: 100, // £10.0m
+          purchase_price: 100,
+        },
+        {
+          element: 2,
+          position: 2,
+          multiplier: 1,
+          is_captain: false,
+          is_vice_captain: false,
+          selling_price: 80, // £8.0m
+          purchase_price: 80,
         },
       ],
       entry_history: { bank: 5, event_transfers_cost: 0 }, // £0.5m
     } as never);
-    // affordable target: now_cost 105 (£10.5m); expensive: now_cost 200 (£20.0m)
-    mockEnrichPlayers.mockReturnValue([
-      {
-        id: 10,
-        now_cost: 105,
-        element_type: 3,
-        web_name: "Target1",
-        team: 1,
-        form: "5.0",
-      } as never,
-      {
-        id: 20,
-        now_cost: 200,
-        element_type: 4,
-        web_name: "Target2",
-        team: 2,
-        form: "4.0",
-      } as never,
-    ]);
+    mockEnrichPlayers.mockReturnValue([]);
     mockScoreTransferTargets.mockReturnValue([
+      // single-transfer affordable (≤ £10.5m)
       {
         player: {
           id: 10,
           now_cost: 105,
           element_type: 3,
-          web_name: "Target1",
+          web_name: "CheapTarget",
           team: 1,
           form: "5.0",
         } as never,
@@ -342,13 +336,31 @@ describe("POST /api/gw-plan", () => {
         xgiScore: 9.0,
         upcomingDifficulty: 2,
       },
+      // double-transfer affordable (≤ £18.5m) but not single-transfer affordable
+      {
+        player: {
+          id: 15,
+          now_cost: 175,
+          element_type: 3,
+          web_name: "ExpensiveTarget",
+          team: 2,
+          form: "8.0",
+        } as never,
+        score: 8.5,
+        formScore: 8.5,
+        fixtureScore: 8.5,
+        valueScore: 8.5,
+        xgiScore: 8.5,
+        upcomingDifficulty: 2,
+      },
+      // completely unaffordable (> £18.5m)
       {
         player: {
           id: 20,
           now_cost: 200,
           element_type: 4,
-          web_name: "Target2",
-          team: 2,
+          web_name: "TooExpensive",
+          team: 3,
           form: "4.0",
         } as never,
         score: 8.0,
@@ -391,8 +403,9 @@ describe("POST /api/gw-plan", () => {
     await POST(req);
 
     const callArg = mockGenerateGwPlan.mock.calls[0][0];
-    const targetIds = callArg.topTargets.map((t) => t.id);
-    expect(targetIds).toContain(10); // affordable target included
-    expect(targetIds).not.toContain(20); // expensive target excluded
+    const targetIds = callArg.topTargets.map((t: { id: number }) => t.id);
+    expect(targetIds).toContain(10); // single-transfer target included
+    expect(targetIds).toContain(15); // double-transfer target now included
+    expect(targetIds).not.toContain(20); // completely unaffordable excluded
   });
 });

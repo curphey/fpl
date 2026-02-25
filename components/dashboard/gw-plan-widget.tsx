@@ -190,11 +190,18 @@ export function GwPlanWidget({ sessionId, gameweek }: GwPlanWidgetProps) {
                       <span className="text-fpl-green">
                         {transfer.playerIn.name}
                       </span>
-                      {transfer.pointsGain > 0 && (
-                        <span className="ml-auto text-xs text-fpl-green">
-                          +{transfer.pointsGain.toFixed(1)} pts
-                        </span>
-                      )}
+                      <span className="ml-auto flex items-center gap-1.5 text-xs">
+                        {transfer.hitCost > 0 && (
+                          <span className="text-orange-400">
+                            -{transfer.hitCost} hit
+                          </span>
+                        )}
+                        {transfer.pointsGain > 0 && (
+                          <span className="text-fpl-green">
+                            +{transfer.pointsGain.toFixed(1)} pts net
+                          </span>
+                        )}
+                      </span>
                     </div>
                     <p className="mt-1 text-xs text-fpl-muted">
                       {transfer.reasoning}

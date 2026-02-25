@@ -154,8 +154,8 @@ test.describe("Leagues Page - Connected State", () => {
       timeout: 10000,
     });
 
-    // Click Analyze button
-    await page.getByRole("link", { name: "Analyze" }).click();
+    // Click Analyze button (exact: true to avoid matching "Analyze rivals" AI button)
+    await page.getByRole("link", { name: "Analyze", exact: true }).click();
     await page.waitForLoadState("networkidle");
 
     // Should be on analyze page with league param
@@ -192,7 +192,7 @@ test.describe("League Analyzer - Connected State", () => {
     await expect(page.getByText("Your Leagues")).toBeVisible({
       timeout: 10000,
     });
-    await page.getByRole("link", { name: "Analyze" }).click();
+    await page.getByRole("link", { name: "Analyze", exact: true }).click();
     await page.waitForLoadState("networkidle");
   });
 

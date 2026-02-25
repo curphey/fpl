@@ -114,12 +114,28 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Fetch FPL data in parallel
-    const [bootstrap, fixtures, picks] = await Promise.all([
+    // Fetch FPL data — picks may not exist for the upcoming GW yet (before
+    // deadline), so fall back to the previous GW to get the current squad.
+    const [bootstrap, fixtures] = await Promise.all([
       fplClient.getBootstrapStatic(),
       fplClient.getFixtures(),
-      fplClient.getManagerPicks(managerId, gameweek),
     ]);
+
+    let picks;
+    for (let gw = gameweek; gw >= Math.max(1, gameweek - 2); gw--) {
+      try {
+        picks = await fplClient.getManagerPicks(managerId, gw);
+        break;
+      } catch {
+        // try previous GW
+      }
+    }
+    if (!picks) {
+      return createErrorResponse(
+        "Could not fetch your squad picks. Make sure your FPL team is set up and try again.",
+        "NOT_FOUND",
+      );
+    }
 
     // Enrich players with derived fields
     const enrichedPlayers = enrichPlayers(bootstrap);

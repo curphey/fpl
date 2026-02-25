@@ -229,6 +229,11 @@ export async function withRateLimit(
 }
 
 /**
+ * Alias for withRateLimit — used by gw-plan route and tests.
+ */
+export const rateLimit = withRateLimit;
+
+/**
  * Add rate limit headers to a successful response
  */
 export function addRateLimitHeaders(

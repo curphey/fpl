@@ -1,15 +1,9 @@
 import { memo } from "react";
-import type { Player, PlayerPosition } from "@/lib/fpl/types";
-
-const positionColors: Record<PlayerPosition, string> = {
-  1: "bg-yellow-500",
-  2: "bg-blue-500",
-  3: "bg-green-500",
-  4: "bg-red-500",
-};
+import type { Player } from "@/lib/fpl/types";
 
 export const PlayerCard = memo(function PlayerCard({
   player,
+  teamCode,
   teamShortName,
   points,
   isCaptain,
@@ -18,6 +12,7 @@ export const PlayerCard = memo(function PlayerCard({
   autoSub,
 }: {
   player: Player;
+  teamCode: number;
   teamShortName: string;
   points: number | null;
   isCaptain: boolean;
@@ -32,56 +27,70 @@ export const PlayerCard = memo(function PlayerCard({
         ? "bg-red-500"
         : null;
 
+  const isGK = player.element_type === 1;
+  const kitSuffix = isGK ? "_1" : "";
+  const kitUrl = `https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_${teamCode}${kitSuffix}-66.png`;
+
   return (
     <div
-      className={`relative flex w-[72px] flex-col items-center rounded-lg border border-fpl-border bg-fpl-card px-1.5 py-2 text-center ${
-        isBench ? "opacity-50" : ""
-      }`}
+      className={`relative flex flex-col items-center ${isBench ? "opacity-80" : ""}`}
     >
-      {/* Position color bar */}
-      <div
-        className={`absolute top-0 left-0 h-1 w-full rounded-t-lg ${positionColors[player.element_type]}`}
-      />
+      {/* Captain badge */}
+      {isCaptain && (
+        <span className="absolute -top-2 -left-2 z-20 flex h-5 w-5 items-center justify-center rounded-full bg-fpl-green text-[10px] font-bold text-fpl-purple">
+          C
+        </span>
+      )}
+
+      {/* Vice-captain badge */}
+      {isViceCaptain && (
+        <span className="absolute -top-2 -right-2 z-20 flex h-5 w-5 items-center justify-center rounded-full border border-fpl-green bg-fpl-purple text-[10px] font-bold text-fpl-green">
+          V
+        </span>
+      )}
 
       {/* Status dot */}
       {statusDot && (
         <span
-          className={`absolute top-1.5 right-1.5 h-2 w-2 rounded-full ${statusDot}`}
+          className={`absolute top-1 right-1 z-20 h-2 w-2 rounded-full ${statusDot}`}
         />
       )}
 
       {/* Auto-sub arrow */}
       {autoSub && (
         <span
-          className={`absolute top-1.5 left-1.5 text-[10px] leading-none font-bold ${
+          className={`absolute top-1 left-1 z-20 text-[10px] font-bold leading-none ${
             autoSub === "in" ? "text-green-400" : "text-red-400"
           }`}
         >
-          {autoSub === "in" ? "\u25B2" : "\u25BC"}
+          {autoSub === "in" ? "▲" : "▼"}
         </span>
       )}
 
-      {/* Player name */}
-      <p className="mt-1 w-full truncate text-[11px] font-semibold leading-tight text-foreground">
-        {player.web_name}
-      </p>
+      {/* Kit image */}
+      <div className="flex h-14 w-[72px] items-center justify-center rounded-t-md bg-white/10">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={kitUrl}
+          alt={`${teamShortName} kit`}
+          width={48}
+          height={48}
+          className="h-12 w-auto object-contain drop-shadow-lg"
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = "none";
+          }}
+        />
+      </div>
 
-      {/* Team short name */}
-      <p className="text-[10px] leading-tight text-fpl-muted">
-        {teamShortName}
-      </p>
-
-      {/* Points */}
-      <p className="mt-0.5 text-sm font-bold text-fpl-green">
-        {points !== null ? points : "-"}
-      </p>
-
-      {/* Captain / Vice-captain badge */}
-      {(isCaptain || isViceCaptain) && (
-        <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-fpl-green text-[9px] font-bold text-fpl-purple">
-          {isCaptain ? "C" : "V"}
-        </span>
-      )}
+      {/* Name + points */}
+      <div className="w-[72px] rounded-b-md bg-fpl-purple px-1 py-1 text-center">
+        <p className="truncate text-[10px] font-semibold leading-tight text-white">
+          {player.web_name}
+        </p>
+        <p className="mt-0.5 text-[10px] font-bold leading-tight text-fpl-green">
+          {points !== null ? points : "-"}
+        </p>
+      </div>
     </div>
   );
 });

@@ -16,8 +16,11 @@ import { UpcomingFixtures } from "@/components/dashboard/upcoming-fixtures";
 import { SeasonProgress } from "@/components/dashboard/season-progress";
 import { PullToRefresh } from "@/components/pwa/pull-to-refresh";
 import { OnboardingBanner } from "@/components/dashboard/onboarding-banner";
+import { GwPlanWidget } from "@/components/dashboard/gw-plan-widget";
+import { useManagerContext } from "@/lib/fpl/manager-context";
 
 export default function DashboardPage() {
+  const { sessionId } = useManagerContext();
   const {
     data: bootstrap,
     isLoading: bsLoading,
@@ -86,6 +89,9 @@ export default function DashboardPage() {
             />
           )}
         </div>
+        {sessionId && (
+          <GwPlanWidget sessionId={sessionId} gameweek={fixtureGwId} />
+        )}
         <SeasonProgress events={bootstrap.events} />
       </div>
     </PullToRefresh>

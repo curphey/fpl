@@ -19,6 +19,14 @@ import { scoreTransferTargets } from "@/lib/fpl/transfer-model";
 import { scoreCaptainOptions } from "@/lib/fpl/captain-model";
 import { predictPoints } from "@/lib/fpl/points-model";
 import type { GwPlanRequest } from "@/lib/claude/gw-plan-client";
+import { hasAnthropicApiKey } from "@/lib/db/settings";
+
+const POS_MAP: Record<number, string> = {
+  1: "GK",
+  2: "DEF",
+  3: "MID",
+  4: "FWD",
+};
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -95,6 +103,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const managerId = session.fpl_manager_id;
 
+    // Check for Anthropic API key
+    if (!hasAnthropicApiKey()) {
+      return createErrorResponse(
+        "Anthropic API key not configured. Please add your API key in Settings.",
+        "SERVICE_UNAVAILABLE",
+      );
+    }
+
     // Fetch FPL data in parallel
     const [bootstrap, fixtures, picks] = await Promise.all([
       fplClient.getBootstrapStatic(),
@@ -104,10 +120,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // Enrich players with derived fields
     const enrichedPlayers = enrichPlayers(bootstrap);
-
-    // Determine the active gameweek id
-    const gwId =
-      bootstrap.events.find((e) => e.id === gameweek)?.id ?? gameweek;
 
     // Build team lookup map for captain model
     const teamMap = new Map(
@@ -121,34 +133,32 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const transferTargets = scoreTransferTargets(
       enrichedPlayers,
       fixtures,
-      gwId,
+      gameweek,
     );
     const captainOptions = scoreCaptainOptions(
       enrichedPlayers,
       fixtures,
       teamMap,
-      gwId,
+      gameweek,
     );
-    const pointsPredictions = predictPoints(enrichedPlayers, fixtures, gwId);
+    const pointsPredictions = predictPoints(
+      enrichedPlayers,
+      fixtures,
+      gameweek,
+    );
     const pointsMap = new Map(pointsPredictions.map((p) => [p.player.id, p]));
 
     // Build squad from picks
     const squad = picks.picks.map((pick) => {
       const player = playerMap.get(pick.element);
       const pts = pointsMap.get(pick.element);
-      const posMap: Record<number, string> = {
-        1: "GK",
-        2: "DEF",
-        3: "MID",
-        4: "FWD",
-      };
       const team = player ? teamMap.get(player.team) : undefined;
 
       return {
         id: pick.element,
         name: player?.web_name ?? `Player ${pick.element}`,
         team: team?.short_name ?? "???",
-        position: player ? (posMap[player.element_type] ?? "???") : "???",
+        position: player ? (POS_MAP[player.element_type] ?? "???") : "???",
         predictedPtsNextGW: pts ? Math.round(pts.predictedPoints * 10) / 10 : 0,
         predicted4GW: pts ? Math.round(pts.predictedPoints * 4 * 10) / 10 : 0,
         form: player?.form ?? "0.0",
@@ -156,12 +166,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       };
     });
 
-    // Build the request for Claude
-    const freeTransfers =
-      picks.entry_history.event_transfers_cost === 0 ? 2 : 1;
+    // Default to 1 free transfer — FPL API doesn't expose available free transfers
+    // in the picks endpoint directly. Claude will see the squad and can reason about
+    // the actual situation.
+    const freeTransfers = 1;
 
     const gwPlanRequest: GwPlanRequest = {
-      gameweek: gwId,
+      gameweek,
       squad,
       freeTransfers,
       bank: picks.entry_history.bank,
@@ -169,15 +180,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         id: r.player.id,
         name: r.player.web_name,
         team: teamMap.get(r.player.team)?.short_name ?? "???",
-        position: (() => {
-          const posMap: Record<number, string> = {
-            1: "GK",
-            2: "DEF",
-            3: "MID",
-            4: "FWD",
-          };
-          return posMap[r.player.element_type] ?? "???";
-        })(),
+        position: POS_MAP[r.player.element_type] ?? "???",
         score: Math.round(r.score * 100) / 100,
         predicted4GW: pointsMap.get(r.player.id)
           ? Math.round(pointsMap.get(r.player.id)!.predictedPoints * 4 * 10) /

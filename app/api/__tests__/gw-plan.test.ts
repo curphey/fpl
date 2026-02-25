@@ -43,6 +43,10 @@ vi.mock("@/lib/fpl/points-model", () => ({
   predictPoints: vi.fn().mockReturnValue([]),
 }));
 
+vi.mock("@/lib/db/settings", () => ({
+  hasAnthropicApiKey: vi.fn().mockReturnValue(true),
+}));
+
 import { GET, POST } from "../gw-plan/route";
 import {
   getGwPlan,

@@ -12,13 +12,15 @@ vi.mock("@/lib/fpl/client", () => ({
 }));
 
 vi.mock("@anthropic-ai/sdk", () => ({
-  default: vi.fn().mockImplementation(() => ({
-    messages: {
-      create: vi.fn().mockResolvedValue({
-        content: [{ type: "text", text: "Player was suspended." }],
-      }),
-    },
-  })),
+  default: vi.fn().mockImplementation(function () {
+    return {
+      messages: {
+        create: vi.fn().mockResolvedValue({
+          content: [{ type: "text", text: "Player was suspended." }],
+        }),
+      },
+    };
+  }),
 }));
 
 vi.mock("@/lib/db/settings", () => ({

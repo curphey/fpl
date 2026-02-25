@@ -219,7 +219,7 @@ export const fplClient = {
    * Alias for getPlayerSummary — get detailed player summary (history, fixtures, past seasons)
    */
   async getElementSummary(playerId: number): Promise<ElementSummary> {
-    return fetchFPL<ElementSummary>(`/element-summary/${playerId}/`);
+    return this.getPlayerSummary(playerId);
   },
 };
 

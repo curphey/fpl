@@ -12,6 +12,9 @@ const dbPath = process.env.DATABASE_PATH || path.join(dataDir, "fpl.db");
 // Create database connection
 export const db = new Database(dbPath);
 
+// Retry for up to 10s before failing with SQLITE_BUSY (needed for concurrent Next.js build workers)
+db.pragma("busy_timeout = 10000");
+
 // Enable WAL mode for better concurrent access
 db.pragma("journal_mode = WAL");
 

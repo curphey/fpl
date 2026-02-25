@@ -14,6 +14,7 @@ const baseRequest: GwPlanRequest = {
       predicted4GW: 32.1,
       form: "9.0",
       upcomingDifficulty: 2.0,
+      sellingPrice: 12.5,
     },
   ],
   freeTransfers: 1,
@@ -28,6 +29,7 @@ const baseRequest: GwPlanRequest = {
       predicted4GW: 28.0,
       form: "7.5",
       upcomingDifficulty: 2.5,
+      cost: 14.0,
     },
   ],
   captainOptions: [
@@ -71,6 +73,21 @@ describe("buildGwPlanPrompt", () => {
     const prompt = buildGwPlanPrompt(baseRequest);
     expect(prompt).toContain("predictedTeamPoints");
     expect(prompt).toContain("transfers");
+  });
+
+  it("includes squad player selling price", () => {
+    const prompt = buildGwPlanPrompt(baseRequest);
+    expect(prompt).toContain("£12.5m");
+  });
+
+  it("includes transfer target cost", () => {
+    const prompt = buildGwPlanPrompt(baseRequest);
+    expect(prompt).toContain("£14.0m");
+  });
+
+  it("includes budget affordability guidance", () => {
+    const prompt = buildGwPlanPrompt(baseRequest);
+    expect(prompt).toContain("affordable");
   });
 });
 

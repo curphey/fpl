@@ -182,8 +182,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         predicted4GW: pts ? Math.round(pts.predictedPoints * 4 * 10) / 10 : 0,
         form: player?.form ?? "0.0",
         upcomingDifficulty: 3,
+        sellingPrice: Math.round((pick.selling_price / 10) * 10) / 10,
       };
     });
+
+    // Pre-filter transfer targets to only those the manager can afford.
+    // A target is affordable if: bank + max(selling_price of any squad player) >= target.now_cost
+    const bank = picks.entry_history.bank;
+    const maxSellingPrice = picks.picks.reduce(
+      (max, p) => Math.max(max, p.selling_price),
+      0,
+    );
+    const maxAffordableCost = bank + maxSellingPrice;
+    const affordableTargets = transferTargets.filter(
+      (r) => r.player.now_cost <= maxAffordableCost,
+    );
 
     // Default to 1 free transfer — FPL API doesn't expose available free transfers
     // in the picks endpoint directly. Claude will see the squad and can reason about
@@ -194,8 +207,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       gameweek,
       squad,
       freeTransfers,
-      bank: picks.entry_history.bank,
-      topTargets: transferTargets.slice(0, 20).map((r) => ({
+      bank,
+      topTargets: affordableTargets.slice(0, 20).map((r) => ({
         id: r.player.id,
         name: r.player.web_name,
         team: teamMap.get(r.player.team)?.short_name ?? "???",
@@ -207,6 +220,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           : 0,
         form: r.player.form,
         upcomingDifficulty: r.upcomingDifficulty,
+        cost: Math.round((r.player.now_cost / 10) * 10) / 10,
       })),
       captainOptions: captainOptions.slice(0, 5).map((c) => ({
         id: c.player.id,

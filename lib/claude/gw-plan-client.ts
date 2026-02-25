@@ -20,6 +20,8 @@ export interface GwPlanSquadPlayer {
   predicted4GW: number;
   form: string;
   upcomingDifficulty: number;
+  /** Current selling price in £m, e.g. 12.5 */
+  sellingPrice: number;
 }
 
 export interface GwPlanTarget {
@@ -31,6 +33,8 @@ export interface GwPlanTarget {
   predicted4GW: number;
   form: string;
   upcomingDifficulty: number;
+  /** Current buying cost in £m, e.g. 10.5 */
+  cost: number;
 }
 
 export interface GwPlanCaptainOption {
@@ -66,7 +70,7 @@ Key principles:
 1. Prioritise players with good upcoming fixtures and strong form
 2. Consider the cost of transfers (4-point hit) vs. the expected gain
 3. Recommend the captain with the highest ceiling for the gameweek
-4. Keep recommendations realistic given budget and free transfer constraints
+4. CRITICAL: Only recommend affordable transfers. A transfer is affordable only if the selling price of the player out + bank balance >= cost of player in. Never recommend a transfer the manager cannot afford.
 
 Always respond with valid JSON matching the expected schema.`;
 
@@ -74,14 +78,14 @@ export function buildGwPlanPrompt(req: GwPlanRequest): string {
   const squadStr = req.squad
     .map(
       (p) =>
-        `${p.name} (${p.position}, ${p.team}) — Next GW: ${p.predictedPtsNextGW}pts, 4GW: ${p.predicted4GW}pts, Form: ${p.form}, Difficulty: ${p.upcomingDifficulty}`,
+        `${p.name} (${p.position}, ${p.team}) £${p.sellingPrice.toFixed(1)}m — Next GW: ${p.predictedPtsNextGW}pts, 4GW: ${p.predicted4GW}pts, Form: ${p.form}, Difficulty: ${p.upcomingDifficulty}`,
     )
     .join("\n");
 
   const targetsStr = req.topTargets
     .map(
       (t) =>
-        `${t.name} (${t.position}, ${t.team}) — Score: ${t.score}, 4GW: ${t.predicted4GW}pts, Form: ${t.form}, Difficulty: ${t.upcomingDifficulty}`,
+        `${t.name} (${t.position}, ${t.team}) £${t.cost.toFixed(1)}m — Score: ${t.score}, 4GW: ${t.predicted4GW}pts, Form: ${t.form}, Difficulty: ${t.upcomingDifficulty}`,
     )
     .join("\n");
 
@@ -97,13 +101,16 @@ export function buildGwPlanPrompt(req: GwPlanRequest): string {
   return `Create a GW${req.gameweek} plan for this FPL manager.
 
 ## Current Squad
+Player selling prices are shown (£Xm) — this is what you would receive when selling them.
 ${squadStr}
 
 ## Transfer Budget
 Free Transfers: ${req.freeTransfers}
 Bank: ${bankStr}
+Note: A transfer is only affordable if the selling price of the player out + bank >= cost of player in.
 
-## Top Transfer Targets
+## Top Transfer Targets (pre-filtered to affordable options only)
+Target costs are shown (£Xm) — all listed targets are affordable for at least one squad player.
 ${targetsStr}
 
 ## Captain Options

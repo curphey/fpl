@@ -826,6 +826,10 @@ export interface Pick {
   multiplier: number;
   is_captain: boolean;
   is_vice_captain: boolean;
+  /** Selling price in 0.1m units, e.g. 100 = £10.0m */
+  selling_price: number;
+  /** Original purchase price in 0.1m units */
+  purchase_price: number;
 }
 
 export interface AutomaticSub {

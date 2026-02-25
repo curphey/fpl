@@ -3,6 +3,7 @@ import { checkDeadlineReminders } from "./deadline-reminder";
 import { sendWeeklySummary } from "./weekly-summary";
 import { checkLeagueUpdates } from "./league-updates";
 import { trackGwPlanPredictions } from "./gw-plan-tracker";
+import { fplClient } from "@/lib/fpl/client";
 
 let schedulerStarted = false;
 
@@ -43,20 +44,8 @@ export function startScheduler() {
   cron.schedule("0 7 * * 2", async () => {
     console.log("[Scheduler] Running GW plan prediction tracker");
     try {
-      const response = await fetch(
-        "https://fantasy.premierleague.com/api/bootstrap-static/",
-        {
-          headers: {
-            "User-Agent": "Mozilla/5.0 (compatible; FPL-App/1.0)",
-            Accept: "application/json",
-          },
-        },
-      );
-      if (!response.ok) throw new Error(`FPL API error: ${response.status}`);
-      const data = await response.json();
-      const currentGw = data.events.find(
-        (e: { is_current: boolean }) => e.is_current,
-      );
+      const data = await fplClient.getBootstrapStatic();
+      const currentGw = data.events.find((e) => e.is_current);
       const gwNumber = currentGw ? currentGw.id : 1;
       await trackGwPlanPredictions(gwNumber);
     } catch (error) {

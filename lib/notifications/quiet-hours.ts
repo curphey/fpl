@@ -22,7 +22,7 @@ export function isInQuietHours(
       hour12: false,
       timeZone: timezone || "UTC",
     });
-    currentHour = parseInt(formatter.format(now), 10);
+    currentHour = parseInt(formatter.format(now), 10) % 24;
   } catch {
     // Invalid timezone, fall back to UTC
     currentHour = now.getUTCHours();
@@ -107,7 +107,7 @@ export function getNextSendTime(
       hour12: false,
       timeZone: timezone || "UTC",
     });
-    currentHour = parseInt(formatter.format(now), 10);
+    currentHour = parseInt(formatter.format(now), 10) % 24;
   } catch {
     currentHour = now.getUTCHours();
   }

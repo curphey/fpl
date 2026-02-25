@@ -20,6 +20,7 @@ import {
   getTransferPredictions,
   insertTransferPrediction,
   updateTransferActuals,
+  getActiveTransferPredictions,
 } from "../gw-plan";
 
 describe("getGwPlan", () => {
@@ -179,5 +180,43 @@ describe("updateTransferActuals", () => {
       null,
       "pred1",
     );
+  });
+});
+
+describe("getActiveTransferPredictions", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("queries only pending and on_track predictions", () => {
+    mockAll.mockReturnValue([]);
+    getActiveTransferPredictions();
+    expect(mockPrepare).toHaveBeenCalledWith(
+      expect.stringContaining("IN ('pending', 'on_track')"),
+    );
+  });
+
+  it("maps rows to TransferPrediction objects", () => {
+    mockAll.mockReturnValue([
+      {
+        id: "p2",
+        session_id: "sess2",
+        gameweek_made: 26,
+        player_out_id: 101,
+        player_out_name: "Trent",
+        player_in_id: 201,
+        player_in_name: "Alexander-Arnold",
+        predicted_gain_pts: 3.0,
+        actual_gain_pts: 2.5,
+        gw_actuals: '{"26":2,"27":0}',
+        status: "on_track",
+        reasoning: "decent fixtures",
+        tracking_notes: null,
+        created_at: "2026-01-10",
+        updated_at: "2026-01-17",
+      },
+    ]);
+    const result = getActiveTransferPredictions();
+    expect(result).toHaveLength(1);
+    expect(result[0].status).toBe("on_track");
+    expect(result[0].gwActuals).toEqual({ "26": 2, "27": 0 });
   });
 });

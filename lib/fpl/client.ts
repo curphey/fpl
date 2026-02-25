@@ -214,6 +214,13 @@ export const fplClient = {
       `/leagues-classic/${leagueId}/standings/?page_standings=${page}`,
     );
   },
+
+  /**
+   * Alias for getPlayerSummary — get detailed player summary (history, fixtures, past seasons)
+   */
+  async getElementSummary(playerId: number): Promise<ElementSummary> {
+    return fetchFPL<ElementSummary>(`/element-summary/${playerId}/`);
+  },
 };
 
 // =============================================================================

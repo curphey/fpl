@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 
-interface Props {
+export interface FplAccountProps {
   sessionId: string;
 }
 
@@ -12,7 +12,7 @@ interface AuthStatus {
   expiresAt: string | null;
 }
 
-export function FplAccount({ sessionId }: Props) {
+export function FplAccount({ sessionId }: FplAccountProps) {
   const [status, setStatus] = useState<AuthStatus | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -86,7 +86,7 @@ export function FplAccount({ sessionId }: Props) {
   }
 
   if (!status) {
-    return <div className="h-24 animate-pulse rounded-lg bg-white/5" />;
+    return <div className="h-24 animate-pulse rounded-lg bg-fpl-card" />;
   }
 
   if (status.connected) {
@@ -116,7 +116,7 @@ export function FplAccount({ sessionId }: Props) {
           <div>
             <p className="text-green-500">Connected as {status.managerName}</p>
             {expiryLabel && (
-              <p className="text-xs text-white/50">
+              <p className="text-xs text-fpl-muted">
                 Session expires: {expiryLabel}
               </p>
             )}
@@ -125,11 +125,11 @@ export function FplAccount({ sessionId }: Props) {
         <button
           onClick={() => void handleDisconnect()}
           disabled={loading}
-          className="rounded-lg px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors disabled:opacity-50"
+          className="rounded-lg px-4 py-2 text-sm text-fpl-danger hover:bg-fpl-danger/10 hover:text-fpl-danger/80 transition-colors disabled:opacity-50"
         >
-          Disconnect
+          {loading ? "Disconnecting..." : "Disconnect"}
         </button>
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="text-sm text-fpl-danger">{error}</p>}
       </div>
     );
   }
@@ -147,7 +147,8 @@ export function FplAccount({ sessionId }: Props) {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="your@email.com"
           required
-          className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-fpl-purple"
+          autoComplete="email"
+          className="w-full rounded-md border border-fpl-border bg-fpl-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-fpl-purple"
         />
       </div>
       <div>
@@ -164,14 +165,15 @@ export function FplAccount({ sessionId }: Props) {
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Your FPL password"
           required
-          className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-fpl-purple"
+          autoComplete="current-password"
+          className="w-full rounded-md border border-fpl-border bg-fpl-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-fpl-purple"
         />
       </div>
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-fpl-danger">{error}</p>}
       <button
         type="submit"
         disabled={loading || !email || !password}
-        className="w-full rounded-lg bg-fpl-purple px-4 py-3 font-medium hover:bg-fpl-purple/80 disabled:cursor-not-allowed disabled:bg-white/10 transition-colors"
+        className="w-full rounded-lg bg-fpl-purple px-4 py-3 font-medium transition-colors hover:bg-fpl-purple/80 disabled:cursor-not-allowed disabled:bg-fpl-card"
       >
         {loading ? "Connecting..." : "Connect to FPL"}
       </button>

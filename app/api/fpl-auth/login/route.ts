@@ -11,13 +11,13 @@ import { fplLogin, storeFplCredentials } from "@/lib/fpl/auth-client";
 export const runtime = "nodejs";
 
 const bodySchema = z.object({
-  sessionId: z.string().min(1),
+  sessionId: z.string().uuid("Invalid session ID"),
   email: z.string().email(),
   password: z.string().min(1),
 });
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const rl = await rateLimit(request, "fpl");
+  const rl = await rateLimit(request, "auth");
   if (rl) return rl;
 
   const parsed = bodySchema.safeParse(await request.json().catch(() => ({})));
@@ -34,16 +34,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (result.error === "INVALID_CREDENTIALS") {
       return createErrorResponse("Invalid FPL credentials", "UNAUTHORIZED");
     }
-    return createErrorResponse(result.message, "SERVICE_UNAVAILABLE");
+    return createErrorResponse(
+      "FPL login service temporarily unavailable. Please try again.",
+      "SERVICE_UNAVAILABLE",
+    );
   }
 
-  storeFplCredentials(
-    email,
-    password,
-    result.sessionCookie,
-    result.expiresAt,
-    result.managerName,
-  );
+  try {
+    storeFplCredentials(
+      email,
+      password,
+      result.sessionCookie,
+      result.expiresAt,
+      result.managerName,
+    );
+  } catch {
+    return createErrorResponse(
+      "Credentials could not be saved",
+      "INTERNAL_ERROR",
+    );
+  }
 
   return NextResponse.json({
     connected: true,

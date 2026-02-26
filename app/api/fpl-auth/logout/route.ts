@@ -10,7 +10,9 @@ import { clearFplCredentials } from "@/lib/fpl/auth-client";
 
 export const runtime = "nodejs";
 
-const bodySchema = z.object({ sessionId: z.string().min(1) });
+const bodySchema = z.object({
+  sessionId: z.string().uuid("Invalid session ID"),
+});
 
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
   const rl = await rateLimit(request, "fpl");

@@ -3,7 +3,7 @@ import { Redis } from "@upstash/redis";
 import { NextRequest, NextResponse } from "next/server";
 
 // Rate limit tiers
-export type RateLimitTier = "fpl" | "claude" | "notifications";
+export type RateLimitTier = "fpl" | "claude" | "notifications" | "auth";
 
 // Rate limit configurations per tier
 const RATE_LIMITS: Record<RateLimitTier, { requests: number; window: string }> =
@@ -14,6 +14,8 @@ const RATE_LIMITS: Record<RateLimitTier, { requests: number; window: string }> =
     claude: { requests: 10, window: "1 m" },
     // Notification endpoints - moderate limits
     notifications: { requests: 20, window: "1 m" },
+    // Auth endpoints - strict limits to prevent brute force
+    auth: { requests: 3, window: "15 m" },
   };
 
 // In-memory fallback storage when Redis is not configured

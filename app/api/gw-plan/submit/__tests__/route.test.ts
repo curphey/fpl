@@ -23,8 +23,10 @@ import { getGwPlanById } from "@/lib/db/gw-plan";
 import { getFplSession, authenticatedFetch } from "@/lib/fpl/auth-client";
 import { fplClient } from "@/lib/fpl/client";
 import type { GwPlan } from "@/lib/db/gw-plan";
+import type { BootstrapStatic, ManagerPicks } from "@/lib/fpl/types";
 
 const SESSION_ID = "550e8400-e29b-41d4-a716-446655440000";
+const PLAN_ID = "660e8400-e29b-41d4-a716-446655440001";
 const mockSession = {
   id: SESSION_ID,
   fpl_manager_id: 123,
@@ -38,7 +40,7 @@ const mockFplSession = {
   expiresAt: "2026-12-01T00:00:00Z",
 };
 const mockPlan: GwPlan = {
-  id: "plan-1",
+  id: PLAN_ID,
   sessionId: SESSION_ID,
   gameweek: 28,
   plan: {
@@ -79,10 +81,10 @@ describe("POST /api/gw-plan/submit", () => {
     vi.mocked(getSession).mockReturnValue({
       ...mockSession,
       fpl_manager_id: null,
-    } as never);
+    } as unknown as ReturnType<typeof getSession>);
     vi.mocked(getFplSession).mockReturnValue(mockFplSession);
     const res = await POST(
-      makeReq({ sessionId: SESSION_ID, planId: "plan-1", confirm: false }),
+      makeReq({ sessionId: SESSION_ID, planId: PLAN_ID, confirm: false }),
     );
     expect(res.status).toBe(401);
     const body = await res.json();
@@ -93,7 +95,7 @@ describe("POST /api/gw-plan/submit", () => {
     vi.mocked(getSession).mockReturnValue(mockSession);
     vi.mocked(getFplSession).mockReturnValue(null);
     const res = await POST(
-      makeReq({ sessionId: SESSION_ID, planId: "plan-1", confirm: false }),
+      makeReq({ sessionId: SESSION_ID, planId: PLAN_ID, confirm: false }),
     );
     expect(res.status).toBe(401);
   });
@@ -103,9 +105,28 @@ describe("POST /api/gw-plan/submit", () => {
     vi.mocked(getFplSession).mockReturnValue(mockFplSession);
     vi.mocked(getGwPlanById).mockReturnValue(null);
     const res = await POST(
-      makeReq({ sessionId: SESSION_ID, planId: "plan-1", confirm: false }),
+      makeReq({ sessionId: SESSION_ID, planId: PLAN_ID, confirm: false }),
     );
     expect(res.status).toBe(404);
+  });
+
+  it("returns 400 when plan has no transfers", async () => {
+    const emptyTransfersPlan: GwPlan = {
+      ...mockPlan,
+      plan: {
+        ...mockPlan.plan,
+        transfers: [],
+      },
+    };
+    vi.mocked(getSession).mockReturnValue(mockSession);
+    vi.mocked(getFplSession).mockReturnValue(mockFplSession);
+    vi.mocked(getGwPlanById).mockReturnValue(emptyTransfersPlan);
+    const res = await POST(
+      makeReq({ sessionId: SESSION_ID, planId: PLAN_ID, confirm: false }),
+    );
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe("BAD_REQUEST");
   });
 
   it("returns validation details on confirm: false", async () => {
@@ -129,7 +150,7 @@ describe("POST /api/gw-plan/submit", () => {
           team: 2,
         },
       ],
-    } as never);
+    } as unknown as BootstrapStatic);
     vi.mocked(fplClient.getManagerPicks).mockResolvedValue({
       picks: [
         {
@@ -151,7 +172,7 @@ describe("POST /api/gw-plan/submit", () => {
         event: 28,
       },
       active_chip: null,
-    } as never);
+    } as unknown as ManagerPicks);
     // FPL validation POST (confirm: false) — dry-run
     vi.mocked(authenticatedFetch).mockResolvedValue(
       new Response(JSON.stringify({ status: "ok" }), {
@@ -161,7 +182,7 @@ describe("POST /api/gw-plan/submit", () => {
     );
 
     const res = await POST(
-      makeReq({ sessionId: SESSION_ID, planId: "plan-1", confirm: false }),
+      makeReq({ sessionId: SESSION_ID, planId: PLAN_ID, confirm: false }),
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -194,7 +215,7 @@ describe("POST /api/gw-plan/submit", () => {
           team: 2,
         },
       ],
-    } as never);
+    } as unknown as BootstrapStatic);
     vi.mocked(fplClient.getManagerPicks).mockResolvedValue({
       picks: [],
       entry_history: {
@@ -207,7 +228,7 @@ describe("POST /api/gw-plan/submit", () => {
         event: 28,
       },
       active_chip: null,
-    } as never);
+    } as unknown as ManagerPicks);
     vi.mocked(authenticatedFetch).mockResolvedValue(
       new Response(JSON.stringify({ transfers_made: 1 }), {
         status: 200,
@@ -216,7 +237,7 @@ describe("POST /api/gw-plan/submit", () => {
     );
 
     const res = await POST(
-      makeReq({ sessionId: SESSION_ID, planId: "plan-1", confirm: true }),
+      makeReq({ sessionId: SESSION_ID, planId: PLAN_ID, confirm: true }),
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -245,7 +266,7 @@ describe("POST /api/gw-plan/submit", () => {
           team: 2,
         },
       ],
-    } as never);
+    } as unknown as BootstrapStatic);
     vi.mocked(fplClient.getManagerPicks).mockResolvedValue({
       picks: [],
       entry_history: {
@@ -258,7 +279,7 @@ describe("POST /api/gw-plan/submit", () => {
         event: 28,
       },
       active_chip: null,
-    } as never);
+    } as unknown as ManagerPicks);
     vi.mocked(authenticatedFetch).mockResolvedValue(
       new Response(
         JSON.stringify({ non_form_errors: ["Transfer deadline passed"] }),
@@ -267,7 +288,7 @@ describe("POST /api/gw-plan/submit", () => {
     );
 
     const res = await POST(
-      makeReq({ sessionId: SESSION_ID, planId: "plan-1", confirm: false }),
+      makeReq({ sessionId: SESSION_ID, planId: PLAN_ID, confirm: false }),
     );
     expect(res.status).toBe(400);
     const body = await res.json();

@@ -14,7 +14,7 @@ export const runtime = "nodejs";
 
 const bodySchema = z.object({
   sessionId: z.string().uuid("Invalid session ID"),
-  planId: z.string().min(1),
+  planId: z.string().uuid("Invalid plan ID"),
   confirm: z.boolean(),
 });
 
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         sellingPriceMap.set(pick.element, pick.selling_price);
     }
   } catch {
-    // Fall back to now_cost
+    // 404 expected before deadline; now_cost is used as fallback
   }
 
   // Build transfer array for FPL API
@@ -92,6 +92,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         "Content-Type": "application/json",
         "X-CSRFToken": csrfToken,
       },
+      // FPL treats confirmed: false as a dry-run validation call —
+      // the API returns 200 without making transfers.
       body: JSON.stringify({
         confirmed: confirm,
         entry: managerId,

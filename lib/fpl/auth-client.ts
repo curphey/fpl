@@ -1,8 +1,10 @@
+// lib/fpl/auth-client.ts
 import { getSetting, setSetting } from "@/lib/db/settings";
 import { encrypt, decrypt } from "./auth-crypto";
 
-const FPL_LOGIN_URL = "https://users.premierleague.com/accounts/login/";
 const FPL_API_BASE = "https://fantasy.premierleague.com/api";
+const PINGONE_TOKEN_URL = "https://account.premierleague.com/as/token";
+const FPL_CLIENT_ID = "bfcbaf69-aade-4c1b-8f00-c1cb8a193030";
 
 const BROWSER_HEADERS: HeadersInit = {
   "User-Agent":
@@ -13,277 +15,189 @@ const BROWSER_HEADERS: HeadersInit = {
   Origin: "https://fantasy.premierleague.com",
 };
 
-export type FplLoginError =
-  | "INVALID_CREDENTIALS"
-  | "CLOUDFLARE_BLOCKED"
-  | "NETWORK_ERROR";
-export type FplLoginResult =
-  | {
-      success: true;
-      managerName: string;
-      sessionCookie: string;
-      expiresAt: string;
-    }
-  | { success: false; error: FplLoginError; message: string };
-
-function getSetCookieHeaders(headers: Headers): string[] {
-  const h = headers as Headers & { getSetCookie?: () => string[] };
-  if (typeof h.getSetCookie === "function") return h.getSetCookie();
-  const raw = headers.get("set-cookie");
-  return raw ? raw.split(",").map((s) => s.trim()) : [];
-}
-
-function parseCookies(setCookieHeaders: string[]): Map<string, string> {
-  const cookies = new Map<string, string>();
-  for (const header of setCookieHeaders) {
-    const [nameValue] = header.split(";");
-    const eqIdx = nameValue.indexOf("=");
-    if (eqIdx >= 0) {
-      cookies.set(
-        nameValue.slice(0, eqIdx).trim(),
-        nameValue.slice(eqIdx + 1).trim(),
-      );
-    }
-  }
-  return cookies;
-}
-
-function extractCsrfFromHtml(html: string): string | null {
-  const match = html.match(
-    /name=['"]csrfmiddlewaretoken['"]\s+value=['"]([^'"]+)['"]/,
-  );
-  return match?.[1] ?? null;
-}
-
-function buildCookieString(cookies: Map<string, string>): string {
-  return [...cookies.entries()].map(([k, v]) => `${k}=${v}`).join("; ");
-}
-
-export async function fplLogin(
-  email: string,
-  password: string,
-): Promise<FplLoginResult> {
+/** Parse the `exp` claim from a JWT payload without verifying the signature. */
+function parseJwtExpiry(jwt: string): string | null {
   try {
-    // Step 1: GET login page to extract CSRF token
-    // Use redirect:"manual" so a 302 to /holding.html (FPL maintenance) is caught
-    // before we follow it and silently lose the CSRF cookie.
-    const getResp = await fetch(FPL_LOGIN_URL, {
-      headers: BROWSER_HEADERS,
-      redirect: "manual",
-    });
-
-    if (getResp.status === 403 || getResp.status === 429) {
-      return {
-        success: false,
-        error: "CLOUDFLARE_BLOCKED",
-        message: "FPL login blocked by Cloudflare. Try again later.",
-      };
+    const payload = JSON.parse(
+      Buffer.from(jwt.split(".")[1], "base64url").toString("utf8"),
+    ) as { exp?: number };
+    if (typeof payload.exp === "number") {
+      return new Date(payload.exp * 1000).toISOString();
     }
-    // 3xx = redirected away from login page (e.g. to /holding.html during maintenance)
-    if (getResp.status >= 300 && getResp.status < 400) {
-      return {
-        success: false,
-        error: "NETWORK_ERROR",
-        message:
-          "FPL login service is currently in maintenance. Please try again later.",
-      };
-    }
-    if (!getResp.ok) {
-      return {
-        success: false,
-        error: "NETWORK_ERROR",
-        message: `FPL login page unavailable (${getResp.status})`,
-      };
-    }
-
-    const html = await getResp.text();
-    const getSetCookies = getSetCookieHeaders(getResp.headers);
-    const getCookies = parseCookies(getSetCookies);
-
-    const csrfToken = getCookies.get("csrftoken") ?? extractCsrfFromHtml(html);
-    if (!csrfToken) {
-      return {
-        success: false,
-        error: "NETWORK_ERROR",
-        message: "Could not extract CSRF token from FPL login page",
-      };
-    }
-
-    // Step 2: POST credentials
-    const body = new URLSearchParams({
-      login: email,
-      password,
-      csrfmiddlewaretoken: csrfToken,
-      app: "plfpl-web",
-      redirect_uri: "https://fantasy.premierleague.com/a/login",
-    });
-
-    const postResp = await fetch(FPL_LOGIN_URL, {
-      method: "POST",
-      headers: {
-        ...BROWSER_HEADERS,
-        "Content-Type": "application/x-www-form-urlencoded",
-        Cookie: buildCookieString(getCookies),
-      },
-      body: body.toString(),
-      redirect: "follow",
-    });
-
-    if (postResp.status === 403 || postResp.status === 429) {
-      return {
-        success: false,
-        error: "CLOUDFLARE_BLOCKED",
-        message: "FPL login blocked by Cloudflare. Try again later.",
-      };
-    }
-
-    const postSetCookies = getSetCookieHeaders(postResp.headers);
-    const postCookies = parseCookies(postSetCookies);
-
-    if (!postCookies.has("pl_profile")) {
-      return {
-        success: false,
-        error: "INVALID_CREDENTIALS",
-        message: "Invalid FPL credentials",
-      };
-    }
-
-    // Merge all cookies for authenticated requests
-    const allCookies = new Map([...getCookies, ...postCookies]);
-    const sessionCookie = buildCookieString(allCookies);
-
-    // Derive session expiry from pl_profile cookie header
-    const plProfileHeader =
-      postSetCookies.find((c) => c.startsWith("pl_profile=")) ?? "";
-    const expiresMatch = plProfileHeader.match(/expires=([^;]+)/i);
-    const parsedExpiry = expiresMatch ? new Date(expiresMatch[1]) : null;
-    const expiresAt =
-      parsedExpiry && !isNaN(parsedExpiry.getTime())
-        ? parsedExpiry.toISOString()
-        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-
-    // Step 3: Fetch manager name (non-critical)
-    let managerName = "FPL Manager";
-    try {
-      const meResp = await fetch(`${FPL_API_BASE}/me/`, {
-        headers: { ...BROWSER_HEADERS, Cookie: sessionCookie },
-      });
-      if (meResp.ok) {
-        const me = (await meResp.json()) as {
-          player?: { first_name: string; last_name: string };
-        };
-        if (me.player) {
-          managerName = `${me.player.first_name} ${me.player.last_name}`.trim();
-        }
-      }
-    } catch {
-      // name is non-critical; continue
-    }
-
-    return { success: true, managerName, sessionCookie, expiresAt };
-  } catch (error) {
-    return {
-      success: false,
-      error: "NETWORK_ERROR",
-      message:
-        error instanceof Error
-          ? error.message
-          : "Network error during FPL login",
-    };
+  } catch {
+    // ignore malformed tokens
   }
+  return null;
 }
 
-export function storeFplCredentials(
-  email: string,
-  password: string,
-  sessionCookie: string,
-  expiresAt: string,
-  managerName: string,
-): void {
-  setSetting("fpl_email_encrypted", encrypt(email));
-  setSetting("fpl_password_encrypted", encrypt(password));
-  setSetting("fpl_session_cookie", sessionCookie);
-  setSetting("fpl_session_expires", expiresAt);
+/** POST to PingOne with the stored refresh_token; stores and returns new access_token. */
+async function performTokenRefresh(): Promise<string> {
+  const encryptedRefreshToken = getSetting("fpl_refresh_token_encrypted");
+  if (!encryptedRefreshToken) throw new Error("FPL_UNAUTHORIZED");
+
+  let refreshToken: string;
+  try {
+    refreshToken = decrypt(encryptedRefreshToken);
+  } catch {
+    throw new Error("FPL_UNAUTHORIZED");
+  }
+
+  const body = new URLSearchParams({
+    grant_type: "refresh_token",
+    client_id: FPL_CLIENT_ID,
+    refresh_token: refreshToken,
+  });
+
+  const resp = await fetch(PINGONE_TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+  });
+  if (!resp.ok) throw new Error("FPL_SESSION_EXPIRED");
+
+  const data = (await resp.json()) as {
+    access_token: string;
+    refresh_token?: string;
+    expires_in?: number;
+  };
+
+  const newExpiresAt =
+    parseJwtExpiry(data.access_token) ??
+    new Date(Date.now() + (data.expires_in ?? 7200) * 1000).toISOString();
+
+  setSetting("fpl_access_token", data.access_token);
+  setSetting("fpl_access_token_expires", newExpiresAt);
+  if (data.refresh_token) {
+    setSetting("fpl_refresh_token_encrypted", encrypt(data.refresh_token));
+  }
+  return data.access_token;
+}
+
+/** Returns a valid access_token, refreshing if needed. */
+async function getValidAccessToken(): Promise<string> {
+  const token = getSetting("fpl_access_token");
+  const expires = getSetting("fpl_access_token_expires");
+
+  // Use stored token if it has more than 5 minutes left
+  if (
+    token &&
+    expires &&
+    new Date(expires) > new Date(Date.now() + 5 * 60 * 1000)
+  ) {
+    return token;
+  }
+
+  if (!getSetting("fpl_refresh_token_encrypted")) {
+    throw new Error("FPL_UNAUTHORIZED");
+  }
+
+  return performTokenRefresh();
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/**
+ * Validate tokens via FPL /api/me/, then store them.
+ * Called by the bookmarklet endpoint after receiving tokens from FPL's localStorage.
+ */
+export async function connectFplTokens(
+  accessToken: string,
+  refreshToken: string,
+): Promise<{ managerName: string; entryId: number; expiresAt: string }> {
+  const meResp = await fetch(`${FPL_API_BASE}/me/`, {
+    headers: { ...BROWSER_HEADERS, Authorization: `Bearer ${accessToken}` },
+  });
+  if (!meResp.ok) throw new Error("FPL_INVALID_TOKEN");
+
+  const me = (await meResp.json()) as {
+    player?: { first_name: string; last_name: string };
+    id?: number;
+  };
+
+  const managerName = me.player
+    ? `${me.player.first_name} ${me.player.last_name}`.trim()
+    : "FPL Manager";
+  const entryId = me.id ?? 0;
+
+  const expiresAt =
+    parseJwtExpiry(accessToken) ??
+    new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+
+  setSetting("fpl_access_token", accessToken);
+  setSetting("fpl_access_token_expires", expiresAt);
+  setSetting("fpl_refresh_token_encrypted", encrypt(refreshToken));
   setSetting("fpl_manager_name", managerName);
+  setSetting("fpl_entry_id", String(entryId));
+
+  return { managerName, entryId, expiresAt };
 }
 
+/** True if we have a stored refresh_token (connection persists even if access_token expired). */
+export function isFplConnected(): boolean {
+  return getSetting("fpl_refresh_token_encrypted") !== null;
+}
+
+/** Returns display info for the Settings UI, or null if not connected. */
+export function getFplSession(): {
+  managerName: string;
+  entryId: number;
+  expiresAt: string;
+} | null {
+  if (!getSetting("fpl_refresh_token_encrypted")) return null;
+  return {
+    managerName: getSetting("fpl_manager_name") ?? "FPL Manager",
+    entryId: Number(getSetting("fpl_entry_id") ?? "0"),
+    expiresAt:
+      getSetting("fpl_access_token_expires") ??
+      new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+  };
+}
+
+/** Clear all stored FPL credentials. */
 export function clearFplCredentials(): void {
   for (const key of [
-    "fpl_email_encrypted",
-    "fpl_password_encrypted",
-    "fpl_session_cookie",
-    "fpl_session_expires",
+    "fpl_access_token",
+    "fpl_access_token_expires",
+    "fpl_refresh_token_encrypted",
     "fpl_manager_name",
+    "fpl_entry_id",
   ]) {
     setSetting(key, null);
   }
 }
 
-export function getFplSession(): {
-  cookie: string;
-  managerName: string;
-  expiresAt: string;
-} | null {
-  const cookie = getSetting("fpl_session_cookie");
-  const expires = getSetting("fpl_session_expires");
-  if (!cookie || !expires) return null;
-  if (new Date(expires) <= new Date()) return null;
-  return {
-    cookie,
-    managerName: getSetting("fpl_manager_name") ?? "FPL Manager",
-    expiresAt: expires,
-  };
-}
-
-export async function refreshFplSession(): Promise<boolean> {
-  const encryptedEmail = getSetting("fpl_email_encrypted");
-  const encryptedPw = getSetting("fpl_password_encrypted");
-  if (!encryptedEmail || !encryptedPw) return false;
-  let email: string;
-  let password: string;
-  try {
-    email = decrypt(encryptedEmail);
-    password = decrypt(encryptedPw);
-  } catch {
-    console.error(
-      "[FPL Auth] Failed to decrypt stored credentials — key may have changed",
-    );
-    return false;
-  }
-  const result = await fplLogin(email, password);
-  if (!result.success) return false;
-  storeFplCredentials(
-    email,
-    password,
-    result.sessionCookie,
-    result.expiresAt,
-    result.managerName,
-  );
-  return true;
-}
-
+/**
+ * Fetch a FPL API URL with a valid Bearer token.
+ * Auto-refreshes on expiry and retries once on 401.
+ * Throws FPL_UNAUTHORIZED if no credentials are stored.
+ * Throws FPL_SESSION_EXPIRED if refresh fails.
+ */
 export async function authenticatedFetch(
   url: string,
   options: RequestInit = {},
 ): Promise<Response> {
-  const session = getFplSession();
-  if (!session) throw new Error("FPL_UNAUTHORIZED");
+  const token = await getValidAccessToken();
 
   const response = await fetch(url, {
     ...options,
-    headers: { ...BROWSER_HEADERS, ...options.headers, Cookie: session.cookie },
+    headers: {
+      ...BROWSER_HEADERS,
+      ...options.headers,
+      Authorization: `Bearer ${token}`,
+    },
   });
 
   if (response.status === 401) {
-    const refreshed = await refreshFplSession();
-    if (!refreshed) throw new Error("FPL_SESSION_EXPIRED");
-    const newSession = getFplSession();
+    // Force a refresh and retry once
+    const freshToken = await performTokenRefresh();
     return fetch(url, {
       ...options,
       headers: {
         ...BROWSER_HEADERS,
         ...options.headers,
-        Cookie: newSession!.cookie,
+        Authorization: `Bearer ${freshToken}`,
       },
     });
   }

@@ -597,6 +597,117 @@ describe("GwPlanWidget", () => {
     await waitFor(() => expect(screen.queryByText(/Submit/i)).toBeNull());
   });
 
+  it("calls onTransferSuccess with gameweek after successful FPL submission", async () => {
+    const onTransferSuccess = vi.fn();
+    mockFetch.mockImplementation((url: unknown) => {
+      const urlStr = String(url);
+      if (urlStr.includes("fpl-auth/status")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ connected: true }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan/predictions")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ predictions: [] }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan/submit")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            valid: true,
+            transfers: [
+              {
+                elementIn: 20,
+                elementOut: 10,
+                purchasePrice: 110,
+                sellingPrice: 105,
+              },
+            ],
+            transferCost: 0,
+            wildcardActive: false,
+          }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            id: "plan1",
+            sessionId: "sess1",
+            gameweek: 28,
+            plan: {
+              predictedTeamPoints: 60,
+              captain: { playerId: 1, name: "Salah", reasoning: "fixtures" },
+              transfers: [
+                {
+                  playerOut: { id: 10, name: "Mukiele", predicted4GW: 10 },
+                  playerIn: {
+                    id: 20,
+                    name: "Alexander-Arnold",
+                    predicted4GW: 15,
+                  },
+                  pointsGain: 5,
+                  hitCost: 0,
+                  reasoning: "upgrade",
+                },
+              ],
+              notes: "",
+            },
+            thinking: "",
+            generatedAt: "2026-02-26",
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        json: async () => ({}),
+      });
+    });
+
+    render(
+      <GwPlanWidget
+        sessionId="sess1"
+        gameweek={28}
+        onTransferSuccess={onTransferSuccess}
+      />,
+    );
+
+    // Wait for submit button
+    await waitFor(() =>
+      expect(screen.getByText(/Submit \d+ Transfer/i)).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByText(/Submit \d+ Transfer/i));
+
+    // Wait for confirm modal
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /confirm/i }),
+      ).toBeInTheDocument(),
+    );
+
+    // Mock successful submit
+    mockFetch.mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: true,
+        json: async () => ({ submitted: true }),
+      }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /confirm/i }));
+
+    // Wait for success and close
+    await waitFor(() =>
+      expect(screen.getByText(/transfers submitted/i)).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /close/i }));
+
+    await waitFor(() => expect(onTransferSuccess).toHaveBeenCalledWith(28));
+  });
+
   it("shows Submitted after modal onSuccess", async () => {
     mockFetch.mockImplementation((url: unknown) => {
       const urlStr = String(url);

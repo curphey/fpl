@@ -8,9 +8,15 @@ import { SubmitPlanModal } from "./submit-plan-modal";
 interface GwPlanWidgetProps {
   sessionId: string;
   gameweek: number;
+  /** Called with the gameweek number when transfers are successfully submitted to FPL. */
+  onTransferSuccess?: (gameweek: number) => void;
 }
 
-export function GwPlanWidget({ sessionId, gameweek }: GwPlanWidgetProps) {
+export function GwPlanWidget({
+  sessionId,
+  gameweek,
+  onTransferSuccess,
+}: GwPlanWidgetProps) {
   const [plan, setPlan] = useState<GwPlan | null>(null);
   const [predictions, setPredictions] = useState<TransferPrediction[]>([]);
   const [loading, setLoading] = useState(false);
@@ -312,6 +318,7 @@ export function GwPlanWidget({ sessionId, gameweek }: GwPlanWidgetProps) {
               onSuccess={() => {
                 setSubmitted(true);
                 setShowSubmitModal(false);
+                onTransferSuccess?.(gameweek);
               }}
             />
           )}

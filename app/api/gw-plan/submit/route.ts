@@ -16,6 +16,8 @@ const bodySchema = z.object({
   sessionId: z.string().uuid("Invalid session ID"),
   planId: z.string().uuid("Invalid plan ID"),
   confirm: z.boolean(),
+  /** Optional subset of transfer indices to submit. If absent, all transfers are submitted. */
+  transferIndices: z.array(z.number().int().min(0)).optional(),
 });
 
 const FPL_TRANSFERS_URL = "https://fantasy.premierleague.com/api/transfers/";
@@ -27,7 +29,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const parsed = bodySchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) return createValidationErrorResponse(parsed.error);
 
-  const { sessionId, planId, confirm } = parsed.data;
+  const { sessionId, planId, confirm, transferIndices } = parsed.data;
 
   const session = getSession(sessionId);
   if (!session?.fpl_manager_id) {
@@ -50,7 +52,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return createErrorResponse("Plan not found", "NOT_FOUND");
   }
 
-  if (gwPlan.plan.transfers.length === 0) {
+  // Filter to selected transfer indices if provided, otherwise use all
+  const selectedTransfers =
+    transferIndices !== undefined
+      ? gwPlan.plan.transfers.filter((_, i) => transferIndices.includes(i))
+      : gwPlan.plan.transfers;
+
+  if (selectedTransfers.length === 0) {
     return createErrorResponse("No transfers in this plan", "BAD_REQUEST");
   }
 
@@ -74,7 +82,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   // Build transfer array for FPL API
-  const transfers = gwPlan.plan.transfers.map((t) => ({
+  const transfers = selectedTransfers.map((t) => ({
     element_in: t.playerIn.id,
     element_out: t.playerOut.id,
     purchase_price: priceMap.get(t.playerIn.id) ?? 0,
@@ -162,7 +170,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           purchasePrice: t.purchase_price,
           sellingPrice: t.selling_price,
         })),
-        transferCost: gwPlan.plan.transfers.reduce(
+        transferCost: selectedTransfers.reduce(
           (sum, t) => sum + (t.hitCost ?? 0),
           0,
         ),

@@ -19,6 +19,20 @@ const baseRequest: GwPlanRequest = {
       form: "9.0",
       upcomingDifficulty: 2.0,
       sellingPrice: 12.5,
+      isStarter: true,
+    },
+    {
+      id: 5,
+      name: "BenchPlayer",
+      team: "EVE",
+      position: "MID",
+      predictedPtsNextGW: 2.1,
+      predicted4GW: 8.4,
+      form: "2.0",
+      upcomingDifficulty: 4.0,
+      sellingPrice: 4.5,
+      isStarter: false,
+      benchPriority: 2,
     },
   ],
   freeTransfers: 1,
@@ -124,6 +138,32 @@ describe("buildGwPlanPrompt", () => {
     const prompt = buildGwPlanPrompt(baseRequest);
     expect(prompt).toContain("multiple");
   });
+
+  it("separates starting XI from bench players", () => {
+    const prompt = buildGwPlanPrompt(baseRequest);
+    expect(prompt).toMatch(/Starting XI/i);
+    expect(prompt).toMatch(/Bench/i);
+    // Salah is a starter, BenchPlayer is on bench
+    const starterIdx = prompt.indexOf("Salah");
+    const benchIdx = prompt.indexOf("BenchPlayer");
+    expect(starterIdx).toBeGreaterThan(-1);
+    expect(benchIdx).toBeGreaterThan(-1);
+    // Salah should appear in starting XI section (before Bench heading)
+    const benchHeadingIdx = prompt.search(/Bench/i);
+    expect(starterIdx).toBeLessThan(benchHeadingIdx);
+    expect(benchIdx).toBeGreaterThan(benchHeadingIdx);
+  });
+
+  it("includes bench priority for bench players", () => {
+    const prompt = buildGwPlanPrompt(baseRequest);
+    // BenchPlayer has benchPriority: 2
+    expect(prompt).toMatch(/Slot 2.*BenchPlayer|BenchPlayer.*Slot 2/i);
+  });
+
+  it("includes benchAdvice in the JSON schema", () => {
+    const prompt = buildGwPlanPrompt(baseRequest);
+    expect(prompt).toContain("benchAdvice");
+  });
 });
 
 describe("GW_PLAN_SYSTEM_PROMPT", () => {
@@ -131,6 +171,10 @@ describe("GW_PLAN_SYSTEM_PROMPT", () => {
     expect(GW_PLAN_SYSTEM_PROMPT).toMatch(
       /GK.*GK|DEF.*DEF|same.*position|position.*same/i,
     );
+  });
+
+  it("includes bench/substitution analysis instruction", () => {
+    expect(GW_PLAN_SYSTEM_PROMPT).toMatch(/bench/i);
   });
 });
 
@@ -200,5 +244,30 @@ describe("parseGwPlanResult", () => {
     );
     expect(result.transfers).toEqual([]);
     expect(result.notes).toBe("");
+  });
+
+  it("parses benchAdvice field", () => {
+    const json = JSON.stringify({
+      predictedTeamPoints: 60,
+      captain: { playerId: 1, name: "Salah", reasoning: "" },
+      transfers: [],
+      benchAdvice: "Swap Slot 1 and Slot 2 for better auto-sub coverage.",
+      notes: "",
+    });
+    const result = parseGwPlanResult(json);
+    expect(result.benchAdvice).toBe(
+      "Swap Slot 1 and Slot 2 for better auto-sub coverage.",
+    );
+  });
+
+  it("defaults benchAdvice to empty string when absent", () => {
+    const json = JSON.stringify({
+      predictedTeamPoints: 60,
+      captain: { playerId: 1, name: "Salah", reasoning: "" },
+      transfers: [],
+      notes: "",
+    });
+    const result = parseGwPlanResult(json);
+    expect(result.benchAdvice).toBe("");
   });
 });

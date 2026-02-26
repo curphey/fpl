@@ -173,6 +173,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const player = playerMap.get(pick.element);
       const pts = pointsMap.get(pick.element);
       const team = player ? teamMap.get(player.team) : undefined;
+      const isStarter = pick.position <= 11;
 
       return {
         id: pick.element,
@@ -189,6 +190,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           Math.round(
             ((pick.selling_price ?? player?.now_cost ?? 0) / 10) * 10,
           ) / 10,
+        isStarter,
+        benchPriority: isStarter ? undefined : pick.position - 11,
       };
     });
 

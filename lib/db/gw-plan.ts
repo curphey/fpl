@@ -16,6 +16,8 @@ export interface GwPlanResult {
     hitCost: number;
     reasoning: string;
   }>;
+  /** Bench order and substitution advice. Explicitly states "No bench changes required" when none needed. */
+  benchAdvice?: string;
   notes: string;
 }
 

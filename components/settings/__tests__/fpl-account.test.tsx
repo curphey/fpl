@@ -24,12 +24,13 @@ describe("FplAccount", () => {
     await waitFor(() =>
       expect(screen.getByText(/drag this/i)).toBeInTheDocument(),
     );
-    // Bookmarklet anchor should exist — href set imperatively via ref after mount
-    const anchor = screen.getByRole("link", { name: /send to fpl insights/i });
+    // Bookmarklet anchor is injected imperatively via useEffect — use findByRole
+    // to wait for the DOM mutation rather than asserting synchronously.
+    const anchor = await screen.findByRole("link", {
+      name: /send to fpl insights/i,
+    });
     expect(anchor).toBeInTheDocument();
-    await waitFor(() =>
-      expect(anchor.getAttribute("href")).toMatch(/^javascript:/),
-    );
+    expect(anchor.getAttribute("href")).toMatch(/^javascript:/);
   });
 
   it("does not show email or password inputs when not connected", async () => {

@@ -19,6 +19,9 @@ export function GwPlanWidget({ sessionId, gameweek }: GwPlanWidgetProps) {
   const [fplConnected, setFplConnected] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [selectedTransfers, setSelectedTransfers] = useState<Set<number>>(
+    new Set(),
+  );
 
   const fetchPredictions = useCallback(async () => {
     try {
@@ -56,6 +59,7 @@ export function GwPlanWidget({ sessionId, gameweek }: GwPlanWidgetProps) {
         if (res.ok) {
           const data = (await res.json()) as GwPlan;
           setPlan(data);
+          setSelectedTransfers(new Set(data.plan.transfers.map((_, i) => i)));
           await fetchPredictions();
         }
         // 404 or other error => no cached plan, show generate button
@@ -87,6 +91,7 @@ export function GwPlanWidget({ sessionId, gameweek }: GwPlanWidgetProps) {
 
       const data = (await res.json()) as GwPlan;
       setPlan(data);
+      setSelectedTransfers(new Set(data.plan.transfers.map((_, i) => i)));
       await fetchPredictions();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate plan");
@@ -95,10 +100,28 @@ export function GwPlanWidget({ sessionId, gameweek }: GwPlanWidgetProps) {
     }
   };
 
+  const toggleTransfer = (idx: number) => {
+    setSelectedTransfers((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) {
+        next.delete(idx);
+      } else {
+        next.add(idx);
+      }
+      return next;
+    });
+  };
+
   // While doing the initial cached-plan check, render nothing (avoids flicker)
   if (initialChecking) {
     return null;
   }
+
+  const selectedCount = selectedTransfers.size;
+  const transferLabel =
+    selectedCount === 1
+      ? "Submit 1 Transfer"
+      : `Submit ${selectedCount} Transfers`;
 
   return (
     <div className="rounded-lg border border-fpl-border bg-fpl-card p-4 sm:p-6">
@@ -192,37 +215,67 @@ export function GwPlanWidget({ sessionId, gameweek }: GwPlanWidgetProps) {
               </p>
               <div className="space-y-2">
                 {plan.plan.transfers.map((transfer, idx) => (
-                  <div
+                  <label
                     key={idx}
-                    className="rounded-lg border border-white/10 bg-white/5 p-3"
+                    className="flex cursor-pointer items-start gap-3 rounded-lg border border-white/10 bg-white/5 p-3 hover:bg-white/10 transition-colors"
                   >
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="text-red-400">
-                        {transfer.playerOut.name}
-                      </span>
-                      <span className="text-fpl-muted">&#8594;</span>
-                      <span className="text-fpl-green">
-                        {transfer.playerIn.name}
-                      </span>
-                      <span className="ml-auto flex items-center gap-1.5 text-xs">
-                        {transfer.hitCost > 0 && (
-                          <span className="text-orange-400">
-                            -{transfer.hitCost} hit
-                          </span>
-                        )}
-                        {transfer.pointsGain > 0 && (
-                          <span className="text-fpl-green">
-                            +{transfer.pointsGain.toFixed(1)} pts net
-                          </span>
-                        )}
-                      </span>
+                    <input
+                      type="checkbox"
+                      checked={selectedTransfers.has(idx)}
+                      onChange={() => toggleTransfer(idx)}
+                      className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-fpl-green"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-red-400">
+                          {transfer.playerOut.name}
+                        </span>
+                        <span className="text-fpl-muted">&#8594;</span>
+                        <span className="text-fpl-green">
+                          {transfer.playerIn.name}
+                        </span>
+                        <span className="ml-auto flex items-center gap-1.5 text-xs">
+                          {transfer.hitCost > 0 && (
+                            <span className="text-orange-400">
+                              -{transfer.hitCost} hit
+                            </span>
+                          )}
+                          {transfer.pointsGain > 0 && (
+                            <span className="text-fpl-green">
+                              +{transfer.pointsGain.toFixed(1)} pts net
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-fpl-muted">
+                        {transfer.reasoning}
+                      </p>
                     </div>
-                    <p className="mt-1 text-xs text-fpl-muted">
-                      {transfer.reasoning}
-                    </p>
-                  </div>
+                  </label>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* No transfers — explicit message */}
+          {plan.plan.transfers.length === 0 && (
+            <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-fpl-muted mb-1">
+                Transfers
+              </p>
+              <p className="text-sm text-fpl-muted">
+                No transfers recommended this gameweek.
+              </p>
+            </div>
+          )}
+
+          {/* Bench advice */}
+          {plan.plan.benchAdvice && (
+            <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-fpl-muted">
+                Bench &amp; Substitutions
+              </p>
+              <p className="text-sm text-fpl-muted">{plan.plan.benchAdvice}</p>
             </div>
           )}
 
@@ -236,14 +289,14 @@ export function GwPlanWidget({ sessionId, gameweek }: GwPlanWidgetProps) {
           {/* Transfer tracker */}
           <TransferTracker predictions={predictions} />
 
-          {/* Submit to FPL button */}
-          {fplConnected && plan.plan.transfers.length > 0 && (
+          {/* Submit to FPL button — only shown when transfers are selected */}
+          {fplConnected && selectedCount > 0 && (
             <button
               onClick={() => setShowSubmitModal(true)}
               disabled={submitted}
               className="w-full rounded-lg border border-fpl-green/40 bg-fpl-green/20 px-4 py-2 text-sm font-semibold text-fpl-green transition-colors hover:bg-fpl-green/30 disabled:opacity-50"
             >
-              {submitted ? "Submitted ✓" : "Submit to FPL ▶"}
+              {submitted ? "Submitted ✓" : `${transferLabel} ▶`}
             </button>
           )}
 
@@ -253,6 +306,9 @@ export function GwPlanWidget({ sessionId, gameweek }: GwPlanWidgetProps) {
               onClose={() => setShowSubmitModal(false)}
               plan={plan}
               sessionId={sessionId}
+              selectedTransferIndices={Array.from(selectedTransfers).sort(
+                (a, b) => a - b,
+              )}
               onSuccess={() => {
                 setSubmitted(true);
                 setShowSubmitModal(false);

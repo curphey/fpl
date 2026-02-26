@@ -245,6 +245,88 @@ describe("POST /api/gw-plan/submit", () => {
     expect(body.transfersMade).toBe(1);
   });
 
+  it("submits only selected transfers when transferIndices provided", async () => {
+    const twoTransferPlan: GwPlan = {
+      ...mockPlan,
+      plan: {
+        ...mockPlan.plan,
+        transfers: [
+          {
+            playerOut: { id: 10, name: "PlayerA", predicted4GW: 10 },
+            playerIn: { id: 20, name: "PlayerB", predicted4GW: 15 },
+            pointsGain: 5,
+            hitCost: 0,
+            reasoning: "upgrade A",
+          },
+          {
+            playerOut: { id: 30, name: "PlayerC", predicted4GW: 8 },
+            playerIn: { id: 40, name: "PlayerD", predicted4GW: 14 },
+            pointsGain: 4,
+            hitCost: 0,
+            reasoning: "upgrade C",
+          },
+        ],
+      },
+    };
+    vi.mocked(getSession).mockReturnValue(mockSession);
+    vi.mocked(getFplSession).mockReturnValue(mockFplSession);
+    vi.mocked(getGwPlanById).mockReturnValue(twoTransferPlan);
+    vi.mocked(fplClient.getBootstrapStatic).mockResolvedValue({
+      elements: [
+        {
+          id: 10,
+          now_cost: 100,
+          element_type: 2,
+          web_name: "PlayerA",
+          team: 1,
+        },
+        {
+          id: 20,
+          now_cost: 110,
+          element_type: 2,
+          web_name: "PlayerB",
+          team: 2,
+        },
+        { id: 30, now_cost: 80, element_type: 3, web_name: "PlayerC", team: 3 },
+        { id: 40, now_cost: 90, element_type: 3, web_name: "PlayerD", team: 4 },
+      ],
+    } as unknown as BootstrapStatic);
+    vi.mocked(fplClient.getManagerPicks).mockResolvedValue({
+      picks: [],
+      entry_history: {
+        bank: 10,
+        event_transfers: 0,
+        event_transfers_cost: 0,
+        points: 55,
+        total_points: 1200,
+        rank: 5000,
+        event: 28,
+      },
+      active_chip: null,
+    } as unknown as ManagerPicks);
+    vi.mocked(authenticatedFetch).mockResolvedValue(
+      new Response(JSON.stringify({ status: "ok" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+
+    // Only submit the first transfer (index 0)
+    const res = await POST(
+      makeReq({
+        sessionId: SESSION_ID,
+        planId: PLAN_ID,
+        confirm: false,
+        transferIndices: [0],
+      }),
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.transfers).toHaveLength(1);
+    expect(body.transfers[0].elementIn).toBe(20);
+    expect(body.transfers[0].elementOut).toBe(10);
+  });
+
   it("surfaces per-transfer error message from FPL transfers error shape", async () => {
     vi.mocked(getSession).mockReturnValue(mockSession);
     vi.mocked(getFplSession).mockReturnValue(mockFplSession);

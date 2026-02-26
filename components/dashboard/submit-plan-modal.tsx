@@ -8,6 +8,8 @@ export interface SubmitPlanModalProps {
   onClose: () => void;
   plan: GwPlan;
   sessionId: string;
+  /** Indices into plan.plan.transfers to submit. If absent, all transfers are submitted. */
+  selectedTransferIndices?: number[];
   onSuccess?: () => void;
 }
 
@@ -31,6 +33,7 @@ export function SubmitPlanModal({
   onClose,
   plan,
   sessionId,
+  selectedTransferIndices,
   onSuccess,
 }: SubmitPlanModalProps) {
   const [state, setState] = useState<ModalState>("loading");
@@ -49,7 +52,14 @@ export function SubmitPlanModal({
         const res = await fetch("/api/gw-plan/submit", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionId, planId: plan.id, confirm: false }),
+          body: JSON.stringify({
+            sessionId,
+            planId: plan.id,
+            confirm: false,
+            ...(selectedTransferIndices !== undefined && {
+              transferIndices: selectedTransferIndices,
+            }),
+          }),
         });
         const json = (await res.json()) as ValidateResponse & {
           error?: string;
@@ -76,7 +86,14 @@ export function SubmitPlanModal({
       const res = await fetch("/api/gw-plan/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, planId: plan.id, confirm: true }),
+        body: JSON.stringify({
+          sessionId,
+          planId: plan.id,
+          confirm: true,
+          ...(selectedTransferIndices !== undefined && {
+            transferIndices: selectedTransferIndices,
+          }),
+        }),
       });
       const json = (await res.json()) as {
         submitted?: boolean;

@@ -303,7 +303,7 @@ describe("GwPlanWidget", () => {
     render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Submit to FPL/i)).toBeInTheDocument();
+      expect(screen.getByText(/Submit \d+ Transfer/i)).toBeInTheDocument();
     });
   });
 
@@ -369,7 +369,7 @@ describe("GwPlanWidget", () => {
       expect(screen.getByText(/Salah/i)).toBeInTheDocument();
     });
 
-    expect(screen.queryByText(/Submit to FPL/i)).toBeNull();
+    expect(screen.queryByText(/Submit \d+ Transfer/i)).toBeNull();
   });
 
   it("does not show Submit to FPL button when plan has no transfers", async () => {
@@ -422,7 +422,179 @@ describe("GwPlanWidget", () => {
       expect(screen.getByText(/Salah/i)).toBeInTheDocument();
     });
 
-    expect(screen.queryByText(/Submit to FPL/i)).toBeNull();
+    expect(screen.queryByText(/Submit \d+ Transfer/i)).toBeNull();
+  });
+
+  it("renders a checkbox for each transfer", async () => {
+    mockFetch.mockImplementation((url: unknown) => {
+      const urlStr = String(url);
+      if (urlStr.includes("fpl-auth/status")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ connected: true }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan/predictions")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ predictions: [] }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            id: "plan1",
+            sessionId: "sess1",
+            gameweek: 28,
+            plan: {
+              predictedTeamPoints: 60,
+              captain: { playerId: 1, name: "Salah", reasoning: "fixtures" },
+              transfers: [
+                {
+                  playerOut: { id: 10, name: "Mukiele", predicted4GW: 10 },
+                  playerIn: { id: 20, name: "Dalot", predicted4GW: 15 },
+                  pointsGain: 5,
+                  hitCost: 0,
+                  reasoning: "upgrade",
+                },
+                {
+                  playerOut: { id: 11, name: "Flop", predicted4GW: 6 },
+                  playerIn: { id: 21, name: "Star", predicted4GW: 14 },
+                  pointsGain: 8,
+                  hitCost: 0,
+                  reasoning: "big upgrade",
+                },
+              ],
+              notes: "",
+            },
+            thinking: "",
+            generatedAt: "2026-02-26",
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        json: async () => ({}),
+      });
+    });
+
+    render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+    await waitFor(() =>
+      expect(screen.getAllByRole("checkbox")).toHaveLength(2),
+    );
+  });
+
+  it("Submit button shows count of selected transfers", async () => {
+    mockFetch.mockImplementation((url: unknown) => {
+      const urlStr = String(url);
+      if (urlStr.includes("fpl-auth/status")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ connected: true }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan/predictions")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ predictions: [] }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            id: "plan1",
+            sessionId: "sess1",
+            gameweek: 28,
+            plan: {
+              predictedTeamPoints: 60,
+              captain: { playerId: 1, name: "Salah", reasoning: "fixtures" },
+              transfers: [
+                {
+                  playerOut: { id: 10, name: "Mukiele", predicted4GW: 10 },
+                  playerIn: { id: 20, name: "Dalot", predicted4GW: 15 },
+                  pointsGain: 5,
+                  hitCost: 0,
+                  reasoning: "upgrade",
+                },
+              ],
+              notes: "",
+            },
+            thinking: "",
+            generatedAt: "2026-02-26",
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        json: async () => ({}),
+      });
+    });
+
+    render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+    await waitFor(() =>
+      expect(screen.getByText(/Submit 1 Transfer/i)).toBeInTheDocument(),
+    );
+  });
+
+  it("hides Submit button when all transfer checkboxes are unchecked", async () => {
+    mockFetch.mockImplementation((url: unknown) => {
+      const urlStr = String(url);
+      if (urlStr.includes("fpl-auth/status")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ connected: true }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan/predictions")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ predictions: [] }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            id: "plan1",
+            sessionId: "sess1",
+            gameweek: 28,
+            plan: {
+              predictedTeamPoints: 60,
+              captain: { playerId: 1, name: "Salah", reasoning: "fixtures" },
+              transfers: [
+                {
+                  playerOut: { id: 10, name: "Mukiele", predicted4GW: 10 },
+                  playerIn: { id: 20, name: "Dalot", predicted4GW: 15 },
+                  pointsGain: 5,
+                  hitCost: 0,
+                  reasoning: "upgrade",
+                },
+              ],
+              notes: "",
+            },
+            thinking: "",
+            generatedAt: "2026-02-26",
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        json: async () => ({}),
+      });
+    });
+
+    render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+    await waitFor(() =>
+      expect(screen.getByRole("checkbox")).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByRole("checkbox")); // uncheck
+    await waitFor(() => expect(screen.queryByText(/Submit/i)).toBeNull());
   });
 
   it("shows Submitted after modal onSuccess", async () => {
@@ -501,13 +673,13 @@ describe("GwPlanWidget", () => {
 
     render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
 
-    // Wait for Submit to FPL button
+    // Wait for Submit button
     await waitFor(() => {
-      expect(screen.getByText(/Submit to FPL/i)).toBeInTheDocument();
+      expect(screen.getByText(/Submit \d+ Transfer/i)).toBeInTheDocument();
     });
 
-    // Click Submit to FPL — opens modal
-    fireEvent.click(screen.getByText(/Submit to FPL/i));
+    // Click Submit — opens modal
+    fireEvent.click(screen.getByText(/Submit \d+ Transfer/i));
 
     // Wait for Confirm & Submit button in modal
     await waitFor(() => {

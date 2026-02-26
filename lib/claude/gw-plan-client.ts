@@ -22,6 +22,10 @@ export interface GwPlanSquadPlayer {
   upcomingDifficulty: number;
   /** Current selling price in £m, e.g. 12.5 */
   sellingPrice: number;
+  /** True if in the starting XI, false if on the bench */
+  isStarter: boolean;
+  /** For bench players: 1 = first auto-sub priority, 4 = lowest (usually GK bench) */
+  benchPriority?: number;
 }
 
 export interface GwPlanTarget {
@@ -85,15 +89,22 @@ Key principles:
    - MID out → MID in only
    - FWD out → FWD in only
    Never recommend a transfer that swaps positions — it is an illegal move in FPL.
+7. Bench analysis: Review the bench order (Slot 1 = highest auto-sub priority). Recommend reordering if a lower-predicted bench player is ahead of a higher-predicted one. Also consider if any bench player should start over a struggling XI player. If no changes are needed, explicitly state "No bench changes required."
 
 Always respond with valid JSON matching the expected schema.`;
 
 export function buildGwPlanPrompt(req: GwPlanRequest): string {
-  const squadStr = req.squad
-    .map(
-      (p) =>
-        `[${p.id}] ${p.name} (${p.position}, ${p.team}) £${p.sellingPrice.toFixed(1)}m — Next GW: ${p.predictedPtsNextGW}pts, 4GW: ${p.predicted4GW}pts, Form: ${p.form}, Difficulty: ${p.upcomingDifficulty}`,
-    )
+  const formatPlayer = (p: GwPlanSquadPlayer) =>
+    `[${p.id}] ${p.name} (${p.position}, ${p.team}) £${p.sellingPrice.toFixed(1)}m — Next GW: ${p.predictedPtsNextGW}pts, 4GW: ${p.predicted4GW}pts, Form: ${p.form}, Difficulty: ${p.upcomingDifficulty}`;
+
+  const starters = req.squad.filter((p) => p.isStarter);
+  const bench = req.squad
+    .filter((p) => !p.isStarter)
+    .sort((a, b) => (a.benchPriority ?? 9) - (b.benchPriority ?? 9));
+
+  const startersStr = starters.map(formatPlayer).join("\n");
+  const benchStr = bench
+    .map((p) => `[Slot ${p.benchPriority ?? "?"}] ${formatPlayer(p)}`)
     .join("\n");
 
   const targetsStr = req.topTargets
@@ -116,7 +127,12 @@ export function buildGwPlanPrompt(req: GwPlanRequest): string {
 
 ## Current Squad
 Player selling prices are shown (£Xm) — this is what you receive when selling them.
-${squadStr}
+
+### Starting XI
+${startersStr}
+
+### Bench (auto-sub priority order)
+${benchStr}
 
 ## Transfer Budget
 Free Transfers: ${req.freeTransfers}
@@ -153,6 +169,7 @@ Respond with JSON matching this schema exactly:
       "reasoning": "<1-2 sentence explanation including whether a hit is taken>"
     }
   ],
+  "benchAdvice": "<bench order and substitution recommendations, or 'No bench changes required.' if none needed>",
   "notes": "<any additional strategic notes, chip suggestions, or warnings>"
 }`;
 }
@@ -186,6 +203,7 @@ export function parseGwPlanResult(text: string): GwPlanResult {
           hitCost: t.hitCost ?? 0,
         }),
       ),
+      benchAdvice: parsed.benchAdvice ?? "",
       notes: parsed.notes ?? "",
     };
   } catch {

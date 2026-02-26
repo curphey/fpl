@@ -273,4 +273,52 @@ describe("SubmitPlanModal", () => {
       ).toBeInTheDocument(),
     );
   });
+
+  it("calls onSuccess callback after successful submission", async () => {
+    mockFetch
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            valid: true,
+            transfers: [
+              {
+                elementIn: 20,
+                elementOut: 10,
+                purchasePrice: 110,
+                sellingPrice: 105,
+              },
+            ],
+            transferCost: 0,
+            wildcardActive: false,
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ submitted: true }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+
+    const onSuccess = vi.fn();
+
+    render(
+      <SubmitPlanModal
+        open={true}
+        onClose={vi.fn()}
+        plan={mockPlan}
+        sessionId={SESSION_ID}
+        onSuccess={onSuccess}
+      />,
+    );
+
+    await waitFor(() => screen.getByRole("button", { name: /confirm/i }));
+    fireEvent.click(screen.getByRole("button", { name: /confirm/i }));
+
+    await waitFor(() =>
+      expect(screen.getByText(/submitted/i)).toBeInTheDocument(),
+    );
+    expect(onSuccess).toHaveBeenCalledOnce();
+  });
 });

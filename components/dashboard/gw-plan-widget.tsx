@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type { GwPlan, TransferPrediction } from "@/lib/db/gw-plan";
 import { TransferTracker } from "./transfer-tracker";
+import { SubmitPlanModal } from "./submit-plan-modal";
 
 interface GwPlanWidgetProps {
   sessionId: string;
@@ -15,6 +16,9 @@ export function GwPlanWidget({ sessionId, gameweek }: GwPlanWidgetProps) {
   const [loading, setLoading] = useState(false);
   const [initialChecking, setInitialChecking] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [fplConnected, setFplConnected] = useState(false);
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   const fetchPredictions = useCallback(async () => {
     try {
@@ -30,6 +34,16 @@ export function GwPlanWidget({ sessionId, gameweek }: GwPlanWidgetProps) {
     } catch {
       // predictions are non-critical; ignore errors
     }
+  }, [sessionId]);
+
+  // On mount: check FPL auth status
+  useEffect(() => {
+    void fetch(
+      `/api/fpl-auth/status?sessionId=${encodeURIComponent(sessionId)}`,
+    )
+      .then((r) => r.json())
+      .then((d) => setFplConnected((d as { connected: boolean }).connected))
+      .catch(() => {});
   }, [sessionId]);
 
   // On mount: check for a cached plan
@@ -221,6 +235,30 @@ export function GwPlanWidget({ sessionId, gameweek }: GwPlanWidgetProps) {
 
           {/* Transfer tracker */}
           <TransferTracker predictions={predictions} />
+
+          {/* Submit to FPL button */}
+          {fplConnected && plan.plan.transfers.length > 0 && (
+            <button
+              onClick={() => setShowSubmitModal(true)}
+              disabled={submitted}
+              className="w-full rounded-lg border border-fpl-green/40 bg-fpl-green/20 px-4 py-2 text-sm font-semibold text-fpl-green transition-colors hover:bg-fpl-green/30 disabled:opacity-50"
+            >
+              {submitted ? "Submitted ✓" : "Submit to FPL ▶"}
+            </button>
+          )}
+
+          {showSubmitModal && plan && (
+            <SubmitPlanModal
+              open={showSubmitModal}
+              onClose={() => setShowSubmitModal(false)}
+              plan={plan}
+              sessionId={sessionId}
+              onSuccess={() => {
+                setSubmitted(true);
+                setShowSubmitModal(false);
+              }}
+            />
+          )}
         </div>
       )}
     </div>

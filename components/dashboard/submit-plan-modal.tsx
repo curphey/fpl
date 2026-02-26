@@ -8,6 +8,7 @@ export interface SubmitPlanModalProps {
   onClose: () => void;
   plan: GwPlan;
   sessionId: string;
+  onSuccess?: () => void;
 }
 
 interface ValidateResponse {
@@ -30,6 +31,7 @@ export function SubmitPlanModal({
   onClose,
   plan,
   sessionId,
+  onSuccess,
 }: SubmitPlanModalProps) {
   const [state, setState] = useState<ModalState>("loading");
   const [validation, setValidation] = useState<ValidateResponse | null>(null);
@@ -85,6 +87,7 @@ export function SubmitPlanModal({
         setState("error");
       } else {
         setState("success");
+        onSuccess?.();
       }
     } catch {
       setErrorMsg("Network error during submission");

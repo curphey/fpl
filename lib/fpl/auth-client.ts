@@ -65,9 +65,11 @@ export async function fplLogin(
 ): Promise<FplLoginResult> {
   try {
     // Step 1: GET login page to extract CSRF token
+    // Use redirect:"manual" so a 302 to /holding.html (FPL maintenance) is caught
+    // before we follow it and silently lose the CSRF cookie.
     const getResp = await fetch(FPL_LOGIN_URL, {
       headers: BROWSER_HEADERS,
-      redirect: "follow",
+      redirect: "manual",
     });
 
     if (getResp.status === 403 || getResp.status === 429) {
@@ -75,6 +77,15 @@ export async function fplLogin(
         success: false,
         error: "CLOUDFLARE_BLOCKED",
         message: "FPL login blocked by Cloudflare. Try again later.",
+      };
+    }
+    // 3xx = redirected away from login page (e.g. to /holding.html during maintenance)
+    if (getResp.status >= 300 && getResp.status < 400) {
+      return {
+        success: false,
+        error: "NETWORK_ERROR",
+        message:
+          "FPL login service is currently in maintenance. Please try again later.",
       };
     }
     if (!getResp.ok) {

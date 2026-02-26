@@ -55,6 +55,16 @@ describe("fplLogin", () => {
     if (!result.success) expect(result.error).toBe("INVALID_CREDENTIALS");
   });
 
+  it("returns NETWORK_ERROR when GET redirects to maintenance page (302)", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response("", { status: 302 }));
+    const result = await fplLogin("a@b.com", "pw");
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("NETWORK_ERROR");
+      expect(result.message).toContain("maintenance");
+    }
+  });
+
   it("returns NETWORK_ERROR when GET returns 500", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       new Response("Server error", { status: 500 }),

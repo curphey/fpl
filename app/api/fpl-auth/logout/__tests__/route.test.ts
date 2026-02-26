@@ -30,7 +30,9 @@ describe("DELETE /api/fpl-auth/logout", () => {
     const res = await DELETE(
       new NextRequest("http://localhost/api/fpl-auth/logout", {
         method: "DELETE",
-        body: JSON.stringify({ sessionId: "bad" }),
+        body: JSON.stringify({
+          sessionId: "550e8400-e29b-41d4-a716-446655440099",
+        }),
         headers: { "Content-Type": "application/json" },
       }),
     );
@@ -39,7 +41,7 @@ describe("DELETE /api/fpl-auth/logout", () => {
 
   it("clears credentials and returns ok: true", async () => {
     vi.mocked(getSession).mockReturnValue({
-      id: "s1",
+      id: "550e8400-e29b-41d4-a716-446655440000",
       fpl_manager_id: null,
       display_name: null,
       created_at: "",
@@ -48,7 +50,9 @@ describe("DELETE /api/fpl-auth/logout", () => {
     const res = await DELETE(
       new NextRequest("http://localhost/api/fpl-auth/logout", {
         method: "DELETE",
-        body: JSON.stringify({ sessionId: "s1" }),
+        body: JSON.stringify({
+          sessionId: "550e8400-e29b-41d4-a716-446655440000",
+        }),
         headers: { "Content-Type": "application/json" },
       }),
     );

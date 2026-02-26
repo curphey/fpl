@@ -1,6 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+
+const OIDC_KEY =
+  "oidc.user:https://account.premierleague.com/as:bfcbaf69-aade-4c1b-8f00-c1cb8a193030";
 
 export interface FplAccountProps {
   sessionId: string;
@@ -16,6 +19,7 @@ export function FplAccount({ sessionId }: FplAccountProps) {
   const [status, setStatus] = useState<AuthStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const bookmarkletRef = useRef<HTMLAnchorElement>(null);
 
   const fetchStatus = useCallback(() => {
     void fetch(
@@ -33,6 +37,32 @@ export function FplAccount({ sessionId }: FplAccountProps) {
     window.addEventListener("focus", fetchStatus);
     return () => window.removeEventListener("focus", fetchStatus);
   }, [fetchStatus]);
+
+  // Bookmarklet href — computed client-side so window.location.origin is available.
+  // Set via ref.setAttribute to bypass React's javascript: URL sanitization.
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const bookmarklet =
+    `javascript:(function(){` +
+    `var raw=localStorage.getItem('${OIDC_KEY}');` +
+    `if(!raw){alert('Please log in to FPL first, then click this bookmarklet.');return;}` +
+    `var u=JSON.parse(raw);` +
+    `var at=u.access_token;var rt=u.refresh_token;` +
+    `if(!at||!rt){alert('Tokens not found. Please log in to FPL first.');return;}` +
+    `fetch('${origin}/api/fpl-auth/connect',{` +
+    `method:'POST',` +
+    `headers:{'Content-Type':'application/json'},` +
+    `body:JSON.stringify({access_token:at,refresh_token:rt})` +
+    `}).then(function(r){return r.json();})` +
+    `.then(function(d){if(d.ok)alert('Connected! Welcome, '+d.managerName+'.');` +
+    `else alert('Error: '+(d.error||'Unknown error'));})` +
+    `.catch(function(){alert('Could not reach FPL Insights. Is the app running?');});` +
+    `})();`;
+
+  useEffect(() => {
+    if (bookmarkletRef.current) {
+      bookmarkletRef.current.setAttribute("href", bookmarklet);
+    }
+  }, [bookmarklet, status]);
 
   async function handleDisconnect() {
     setLoading(true);
@@ -93,23 +123,6 @@ export function FplAccount({ sessionId }: FplAccountProps) {
     );
   }
 
-  // Bookmarklet href — computed client-side so window.location.origin is available
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const bookmarklet =
-    `javascript:(function(){` +
-    `var at=localStorage.getItem('access_token');` +
-    `var rt=localStorage.getItem('refresh_token');` +
-    `if(!at||!rt){alert('Please log in to FPL first, then click this bookmarklet.');return;}` +
-    `fetch('${origin}/api/fpl-auth/connect',{` +
-    `method:'POST',` +
-    `headers:{'Content-Type':'application/json'},` +
-    `body:JSON.stringify({access_token:at,refresh_token:rt})` +
-    `}).then(function(r){return r.json();})` +
-    `.then(function(d){if(d.ok)alert('Connected! Welcome, '+d.managerName+'.');` +
-    `else alert('Error: '+(d.error||'Unknown error'));})` +
-    `.catch(function(){alert('Could not reach FPL Insights. Is the app running?');});` +
-    `})();`;
-
   return (
     <div className="space-y-5">
       <ol className="space-y-4 text-sm">
@@ -122,7 +135,8 @@ export function FplAccount({ sessionId }: FplAccountProps) {
               Drag this to your bookmarks bar:
             </p>
             <a
-              href={bookmarklet}
+              ref={bookmarkletRef}
+              href="#"
               draggable
               onClick={(e) => e.preventDefault()}
               className="inline-flex cursor-move items-center gap-2 rounded-lg border border-fpl-purple/40 bg-fpl-purple/20 px-4 py-2 text-sm font-semibold text-fpl-purple hover:bg-fpl-purple/30"

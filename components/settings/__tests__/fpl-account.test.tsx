@@ -24,10 +24,12 @@ describe("FplAccount", () => {
     await waitFor(() =>
       expect(screen.getByText(/drag this/i)).toBeInTheDocument(),
     );
-    // Bookmarklet anchor should exist with javascript: href
+    // Bookmarklet anchor should exist — href set imperatively via ref after mount
     const anchor = screen.getByRole("link", { name: /send to fpl insights/i });
     expect(anchor).toBeInTheDocument();
-    expect(anchor.getAttribute("href")).toMatch(/^javascript:/);
+    await waitFor(() =>
+      expect(anchor.getAttribute("href")).toMatch(/^javascript:/),
+    );
   });
 
   it("does not show email or password inputs when not connected", async () => {

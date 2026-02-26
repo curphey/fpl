@@ -27,7 +27,10 @@ export async function OPTIONS(): Promise<NextResponse> {
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const rl = await rateLimit(request, "auth");
-  if (rl) return rl;
+  if (rl) {
+    Object.entries(corsHeaders).forEach(([k, v]) => rl.headers.set(k, v));
+    return rl;
+  }
 
   const parsed = bodySchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) {

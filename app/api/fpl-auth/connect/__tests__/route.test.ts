@@ -86,4 +86,18 @@ describe("POST /api/fpl-auth/connect", () => {
     );
     expect(res.status).toBe(500);
   });
+
+  it("returns 429 with CORS header when rate limited", async () => {
+    const { rateLimit } = await import("@/lib/api/rate-limit");
+    vi.mocked(rateLimit).mockResolvedValueOnce(
+      new Response(null, { status: 429 }) as never,
+    );
+    const res = await POST(
+      makeRequest({ access_token: "at", refresh_token: "rt" }),
+    );
+    expect(res.status).toBe(429);
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe(
+      "https://fantasy.premierleague.com",
+    );
+  });
 });

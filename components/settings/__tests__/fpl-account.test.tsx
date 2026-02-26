@@ -11,9 +11,7 @@ beforeEach(() => {
   mockFetch.mockResolvedValue(
     new Response(
       JSON.stringify({ connected: false, managerName: null, expiresAt: null }),
-      {
-        headers: { "content-type": "application/json" },
-      },
+      { headers: { "content-type": "application/json" } },
     ),
   );
 });
@@ -21,15 +19,22 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe("FplAccount", () => {
-  it("shows login form when not connected", async () => {
+  it("shows bookmarklet instructions when not connected", async () => {
     render(<FplAccount sessionId="550e8400-e29b-41d4-a716-446655440000" />);
     await waitFor(() =>
-      expect(screen.getByLabelText(/email/i)).toBeInTheDocument(),
+      expect(screen.getByText(/drag this/i)).toBeInTheDocument(),
     );
-    expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /connect/i }),
-    ).toBeInTheDocument();
+    // Bookmarklet anchor should exist with javascript: href
+    const anchor = screen.getByRole("link", { name: /send to fpl insights/i });
+    expect(anchor).toBeInTheDocument();
+    expect(anchor.getAttribute("href")).toMatch(/^javascript:/);
+  });
+
+  it("does not show email or password inputs when not connected", async () => {
+    render(<FplAccount sessionId="550e8400-e29b-41d4-a716-446655440000" />);
+    await waitFor(() => screen.getByText(/drag this/i));
+    expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/password/i)).not.toBeInTheDocument();
   });
 
   it("shows connected state with manager name", async () => {
@@ -50,51 +55,18 @@ describe("FplAccount", () => {
     expect(
       screen.getByRole("button", { name: /disconnect/i }),
     ).toBeInTheDocument();
+    // Should show "refreshes automatically" not an expiry date
+    expect(screen.getByText(/refreshes automatically/i)).toBeInTheDocument();
   });
 
-  it("shows error on failed login", async () => {
-    // Status fetch: not connected
-    mockFetch
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ connected: false }), {
-          headers: { "content-type": "application/json" },
-        }),
-      )
-      // Login POST: fail
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ error: "Invalid FPL credentials" }), {
-          status: 401,
-          headers: { "content-type": "application/json" },
-        }),
-      );
-
-    render(<FplAccount sessionId="550e8400-e29b-41d4-a716-446655440000" />);
-    await waitFor(() => screen.getByLabelText(/email/i));
-
-    fireEvent.change(screen.getByLabelText(/email/i), {
-      target: { value: "a@b.com" },
-    });
-    fireEvent.change(screen.getByLabelText(/password/i), {
-      target: { value: "bad" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /connect/i }));
-
-    await waitFor(() =>
-      expect(screen.getByText(/invalid fpl credentials/i)).toBeInTheDocument(),
-    );
-  });
-
-  it("shows skeleton while loading", async () => {
-    // Never resolves, so status stays null
+  it("shows skeleton while loading", () => {
     mockFetch.mockReturnValue(new Promise(() => {}));
     render(<FplAccount sessionId="550e8400-e29b-41d4-a716-446655440000" />);
-    // No skeleton class to query easily — check that form and connected state are not shown
-    expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/drag this/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Connected as/i)).not.toBeInTheDocument();
   });
 
-  it("transitions to disconnected form after successful disconnect", async () => {
-    // Initial status: connected
+  it("transitions to disconnected state after successful disconnect", async () => {
     mockFetch
       .mockResolvedValueOnce(
         new Response(
@@ -106,7 +78,6 @@ describe("FplAccount", () => {
           { headers: { "content-type": "application/json" } },
         ),
       )
-      // DELETE /api/fpl-auth/logout: success
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ ok: true }), {
           status: 200,
@@ -116,16 +87,13 @@ describe("FplAccount", () => {
 
     render(<FplAccount sessionId="550e8400-e29b-41d4-a716-446655440000" />);
     await waitFor(() => screen.getByRole("button", { name: /disconnect/i }));
-
     fireEvent.click(screen.getByRole("button", { name: /disconnect/i }));
-
     await waitFor(() =>
-      expect(screen.getByLabelText(/email/i)).toBeInTheDocument(),
+      expect(screen.getByText(/drag this/i)).toBeInTheDocument(),
     );
   });
 
-  it("shows error and stays connected when disconnect request fails", async () => {
-    // Initial status: connected
+  it("shows error and stays connected when disconnect fails", async () => {
     mockFetch
       .mockResolvedValueOnce(
         new Response(
@@ -137,7 +105,6 @@ describe("FplAccount", () => {
           { headers: { "content-type": "application/json" } },
         ),
       )
-      // DELETE /api/fpl-auth/logout: server error
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ error: "Server error" }), {
           status: 500,
@@ -147,29 +114,21 @@ describe("FplAccount", () => {
 
     render(<FplAccount sessionId="550e8400-e29b-41d4-a716-446655440000" />);
     await waitFor(() => screen.getByRole("button", { name: /disconnect/i }));
-
     fireEvent.click(screen.getByRole("button", { name: /disconnect/i }));
-
     await waitFor(() =>
       expect(screen.getByText(/disconnect failed/i)).toBeInTheDocument(),
     );
-    // Should still show connected state (not the login form)
-    expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/drag this/i)).not.toBeInTheDocument();
   });
 
-  it("shows session expiry label with colon", async () => {
-    mockFetch.mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({
-          connected: true,
-          managerName: "Tim Smith",
-          expiresAt: "2026-12-01T00:00:00Z",
-        }),
-        { headers: { "content-type": "application/json" } },
-      ),
-    );
+  it("re-fetches status when window regains focus", async () => {
     render(<FplAccount sessionId="550e8400-e29b-41d4-a716-446655440000" />);
-    await waitFor(() => screen.getByText(/Tim Smith/i));
-    expect(screen.getByText(/Session expires:/i)).toBeInTheDocument();
+    await waitFor(() => screen.getByText(/drag this/i));
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+
+    // Simulate window regaining focus
+    fireEvent(window, new Event("focus"));
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
   });
 });

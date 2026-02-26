@@ -178,4 +178,99 @@ describe("SubmitPlanModal", () => {
       ).toBeInTheDocument(),
     );
   });
+
+  it("shows submitting state while waiting for confirmation", async () => {
+    // First fetch (validation): resolves immediately
+    mockFetch.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          valid: true,
+          transfers: [
+            {
+              elementIn: 20,
+              elementOut: 10,
+              purchasePrice: 110,
+              sellingPrice: 105,
+            },
+          ],
+          transferCost: 0,
+          wildcardActive: false,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+    // Second fetch (submit): never resolves (simulates in-flight)
+    mockFetch.mockReturnValueOnce(new Promise(() => {}));
+
+    render(
+      <SubmitPlanModal
+        open={true}
+        onClose={vi.fn()}
+        plan={mockPlan}
+        sessionId={SESSION_ID}
+      />,
+    );
+    await waitFor(() => screen.getByRole("button", { name: /confirm/i }));
+    fireEvent.click(screen.getByRole("button", { name: /confirm/i }));
+
+    await waitFor(() =>
+      expect(screen.getByText(/submitting transfers/i)).toBeInTheDocument(),
+    );
+  });
+
+  it("shows error when validation fetch throws", async () => {
+    mockFetch.mockRejectedValueOnce(new Error("Network failure"));
+    render(
+      <SubmitPlanModal
+        open={true}
+        onClose={vi.fn()}
+        plan={mockPlan}
+        sessionId={SESSION_ID}
+      />,
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByText(/network error during validation/i),
+      ).toBeInTheDocument(),
+    );
+  });
+
+  it("shows error when submission fetch throws", async () => {
+    mockFetch
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            valid: true,
+            transfers: [
+              {
+                elementIn: 20,
+                elementOut: 10,
+                purchasePrice: 110,
+                sellingPrice: 105,
+              },
+            ],
+            transferCost: 0,
+            wildcardActive: false,
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      )
+      .mockRejectedValueOnce(new Error("Network failure"));
+
+    render(
+      <SubmitPlanModal
+        open={true}
+        onClose={vi.fn()}
+        plan={mockPlan}
+        sessionId={SESSION_ID}
+      />,
+    );
+    await waitFor(() => screen.getByRole("button", { name: /confirm/i }));
+    fireEvent.click(screen.getByRole("button", { name: /confirm/i }));
+    await waitFor(() =>
+      expect(
+        screen.getByText(/network error during submission/i),
+      ).toBeInTheDocument(),
+    );
+  });
 });

@@ -117,9 +117,9 @@ export function SubmitPlanModal({
         {state === "confirm" && validation && (
           <>
             <div className="mb-4 space-y-2">
-              {validation.transfers.map((t, i) => (
+              {validation.transfers.map((t) => (
                 <div
-                  key={i}
+                  key={`${t.elementOut}-${t.elementIn}`}
                   className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-sm"
                 >
                   <span className="text-fpl-danger">

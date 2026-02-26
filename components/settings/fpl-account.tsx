@@ -19,7 +19,7 @@ export function FplAccount({ sessionId }: FplAccountProps) {
   const [status, setStatus] = useState<AuthStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const bookmarkletRef = useRef<HTMLAnchorElement>(null);
+  const bookmarkletContainerRef = useRef<HTMLDivElement>(null);
 
   const fetchStatus = useCallback(() => {
     void fetch(
@@ -38,31 +38,37 @@ export function FplAccount({ sessionId }: FplAccountProps) {
     return () => window.removeEventListener("focus", fetchStatus);
   }, [fetchStatus]);
 
-  // Bookmarklet href — computed client-side so window.location.origin is available.
-  // Set via ref.setAttribute to bypass React's javascript: URL sanitization.
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const bookmarklet =
-    `javascript:(function(){` +
-    `var raw=localStorage.getItem('${OIDC_KEY}');` +
-    `if(!raw){alert('Please log in to FPL first, then click this bookmarklet.');return;}` +
-    `var u=JSON.parse(raw);` +
-    `var at=u.access_token;var rt=u.refresh_token;` +
-    `if(!at||!rt){alert('Tokens not found. Please log in to FPL first.');return;}` +
-    `fetch('${origin}/api/fpl-auth/connect',{` +
-    `method:'POST',` +
-    `headers:{'Content-Type':'application/json'},` +
-    `body:JSON.stringify({access_token:at,refresh_token:rt})` +
-    `}).then(function(r){return r.json();})` +
-    `.then(function(d){if(d.ok)alert('Connected! Welcome, '+d.managerName+'.');` +
-    `else alert('Error: '+(d.error||'Unknown error'));})` +
-    `.catch(function(){alert('Could not reach FPL Insights. Is the app running?');});` +
-    `})();`;
-
+  // Bookmarklet is created as a raw DOM element React never manages, so React's
+  // javascript: URL sanitization cannot overwrite the href during reconciliation.
   useEffect(() => {
-    if (bookmarkletRef.current) {
-      bookmarkletRef.current.setAttribute("href", bookmarklet);
-    }
-  }, [bookmarklet, status]);
+    if (!bookmarkletContainerRef.current) return;
+    const origin = window.location.origin;
+    const bookmarklet =
+      `javascript:(function(){` +
+      `var raw=localStorage.getItem('${OIDC_KEY}');` +
+      `if(!raw){alert('Please log in to FPL first, then click this bookmarklet.');return;}` +
+      `var u=JSON.parse(raw);` +
+      `var at=u.access_token;var rt=u.refresh_token;` +
+      `if(!at||!rt){alert('Tokens not found. Please log in to FPL first.');return;}` +
+      `fetch('${origin}/api/fpl-auth/connect',{` +
+      `method:'POST',` +
+      `headers:{'Content-Type':'application/json'},` +
+      `body:JSON.stringify({access_token:at,refresh_token:rt})` +
+      `}).then(function(r){return r.json();})` +
+      `.then(function(d){if(d.ok)alert('Connected! Welcome, '+d.managerName+'.');` +
+      `else alert('Error: '+(d.error||'Unknown error'));})` +
+      `.catch(function(){alert('Could not reach FPL Insights. Is the app running?');});` +
+      `})();`;
+    const a = document.createElement("a");
+    a.setAttribute("href", bookmarklet);
+    a.setAttribute("draggable", "true");
+    a.className =
+      "inline-flex cursor-move items-center gap-2 rounded-lg border border-fpl-purple/40 bg-fpl-purple/20 px-4 py-2 text-sm font-semibold text-fpl-purple hover:bg-fpl-purple/30";
+    a.addEventListener("click", (e) => e.preventDefault());
+    a.textContent = "📌 Send to FPL Insights";
+    bookmarkletContainerRef.current.innerHTML = "";
+    bookmarkletContainerRef.current.appendChild(a);
+  }, [status]);
 
   async function handleDisconnect() {
     setLoading(true);
@@ -134,15 +140,7 @@ export function FplAccount({ sessionId }: FplAccountProps) {
             <p className="mb-2 text-fpl-muted">
               Drag this to your bookmarks bar:
             </p>
-            <a
-              ref={bookmarkletRef}
-              href="#"
-              draggable
-              onClick={(e) => e.preventDefault()}
-              className="inline-flex cursor-move items-center gap-2 rounded-lg border border-fpl-purple/40 bg-fpl-purple/20 px-4 py-2 text-sm font-semibold text-fpl-purple hover:bg-fpl-purple/30"
-            >
-              📌 Send to FPL Insights
-            </a>
+            <div ref={bookmarkletContainerRef} />
           </div>
         </li>
         <li className="flex gap-3">

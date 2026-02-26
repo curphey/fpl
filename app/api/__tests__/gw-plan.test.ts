@@ -24,6 +24,7 @@ vi.mock("@/lib/fpl/client", () => ({
     getBootstrapStatic: vi.fn(),
     getFixtures: vi.fn(),
     getManagerPicks: vi.fn(),
+    getManagerHistory: vi.fn(),
   },
 }));
 
@@ -63,6 +64,7 @@ import { getSession } from "@/lib/db/sessions";
 import { fplClient } from "@/lib/fpl/client";
 import { scoreTransferTargets } from "@/lib/fpl/transfer-model";
 import { enrichPlayers } from "@/lib/fpl/utils";
+import { getFplSession } from "@/lib/fpl/auth-client";
 
 const mockGetGwPlan = vi.mocked(getGwPlan);
 const mockSaveGwPlan = vi.mocked(saveGwPlan);
@@ -74,6 +76,7 @@ const mockFixtures = vi.mocked(fplClient.getFixtures);
 const mockPicks = vi.mocked(fplClient.getManagerPicks);
 const mockScoreTransferTargets = vi.mocked(scoreTransferTargets);
 const mockEnrichPlayers = vi.mocked(enrichPlayers);
+const mockGetManagerHistory = vi.mocked(fplClient.getManagerHistory);
 
 describe("GET /api/gw-plan", () => {
   beforeEach(() => vi.clearAllMocks());
@@ -412,5 +415,157 @@ describe("POST /api/gw-plan", () => {
     expect(targetIds).toContain(10); // single-transfer target included
     expect(targetIds).toContain(15); // double-transfer target now included
     expect(targetIds).not.toContain(20); // completely unaffordable excluded
+  });
+});
+
+describe("POST /api/gw-plan — free transfer count", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Common setup for all free transfer tests
+    mockGetSession.mockReturnValue({
+      id: "sess1",
+      fpl_manager_id: 12345,
+      display_name: "Test FC",
+      created_at: "2026-01-01",
+      last_seen_at: "2026-01-01",
+    });
+    mockBootstrap.mockResolvedValue({
+      elements: [],
+      teams: [],
+      events: [
+        {
+          id: 28,
+          is_current: true,
+          is_next: false,
+          finished: false,
+          deadline_time: "",
+        },
+      ],
+    } as never);
+    mockFixtures.mockResolvedValue([]);
+    mockPicks.mockResolvedValue({
+      picks: [],
+      entry_history: { bank: 10, event_transfers_cost: 0 },
+    } as never);
+    mockGenerateGwPlan.mockResolvedValue({
+      thinking: "",
+      plan: {
+        predictedTeamPoints: 58,
+        captain: { playerId: 1, name: "Salah", reasoning: "" },
+        transfers: [],
+        notes: "",
+      },
+      processingTime: 1000,
+    });
+    mockSaveGwPlan.mockReturnValue({
+      id: "plan1",
+      sessionId: "sess1",
+      gameweek: 28,
+      plan: {
+        predictedTeamPoints: 58,
+        captain: { playerId: 1, name: "Salah", reasoning: "" },
+        transfers: [],
+        notes: "",
+      },
+      thinking: "",
+      generatedAt: "2026-02-25",
+    });
+  });
+
+  it("passes freeTransfers: 2 when last GW had 0 transfers (banked)", async () => {
+    vi.mocked(getFplSession).mockReturnValueOnce({
+      cookie: "pl_profile=X",
+      managerName: "Tim",
+      expiresAt: "2026-12-01T00:00:00Z",
+    });
+    mockGetManagerHistory.mockResolvedValueOnce({
+      current: [
+        {
+          event: 27,
+          event_transfers: 0,
+          event_transfers_cost: 0,
+          points: 55,
+          total_points: 1200,
+          rank: 5000,
+          bank: 10,
+          value: 1020,
+          overall_rank: 50000,
+          percentile_rank: 10,
+        },
+      ],
+      past: [],
+      chips: [],
+    } as never);
+
+    const res = await POST(
+      new NextRequest("http://localhost/api/gw-plan", {
+        method: "POST",
+        body: JSON.stringify({ sessionId: "sess1", gameweek: 28 }),
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(vi.mocked(generateGwPlan)).toHaveBeenCalledWith(
+      expect.objectContaining({ freeTransfers: 2 }),
+    );
+  });
+
+  it("passes freeTransfers: 1 when last GW had transfers", async () => {
+    vi.mocked(getFplSession).mockReturnValueOnce({
+      cookie: "pl_profile=X",
+      managerName: "Tim",
+      expiresAt: "2026-12-01T00:00:00Z",
+    });
+    mockGetManagerHistory.mockResolvedValueOnce({
+      current: [
+        {
+          event: 27,
+          event_transfers: 1,
+          event_transfers_cost: 0,
+          points: 55,
+          total_points: 1200,
+          rank: 5000,
+          bank: 10,
+          value: 1020,
+          overall_rank: 50000,
+          percentile_rank: 10,
+        },
+      ],
+      past: [],
+      chips: [],
+    } as never);
+
+    const res = await POST(
+      new NextRequest("http://localhost/api/gw-plan", {
+        method: "POST",
+        body: JSON.stringify({ sessionId: "sess1", gameweek: 28 }),
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(vi.mocked(generateGwPlan)).toHaveBeenCalledWith(
+      expect.objectContaining({ freeTransfers: 1 }),
+    );
+  });
+
+  it("defaults to freeTransfers: 1 when getManagerHistory throws", async () => {
+    vi.mocked(getFplSession).mockReturnValueOnce({
+      cookie: "pl_profile=X",
+      managerName: "Tim",
+      expiresAt: "2026-12-01T00:00:00Z",
+    });
+    mockGetManagerHistory.mockRejectedValueOnce(new Error("API error"));
+
+    const res = await POST(
+      new NextRequest("http://localhost/api/gw-plan", {
+        method: "POST",
+        body: JSON.stringify({ sessionId: "sess1", gameweek: 28 }),
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(vi.mocked(generateGwPlan)).toHaveBeenCalledWith(
+      expect.objectContaining({ freeTransfers: 1 }),
+    );
   });
 });

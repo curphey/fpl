@@ -145,9 +145,11 @@ export async function fplLogin(
     const plProfileHeader =
       postSetCookies.find((c) => c.startsWith("pl_profile=")) ?? "";
     const expiresMatch = plProfileHeader.match(/expires=([^;]+)/i);
-    const expiresAt = expiresMatch
-      ? new Date(expiresMatch[1]).toISOString()
-      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const parsedExpiry = expiresMatch ? new Date(expiresMatch[1]) : null;
+    const expiresAt =
+      parsedExpiry && !isNaN(parsedExpiry.getTime())
+        ? parsedExpiry.toISOString()
+        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
     // Step 3: Fetch manager name (non-critical)
     let managerName = "FPL Manager";
@@ -187,7 +189,7 @@ export function storeFplCredentials(
   expiresAt: string,
   managerName: string,
 ): void {
-  setSetting("fpl_email", email);
+  setSetting("fpl_email_encrypted", encrypt(email));
   setSetting("fpl_password_encrypted", encrypt(password));
   setSetting("fpl_session_cookie", sessionCookie);
   setSetting("fpl_session_expires", expiresAt);
@@ -196,7 +198,7 @@ export function storeFplCredentials(
 
 export function clearFplCredentials(): void {
   for (const key of [
-    "fpl_email",
+    "fpl_email_encrypted",
     "fpl_password_encrypted",
     "fpl_session_cookie",
     "fpl_session_expires",
@@ -221,13 +223,18 @@ export function getFplSession(): {
 }
 
 export async function refreshFplSession(): Promise<boolean> {
-  const email = getSetting("fpl_email");
+  const encryptedEmail = getSetting("fpl_email_encrypted");
   const encryptedPw = getSetting("fpl_password_encrypted");
-  if (!email || !encryptedPw) return false;
+  if (!encryptedEmail || !encryptedPw) return false;
+  let email: string;
   let password: string;
   try {
+    email = decrypt(encryptedEmail);
     password = decrypt(encryptedPw);
   } catch {
+    console.error(
+      "[FPL Auth] Failed to decrypt stored credentials — key may have changed",
+    );
     return false;
   }
   const result = await fplLogin(email, password);
@@ -251,16 +258,20 @@ export async function authenticatedFetch(
 
   const response = await fetch(url, {
     ...options,
-    headers: { ...options.headers, Cookie: session.cookie },
+    headers: { ...BROWSER_HEADERS, ...options.headers, Cookie: session.cookie },
   });
 
-  if (response.status === 401 || response.status === 403) {
+  if (response.status === 401) {
     const refreshed = await refreshFplSession();
     if (!refreshed) throw new Error("FPL_SESSION_EXPIRED");
     const newSession = getFplSession();
     return fetch(url, {
       ...options,
-      headers: { ...options.headers, Cookie: newSession!.cookie },
+      headers: {
+        ...BROWSER_HEADERS,
+        ...options.headers,
+        Cookie: newSession!.cookie,
+      },
     });
   }
 

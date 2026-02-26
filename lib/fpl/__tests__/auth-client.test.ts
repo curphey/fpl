@@ -55,6 +55,37 @@ describe("fplLogin", () => {
     if (!result.success) expect(result.error).toBe("INVALID_CREDENTIALS");
   });
 
+  it("returns NETWORK_ERROR when GET returns 500", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response("Server error", { status: 500 }),
+    );
+    const result = await fplLogin("a@b.com", "pw");
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toBe("NETWORK_ERROR");
+  });
+
+  it("returns CLOUDFLARE_BLOCKED when POST returns 403", async () => {
+    const getHeaders = new Headers();
+    getHeaders.append("set-cookie", "csrftoken=abc123; Path=/");
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response("<html/>", { status: 200, headers: getHeaders }),
+    );
+    vi.mocked(fetch).mockResolvedValueOnce(new Response("", { status: 403 }));
+    const result = await fplLogin("a@b.com", "pw");
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toBe("CLOUDFLARE_BLOCKED");
+  });
+
+  it("returns NETWORK_ERROR on fetch exception", async () => {
+    vi.mocked(fetch).mockRejectedValueOnce(new Error("ECONNREFUSED"));
+    const result = await fplLogin("a@b.com", "pw");
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("NETWORK_ERROR");
+      expect(result.message).toContain("ECONNREFUSED");
+    }
+  });
+
   it("returns success with manager name on valid login", async () => {
     const getHeaders = new Headers();
     getHeaders.append("set-cookie", "csrftoken=abc123; Path=/");
@@ -97,7 +128,10 @@ describe("storeFplCredentials / clearFplCredentials", () => {
       "2026-12-01T00:00:00Z",
       "Tim Smith",
     );
-    expect(mockSetSetting).toHaveBeenCalledWith("fpl_email", "a@b.com");
+    expect(mockSetSetting).toHaveBeenCalledWith(
+      "fpl_email_encrypted",
+      "enc:a@b.com",
+    );
     expect(mockSetSetting).toHaveBeenCalledWith(
       "fpl_password_encrypted",
       "enc:pw",
@@ -115,8 +149,11 @@ describe("storeFplCredentials / clearFplCredentials", () => {
 
   it("clears all credential keys", () => {
     clearFplCredentials();
-    const nullCalls = mockSetSetting.mock.calls.filter(([, v]) => v === null);
-    expect(nullCalls.length).toBe(5);
+    expect(mockSetSetting).toHaveBeenCalledWith("fpl_email_encrypted", null);
+    expect(mockSetSetting).toHaveBeenCalledWith("fpl_password_encrypted", null);
+    expect(mockSetSetting).toHaveBeenCalledWith("fpl_session_cookie", null);
+    expect(mockSetSetting).toHaveBeenCalledWith("fpl_session_expires", null);
+    expect(mockSetSetting).toHaveBeenCalledWith("fpl_manager_name", null);
   });
 });
 
@@ -181,7 +218,7 @@ describe("authenticatedFetch", () => {
     mockGetSetting.mockImplementation((key: string) => {
       if (key === "fpl_session_cookie") return "pl_profile=X";
       if (key === "fpl_session_expires") return future;
-      if (key === "fpl_email") return "a@b.com";
+      if (key === "fpl_email_encrypted") return "enc:a@b.com";
       if (key === "fpl_password_encrypted") return "enc:pw";
       return null;
     });

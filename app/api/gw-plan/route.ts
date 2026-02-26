@@ -182,16 +182,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         predicted4GW: pts ? Math.round(pts.predictedPoints * 4 * 10) / 10 : 0,
         form: player?.form ?? "0.0",
         upcomingDifficulty: 3,
-        sellingPrice: Math.round((pick.selling_price / 10) * 10) / 10,
+        // selling_price is only returned by the FPL API for authenticated (own-team)
+        // requests. Fall back to now_cost as a conservative estimate for public calls.
+        sellingPrice:
+          Math.round(
+            ((pick.selling_price ?? player?.now_cost ?? 0) / 10) * 10,
+          ) / 10,
       };
     });
 
     // Pre-filter transfer targets to only those the manager can afford.
-    // Use bank + sum of top 2 selling prices to cover double-transfer scenarios
-    // (e.g. sell two players to fund one expensive target).
+    // Use bank + sum of top 2 selling prices to cover double-transfer scenarios.
+    // Fall back to now_cost when selling_price is absent (unauthenticated API call).
     const bank = picks.entry_history.bank;
     const top2SellingPricesSum = picks.picks
-      .map((p) => p.selling_price)
+      .map((p) => p.selling_price ?? playerMap.get(p.element)?.now_cost ?? 0)
       .sort((a, b) => b - a)
       .slice(0, 2)
       .reduce((s, p) => s + p, 0);

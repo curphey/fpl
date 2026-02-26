@@ -192,3 +192,10 @@ function rowToTransferPrediction(
     updatedAt: row.updated_at as string,
   };
 }
+
+export function getGwPlanById(id: string, sessionId: string): GwPlan | null {
+  const row = db
+    .prepare("SELECT * FROM gw_plans WHERE id = ? AND session_id = ?")
+    .get(id, sessionId) as Record<string, unknown> | undefined;
+  return row ? rowToGwPlan(row) : null;
+}

@@ -21,6 +21,7 @@ import {
   insertTransferPrediction,
   updateTransferActuals,
   getActiveTransferPredictions,
+  getGwPlanById,
 } from "../gw-plan";
 
 describe("getGwPlan", () => {
@@ -218,5 +219,40 @@ describe("getActiveTransferPredictions", () => {
     expect(result).toHaveLength(1);
     expect(result[0].status).toBe("on_track");
     expect(result[0].gwActuals).toEqual({ "26": 2, "27": 0 });
+  });
+});
+
+describe("getGwPlanById", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("returns null for unknown id", () => {
+    mockGet.mockReturnValue(undefined);
+    expect(getGwPlanById("no-such-id", "any-session")).toBeNull();
+  });
+
+  it("returns plan by id when session matches", () => {
+    const plan = {
+      predictedTeamPoints: 62,
+      captain: { playerId: 1, name: "Salah", reasoning: "great fixtures" },
+      transfers: [],
+      notes: "",
+    };
+    mockGet.mockReturnValue({
+      id: "plan-1",
+      session_id: "sess1",
+      gameweek: 28,
+      plan_json: JSON.stringify(plan),
+      thinking: "thoughts",
+      generated_at: "2026-02-26",
+    });
+    const found = getGwPlanById("plan-1", "sess1");
+    expect(found).not.toBeNull();
+    expect(found?.id).toBe("plan-1");
+    expect(found?.sessionId).toBe("sess1");
+  });
+
+  it("returns null when session does not match (row not returned by DB)", () => {
+    mockGet.mockReturnValue(undefined);
+    expect(getGwPlanById("plan-1", "wrong-session")).toBeNull();
   });
 });

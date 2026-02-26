@@ -211,6 +211,7 @@ export function clearFplCredentials(): void {
 export function getFplSession(): {
   cookie: string;
   managerName: string;
+  expiresAt: string;
 } | null {
   const cookie = getSetting("fpl_session_cookie");
   const expires = getSetting("fpl_session_expires");
@@ -219,6 +220,7 @@ export function getFplSession(): {
   return {
     cookie,
     managerName: getSetting("fpl_manager_name") ?? "FPL Manager",
+    expiresAt: expires,
   };
 }
 

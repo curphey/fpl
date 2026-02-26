@@ -24,6 +24,9 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
   const session = getSession(parsed.data.sessionId);
   if (!session) return createErrorResponse("Session not found", "NOT_FOUND");
 
+  // Single-user design: FPL credentials are stored globally in app_settings.
+  // Any authenticated session can trigger logout. For multi-user support this
+  // would need per-session credential storage.
   clearFplCredentials();
   return NextResponse.json({ ok: true });
 }

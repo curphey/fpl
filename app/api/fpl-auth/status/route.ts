@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/api/rate-limit";
+import { createErrorResponse } from "@/lib/api/errors";
+import { getSession } from "@/lib/db/sessions";
 import { getFplSession } from "@/lib/fpl/auth-client";
-import { getSetting } from "@/lib/db/settings";
 
 export const runtime = "nodejs";
 
@@ -9,8 +10,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const rl = await rateLimit(request, "fpl");
   if (rl) return rl;
 
-  const session = getFplSession();
+  const sessionId = request.nextUrl.searchParams.get("sessionId");
+  if (!sessionId) {
+    return createErrorResponse("sessionId is required", "UNAUTHORIZED");
+  }
+  const session = getSession(sessionId);
   if (!session) {
+    return createErrorResponse("Session not found", "UNAUTHORIZED");
+  }
+
+  // Single-user design: FPL credentials are stored globally in app_settings,
+  // not per-session. Any authenticated session can read the connection status.
+  const fplSession = getFplSession();
+  if (!fplSession) {
     return NextResponse.json({
       connected: false,
       managerName: null,
@@ -20,7 +32,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   return NextResponse.json({
     connected: true,
-    managerName: session.managerName,
-    expiresAt: getSetting("fpl_session_expires"),
+    managerName: fplSession.managerName,
+    expiresAt: fplSession.expiresAt,
   });
 }

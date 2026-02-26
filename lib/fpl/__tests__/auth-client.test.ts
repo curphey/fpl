@@ -185,6 +185,7 @@ describe("getFplSession", () => {
     expect(session).not.toBeNull();
     expect(session?.cookie).toBe("pl_profile=X");
     expect(session?.managerName).toBe("Tim");
+    expect(session?.expiresAt).toBe(future);
   });
 });
 

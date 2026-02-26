@@ -85,6 +85,22 @@ describe("buildGwPlanPrompt", () => {
     expect(prompt).toContain("£14.0m");
   });
 
+  it("includes squad player id so Claude echoes real FPL element IDs", () => {
+    const prompt = buildGwPlanPrompt(baseRequest);
+    expect(prompt).toContain("[1]"); // Salah's id
+  });
+
+  it("includes transfer target id so Claude echoes real FPL element IDs", () => {
+    const prompt = buildGwPlanPrompt(baseRequest);
+    expect(prompt).toContain("[2]"); // Haaland's id
+  });
+
+  it("includes captain option id so Claude echoes real FPL element IDs", () => {
+    const prompt = buildGwPlanPrompt(baseRequest);
+    // captain options section should reference player id 1
+    expect(prompt).toMatch(/\[1\].*Salah/);
+  });
+
   it("includes budget affordability guidance", () => {
     const prompt = buildGwPlanPrompt(baseRequest);
     expect(prompt).toContain("affordable");

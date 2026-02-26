@@ -86,21 +86,21 @@ export function buildGwPlanPrompt(req: GwPlanRequest): string {
   const squadStr = req.squad
     .map(
       (p) =>
-        `${p.name} (${p.position}, ${p.team}) £${p.sellingPrice.toFixed(1)}m — Next GW: ${p.predictedPtsNextGW}pts, 4GW: ${p.predicted4GW}pts, Form: ${p.form}, Difficulty: ${p.upcomingDifficulty}`,
+        `[${p.id}] ${p.name} (${p.position}, ${p.team}) £${p.sellingPrice.toFixed(1)}m — Next GW: ${p.predictedPtsNextGW}pts, 4GW: ${p.predicted4GW}pts, Form: ${p.form}, Difficulty: ${p.upcomingDifficulty}`,
     )
     .join("\n");
 
   const targetsStr = req.topTargets
     .map(
       (t) =>
-        `${t.name} (${t.position}, ${t.team}) £${t.cost.toFixed(1)}m — Score: ${t.score}, 4GW: ${t.predicted4GW}pts, Form: ${t.form}, Difficulty: ${t.upcomingDifficulty}`,
+        `[${t.id}] ${t.name} (${t.position}, ${t.team}) £${t.cost.toFixed(1)}m — Score: ${t.score}, 4GW: ${t.predicted4GW}pts, Form: ${t.form}, Difficulty: ${t.upcomingDifficulty}`,
     )
     .join("\n");
 
   const captainStr = req.captainOptions
     .map(
       (c) =>
-        `${c.name} — Score: ${c.score}, vs ${c.opponentShortName} (${c.isHome ? "H" : "A"})`,
+        `[${c.id}] ${c.name} — Score: ${c.score}, vs ${c.opponentShortName} (${c.isHome ? "H" : "A"})`,
     )
     .join("\n");
 

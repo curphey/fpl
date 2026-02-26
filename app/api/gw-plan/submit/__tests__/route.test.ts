@@ -245,6 +245,68 @@ describe("POST /api/gw-plan/submit", () => {
     expect(body.transfersMade).toBe(1);
   });
 
+  it("surfaces per-transfer error message from FPL transfers error shape", async () => {
+    vi.mocked(getSession).mockReturnValue(mockSession);
+    vi.mocked(getFplSession).mockReturnValue(mockFplSession);
+    vi.mocked(getGwPlanById).mockReturnValue(mockPlan);
+    vi.mocked(fplClient.getBootstrapStatic).mockResolvedValue({
+      elements: [
+        {
+          id: 10,
+          now_cost: 100,
+          element_type: 2,
+          web_name: "OldPlayer",
+          team: 1,
+        },
+        {
+          id: 20,
+          now_cost: 110,
+          element_type: 2,
+          web_name: "NewPlayer",
+          team: 2,
+        },
+      ],
+    } as unknown as BootstrapStatic);
+    vi.mocked(fplClient.getManagerPicks).mockResolvedValue({
+      picks: [],
+      entry_history: {
+        bank: 10,
+        event_transfers: 0,
+        event_transfers_cost: 0,
+        points: 55,
+        total_points: 1200,
+        rank: 5000,
+        event: 28,
+      },
+      active_chip: null,
+    } as unknown as ManagerPicks);
+    vi.mocked(authenticatedFetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          transfers: [
+            {
+              element_out: [
+                {
+                  message: "Element out is not a current pick",
+                  code: "transfer_element_out_not_pick",
+                },
+              ],
+            },
+          ],
+        }),
+        { status: 400, headers: { "content-type": "application/json" } },
+      ),
+    );
+
+    const res = await POST(
+      makeReq({ sessionId: SESSION_ID, planId: PLAN_ID, confirm: false }),
+    );
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe("VALIDATION_ERROR");
+    expect(body.error).toBe("Element out is not a current pick");
+  });
+
   it("returns DEADLINE_PASSED when FPL says deadline has passed", async () => {
     vi.mocked(getSession).mockReturnValue(mockSession);
     vi.mocked(getFplSession).mockReturnValue(mockFplSession);

@@ -106,21 +106,42 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         unknown
       >;
       if (fplResp.status === 400) {
-        const errors = errBody.non_form_errors;
-        const firstError =
-          Array.isArray(errors) && errors.length > 0
-            ? String(errors[0]).toLowerCase()
+        // FPL returns errors in two shapes:
+        // 1. { non_form_errors: ["deadline passed", ...] }
+        // 2. { transfers: [{ element_out: [{message, code}], element_in: [{message, code}] }] }
+        const nonFormErrors = errBody.non_form_errors;
+        const firstNonForm =
+          Array.isArray(nonFormErrors) && nonFormErrors.length > 0
+            ? String(nonFormErrors[0])
             : "";
+
         if (
-          firstError.includes("deadline") ||
-          firstError.includes("game is being updated")
+          firstNonForm.toLowerCase().includes("deadline") ||
+          firstNonForm.toLowerCase().includes("game is being updated")
         ) {
           return createErrorResponse(
             "Transfer deadline has passed",
             "DEADLINE_PASSED",
           );
         }
-        const msg = firstError || "Transfer validation failed";
+
+        if (!firstNonForm) {
+          // Try per-transfer error shape
+          const transferErrors = errBody.transfers;
+          if (Array.isArray(transferErrors) && transferErrors.length > 0) {
+            const first = transferErrors[0] as Record<string, unknown>;
+            const errArr = Array.isArray(first.element_out)
+              ? (first.element_out as Record<string, unknown>[])
+              : Array.isArray(first.element_in)
+                ? (first.element_in as Record<string, unknown>[])
+                : [];
+            const msg =
+              errArr.length > 0 ? String(errArr[0].message ?? "") : "";
+            if (msg) return createErrorResponse(msg, "VALIDATION_ERROR");
+          }
+        }
+
+        const msg = firstNonForm || "Transfer validation failed";
         return createErrorResponse(msg, "VALIDATION_ERROR");
       }
       if (fplResp.status === 401 || fplResp.status === 403) {

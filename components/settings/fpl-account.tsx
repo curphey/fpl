@@ -121,7 +121,6 @@ export function FplAccount({ sessionId }: FplAccountProps) {
             <p className="mb-2 text-fpl-muted">
               Drag this to your bookmarks bar:
             </p>
-            {}
             <a
               href={bookmarklet}
               draggable

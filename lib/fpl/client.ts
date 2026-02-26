@@ -203,11 +203,14 @@ export const fplClient = {
     const session = getFplSession();
     if (session) {
       const url = `${FPL_API_BASE}/entry/${managerId}/event/${gameweek}/picks/`;
-      const resp = await authenticatedFetch(url);
-      if (resp.ok) {
-        return resp.json() as Promise<ManagerPicks>;
+      try {
+        const resp = await authenticatedFetch(url);
+        if (resp.ok) {
+          return resp.json() as Promise<ManagerPicks>;
+        }
+      } catch {
+        // Session expired or network error — fall through to unauthenticated
       }
-      // Fall through to unauthenticated if auth fetch fails
     }
     return fetchFPL<ManagerPicks>(
       `/entry/${managerId}/event/${gameweek}/picks/`,

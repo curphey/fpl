@@ -322,4 +322,47 @@ describe("fplClient.getManagerPicks — authenticated path", () => {
     expect(authenticatedFetch).toHaveBeenCalled();
     expect(result.picks).toHaveLength(0); // came from unauthenticated fallback
   });
+
+  it("falls back to unauthenticated fetch when authenticatedFetch throws", async () => {
+    vi.mocked(getFplSession).mockReturnValue({
+      cookie: "pl_profile=X",
+      managerName: "Tim",
+      expiresAt: "2026-12-01T00:00:00Z",
+    });
+    vi.mocked(authenticatedFetch).mockRejectedValue(
+      new Error("FPL_SESSION_EXPIRED"),
+    );
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            picks: [
+              {
+                element: 99,
+                position: 1,
+                multiplier: 1,
+                is_captain: false,
+                is_vice_captain: false,
+              },
+            ],
+            entry_history: {
+              bank: 0,
+              event_transfers: 0,
+              event_transfers_cost: 0,
+              points: 0,
+              total_points: 0,
+              rank: 0,
+              event: 28,
+            },
+            active_chip: null,
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      ),
+    );
+    const result = await fplClient.getManagerPicks(456, 28);
+    // Should fall back to unauthenticated and return the mock pick
+    expect(result.picks[0].element).toBe(99);
+  });
 });

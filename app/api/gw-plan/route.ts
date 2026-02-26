@@ -14,6 +14,7 @@ import {
 import { generateGwPlan } from "@/lib/claude/gw-plan-client";
 import { getSession } from "@/lib/db/sessions";
 import { fplClient } from "@/lib/fpl/client";
+import { getFplSession } from "@/lib/fpl/auth-client";
 import { enrichPlayers } from "@/lib/fpl/utils";
 import { scoreTransferTargets } from "@/lib/fpl/transfer-model";
 import { scoreCaptainOptions } from "@/lib/fpl/captain-model";
@@ -205,10 +206,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       (r) => r.player.now_cost <= maxAffordableCost,
     );
 
-    // Default to 1 free transfer — FPL API doesn't expose available free transfers
-    // in the picks endpoint directly. Claude will see the squad and can reason about
-    // the actual situation.
-    const freeTransfers = 1;
+    // Calculate free transfers
+    // With auth: derive from manager history (last GW transfers banked)
+    // Without auth: default to 1
+    let freeTransfers = 1;
+    const fplSession = getFplSession();
+    if (fplSession) {
+      try {
+        const history = await fplClient.getManagerHistory(managerId);
+        const lastGwEntry = history.current
+          .filter((e) => e.event < gameweek)
+          .sort((a, b) => b.event - a.event)[0];
+        if (lastGwEntry) {
+          // FPL rule: if no transfers were made last GW (or all were free with no cost),
+          // manager banks 1 extra → has 2 free transfers this GW
+          freeTransfers = lastGwEntry.event_transfers === 0 ? 2 : 1;
+        }
+      } catch {
+        // non-critical; keep default of 1
+      }
+    }
 
     const gwPlanRequest: GwPlanRequest = {
       gameweek,

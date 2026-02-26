@@ -14,6 +14,7 @@ import type {
   LeagueStandings,
 } from "./types";
 import { SERVER_CACHE_TTL } from "@/lib/cache-config";
+import { getFplSession, authenticatedFetch } from "@/lib/fpl/auth-client";
 
 const FPL_API_BASE = "https://fantasy.premierleague.com/api";
 
@@ -198,6 +199,16 @@ export const fplClient = {
     managerId: number,
     gameweek: number,
   ): Promise<ManagerPicks> {
+    // Use authenticated fetch when a valid session exists — returns selling_price + purchase_price
+    const session = getFplSession();
+    if (session) {
+      const url = `${FPL_API_BASE}/entry/${managerId}/event/${gameweek}/picks/`;
+      const resp = await authenticatedFetch(url);
+      if (resp.ok) {
+        return resp.json() as Promise<ManagerPicks>;
+      }
+      // Fall through to unauthenticated if auth fetch fails
+    }
     return fetchFPL<ManagerPicks>(
       `/entry/${managerId}/event/${gameweek}/picks/`,
     );

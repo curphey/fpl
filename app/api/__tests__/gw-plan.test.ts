@@ -47,6 +47,11 @@ vi.mock("@/lib/db/settings", () => ({
   hasAnthropicApiKey: vi.fn().mockReturnValue(true),
 }));
 
+vi.mock("@/lib/fpl/auth-client", () => ({
+  getFplSession: vi.fn().mockReturnValue(null),
+  authenticatedFetch: vi.fn(),
+}));
+
 import { GET, POST } from "../gw-plan/route";
 import {
   getGwPlan,

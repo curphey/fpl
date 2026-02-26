@@ -68,11 +68,15 @@ export function FplAccount({ sessionId }: Props) {
     setLoading(true);
     setError(null);
     try {
-      await fetch("/api/fpl-auth/logout", {
+      const res = await fetch("/api/fpl-auth/logout", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId }),
       });
+      if (!res.ok) {
+        setError("Disconnect failed");
+        return;
+      }
       setStatus({ connected: false, managerName: null, expiresAt: null });
     } catch {
       setError("Disconnect failed");
@@ -113,7 +117,7 @@ export function FplAccount({ sessionId }: Props) {
             <p className="text-green-500">Connected as {status.managerName}</p>
             {expiryLabel && (
               <p className="text-xs text-white/50">
-                Session expires {expiryLabel}
+                Session expires: {expiryLabel}
               </p>
             )}
           </div>

@@ -82,15 +82,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       sellingPriceMap.get(t.playerOut.id) ?? priceMap.get(t.playerOut.id) ?? 0,
   }));
 
-  // Extract CSRF token from session cookie
-  const csrfToken = fplSession.cookie.match(/csrftoken=([^;]+)/)?.[1] ?? "";
-
   try {
     const fplResp = await authenticatedFetch(FPL_TRANSFERS_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-CSRFToken": csrfToken,
       },
       // FPL treats confirmed: false as a dry-run validation call —
       // the API returns 200 without making transfers.

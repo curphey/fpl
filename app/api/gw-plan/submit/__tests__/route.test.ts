@@ -35,8 +35,8 @@ const mockSession = {
   last_seen_at: "",
 };
 const mockFplSession = {
-  cookie: "pl_profile=X; csrftoken=csrf123",
   managerName: "Tim",
+  entryId: 123,
   expiresAt: "2026-12-01T00:00:00Z",
 };
 const mockPlan: GwPlan = {

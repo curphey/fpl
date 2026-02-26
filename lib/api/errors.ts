@@ -19,7 +19,8 @@ export type ApiErrorCode =
   | "CLAUDE_API_ERROR"
   | "INTERNAL_ERROR"
   | "BAD_REQUEST"
-  | "SERVICE_UNAVAILABLE";
+  | "SERVICE_UNAVAILABLE"
+  | "DEADLINE_PASSED";
 
 /**
  * Standard API error response structure.
@@ -43,6 +44,7 @@ const ERROR_STATUS_CODES: Record<ApiErrorCode, number> = {
   FPL_API_ERROR: 502,
   CLAUDE_API_ERROR: 502,
   SERVICE_UNAVAILABLE: 503,
+  DEADLINE_PASSED: 400,
   INTERNAL_ERROR: 500,
 };
 

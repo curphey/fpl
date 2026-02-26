@@ -75,6 +75,20 @@ describe("POST /api/gw-plan/submit", () => {
     expect(res.status).toBe(400);
   });
 
+  it("returns 401 when session exists but has no fpl_manager_id", async () => {
+    vi.mocked(getSession).mockReturnValue({
+      ...mockSession,
+      fpl_manager_id: null,
+    } as never);
+    vi.mocked(getFplSession).mockReturnValue(mockFplSession);
+    const res = await POST(
+      makeReq({ sessionId: SESSION_ID, planId: "plan-1", confirm: false }),
+    );
+    expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body.code).toBe("UNAUTHORIZED");
+  });
+
   it("returns 401 when not FPL authenticated", async () => {
     vi.mocked(getSession).mockReturnValue(mockSession);
     vi.mocked(getFplSession).mockReturnValue(null);
@@ -155,6 +169,8 @@ describe("POST /api/gw-plan/submit", () => {
     expect(body.transfers).toHaveLength(1);
     expect(body.transfers[0].elementIn).toBe(20);
     expect(body.transfers[0].elementOut).toBe(10);
+    expect(body.transferCost).toBe(0);
+    expect(body.wildcardActive).toBe(false);
   });
 
   it("returns submitted: true on confirm: true", async () => {
@@ -205,5 +221,56 @@ describe("POST /api/gw-plan/submit", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.submitted).toBe(true);
+    expect(body.transfersMade).toBe(1);
+  });
+
+  it("returns DEADLINE_PASSED when FPL says deadline has passed", async () => {
+    vi.mocked(getSession).mockReturnValue(mockSession);
+    vi.mocked(getFplSession).mockReturnValue(mockFplSession);
+    vi.mocked(getGwPlanById).mockReturnValue(mockPlan);
+    vi.mocked(fplClient.getBootstrapStatic).mockResolvedValue({
+      elements: [
+        {
+          id: 10,
+          now_cost: 100,
+          element_type: 2,
+          web_name: "OldPlayer",
+          team: 1,
+        },
+        {
+          id: 20,
+          now_cost: 110,
+          element_type: 2,
+          web_name: "NewPlayer",
+          team: 2,
+        },
+      ],
+    } as never);
+    vi.mocked(fplClient.getManagerPicks).mockResolvedValue({
+      picks: [],
+      entry_history: {
+        bank: 10,
+        event_transfers: 0,
+        event_transfers_cost: 0,
+        points: 55,
+        total_points: 1200,
+        rank: 5000,
+        event: 28,
+      },
+      active_chip: null,
+    } as never);
+    vi.mocked(authenticatedFetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({ non_form_errors: ["Transfer deadline passed"] }),
+        { status: 400, headers: { "content-type": "application/json" } },
+      ),
+    );
+
+    const res = await POST(
+      makeReq({ sessionId: SESSION_ID, planId: "plan-1", confirm: false }),
+    );
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe("DEADLINE_PASSED");
   });
 });

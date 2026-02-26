@@ -33,7 +33,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (!session?.fpl_manager_id) {
     return createErrorResponse(
       "No FPL manager connected to this session",
-      "NOT_FOUND",
+      "UNAUTHORIZED",
     );
   }
 
@@ -109,10 +109,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       >;
       if (fplResp.status === 400) {
         const errors = errBody.non_form_errors;
-        const msg =
+        const firstError =
           Array.isArray(errors) && errors.length > 0
-            ? String(errors[0])
-            : "Transfer validation failed";
+            ? String(errors[0]).toLowerCase()
+            : "";
+        if (
+          firstError.includes("deadline") ||
+          firstError.includes("game is being updated")
+        ) {
+          return createErrorResponse(
+            "Transfer deadline has passed",
+            "DEADLINE_PASSED",
+          );
+        }
+        const msg = firstError || "Transfer validation failed";
         return createErrorResponse(msg, "VALIDATION_ERROR");
       }
       if (fplResp.status === 401 || fplResp.status === 403) {

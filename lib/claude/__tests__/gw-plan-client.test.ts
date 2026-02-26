@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { buildGwPlanPrompt, parseGwPlanResult } from "../gw-plan-client";
+import {
+  buildGwPlanPrompt,
+  parseGwPlanResult,
+  GW_PLAN_SYSTEM_PROMPT,
+} from "../gw-plan-client";
 import type { GwPlanRequest } from "../gw-plan-client";
 
 const baseRequest: GwPlanRequest = {
@@ -119,6 +123,14 @@ describe("buildGwPlanPrompt", () => {
   it("mentions multi-transfer budget strategy", () => {
     const prompt = buildGwPlanPrompt(baseRequest);
     expect(prompt).toContain("multiple");
+  });
+});
+
+describe("GW_PLAN_SYSTEM_PROMPT", () => {
+  it("enforces same-position-only transfers (GK→GK, DEF→DEF, MID→MID, FWD→FWD)", () => {
+    expect(GW_PLAN_SYSTEM_PROMPT).toMatch(
+      /GK.*GK|DEF.*DEF|same.*position|position.*same/i,
+    );
   });
 });
 

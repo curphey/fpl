@@ -227,12 +227,33 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
     }
 
+    // Build position-diverse target list: top N targets per position so that
+    // lower-scoring positions (e.g. FWD) are not crowded out by high-scoring
+    // ones (e.g. MID), and Claude always has same-position options to choose from.
+    const TARGETS_PER_POSITION: Record<string, number> = {
+      GK: 2,
+      DEF: 5,
+      MID: 5,
+      FWD: 5,
+    };
+    const targetsByPosition = new Map<string, typeof affordableTargets>();
+    for (const target of affordableTargets) {
+      const pos = POS_MAP[target.player.element_type] ?? "???";
+      if (!targetsByPosition.has(pos)) targetsByPosition.set(pos, []);
+      targetsByPosition.get(pos)!.push(target);
+    }
+    const positionDiverseTargets = Array.from(
+      targetsByPosition.entries(),
+    ).flatMap(([pos, targets]) =>
+      targets.slice(0, TARGETS_PER_POSITION[pos] ?? 5),
+    );
+
     const gwPlanRequest: GwPlanRequest = {
       gameweek,
       squad,
       freeTransfers,
       bank,
-      topTargets: affordableTargets.slice(0, 20).map((r) => ({
+      topTargets: positionDiverseTargets.map((r) => ({
         id: r.player.id,
         name: r.player.web_name,
         team: teamMap.get(r.player.team)?.short_name ?? "???",

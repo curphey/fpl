@@ -416,6 +416,118 @@ describe("POST /api/gw-plan", () => {
     expect(targetIds).toContain(15); // double-transfer target now included
     expect(targetIds).not.toContain(20); // completely unaffordable excluded
   });
+
+  it("includes targets from each position even when top-scoring position dominates", async () => {
+    mockGetSession.mockReturnValue({
+      id: "sess1",
+      fpl_manager_id: 12345,
+      display_name: "Test FC",
+      created_at: "2026-01-01",
+      last_seen_at: "2026-01-01",
+    });
+    mockBootstrap.mockResolvedValue({
+      elements: [],
+      teams: [],
+      events: [],
+    } as never);
+    mockFixtures.mockResolvedValue([]);
+    mockPicks.mockResolvedValue({
+      picks: [],
+      entry_history: { bank: 200, event_transfers_cost: 0 }, // £20m bank — all targets affordable
+    } as never);
+
+    // 22 MID targets (highest scores) + 2 FWD targets (low scores).
+    // A raw slice(0, 20) would fill all 20 slots with MIDs, leaving FWDs out.
+    const midTargets = Array.from({ length: 22 }, (_, i) => ({
+      player: {
+        id: 100 + i,
+        now_cost: 80,
+        element_type: 3, // MID
+        web_name: `Mid${i}`,
+        team: 1,
+        form: "8.0",
+      } as never,
+      score: 9.0 - i * 0.1,
+      formScore: 5,
+      fixtureScore: 5,
+      valueScore: 5,
+      xgiScore: 5,
+      upcomingDifficulty: 2,
+    }));
+    const fwdTargets = [
+      {
+        player: {
+          id: 200,
+          now_cost: 80,
+          element_type: 4, // FWD
+          web_name: "FwdA",
+          team: 2,
+          form: "4.0",
+        } as never,
+        score: 3.0,
+        formScore: 3,
+        fixtureScore: 3,
+        valueScore: 3,
+        xgiScore: 3,
+        upcomingDifficulty: 3,
+      },
+      {
+        player: {
+          id: 201,
+          now_cost: 80,
+          element_type: 4, // FWD
+          web_name: "FwdB",
+          team: 3,
+          form: "3.5",
+        } as never,
+        score: 2.5,
+        formScore: 2.5,
+        fixtureScore: 2.5,
+        valueScore: 2.5,
+        xgiScore: 2.5,
+        upcomingDifficulty: 3,
+      },
+    ];
+    mockScoreTransferTargets.mockReturnValue([...midTargets, ...fwdTargets]);
+    mockGenerateGwPlan.mockResolvedValue({
+      thinking: "",
+      plan: {
+        predictedTeamPoints: 50,
+        captain: { playerId: 1, name: "Salah", reasoning: "" },
+        transfers: [],
+        notes: "",
+      },
+      processingTime: 1000,
+    });
+    mockSaveGwPlan.mockReturnValue({
+      id: "p1",
+      sessionId: "sess1",
+      gameweek: 28,
+      plan: {
+        predictedTeamPoints: 50,
+        captain: { playerId: 1, name: "Salah", reasoning: "" },
+        transfers: [],
+        notes: "",
+      },
+      thinking: "",
+      generatedAt: "2026-02-25",
+    });
+
+    const req = new NextRequest("http://localhost/api/gw-plan", {
+      method: "POST",
+      body: JSON.stringify({ sessionId: "sess1", gameweek: 28 }),
+      headers: { "Content-Type": "application/json" },
+    });
+    await POST(req);
+
+    const callArg = mockGenerateGwPlan.mock.calls[0][0];
+    const targetIds = callArg.topTargets.map((t: { id: number }) => t.id);
+    // FWD targets must be present despite low scores
+    expect(targetIds).toContain(200);
+    expect(targetIds).toContain(201);
+    // MID targets should also be present (position diversity, not FWD-only)
+    expect(targetIds).toContain(100);
+  });
 });
 
 describe("POST /api/gw-plan — free transfer count", () => {

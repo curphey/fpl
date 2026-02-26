@@ -527,7 +527,14 @@ describe("GwPlanWidget", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /confirm/i }));
 
-    // After success, modal closes and button becomes "Submitted ✓"
+    // Wait for modal success screen to appear
+    await waitFor(() => {
+      expect(screen.getByText(/transfers submitted/i)).toBeInTheDocument();
+    });
+
+    // Click Close to trigger onSuccess — modal closes, button becomes "Submitted ✓"
+    fireEvent.click(screen.getByRole("button", { name: /close/i }));
+
     await waitFor(() => {
       expect(screen.getByText(/Submitted ✓/i)).toBeInTheDocument();
     });

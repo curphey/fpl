@@ -87,7 +87,6 @@ export function SubmitPlanModal({
         setState("error");
       } else {
         setState("success");
-        onSuccess?.();
       }
     } catch {
       setErrorMsg("Network error during submission");
@@ -187,7 +186,10 @@ export function SubmitPlanModal({
               Transfers submitted ✓
             </p>
             <button
-              onClick={onClose}
+              onClick={() => {
+                onSuccess?.();
+                onClose();
+              }}
               className="w-full rounded-lg bg-fpl-purple px-4 py-2 text-sm font-semibold transition-colors hover:bg-fpl-purple/80"
             >
               Close

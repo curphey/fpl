@@ -55,8 +55,8 @@ describe("GET /api/fpl-auth/status", () => {
   it("returns connected: true with manager name and expiry", async () => {
     vi.mocked(getSession).mockReturnValue(validSession);
     vi.mocked(getFplSession).mockReturnValue({
-      cookie: "pl_profile=X",
       managerName: "Tim Smith",
+      entryId: 4343974,
       expiresAt: "2026-12-01T00:00:00Z",
     });
     const res = await GET(makeRequest(VALID_SESSION_ID));

@@ -26,7 +26,6 @@ export function GwPlanWidget({
   const [error, setError] = useState<string | null>(null);
   const [fplConnected, setFplConnected] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
   const [selectedTransfers, setSelectedTransfers] = useState<Set<number>>(
     new Set(),
   );
@@ -317,7 +316,7 @@ export function GwPlanWidget({
                 Substitutions
               </p>
               <div className="space-y-2">
-                {plan.plan.substitutions!.map((sub, idx) => (
+                {(plan.plan.substitutions ?? []).map((sub, idx) => (
                   <label
                     key={idx}
                     className="flex cursor-pointer items-start gap-3 rounded-lg border border-white/10 bg-white/5 p-3 hover:bg-white/10 transition-colors"
@@ -363,10 +362,9 @@ export function GwPlanWidget({
             (selectedCount > 0 || selectedSubstitutions.size > 0) && (
               <button
                 onClick={() => setShowSubmitModal(true)}
-                disabled={submitted}
-                className="w-full rounded-lg border border-fpl-green/40 bg-fpl-green/20 px-4 py-2 text-sm font-semibold text-fpl-green transition-colors hover:bg-fpl-green/30 disabled:opacity-50"
+                className="w-full rounded-lg border border-fpl-green/40 bg-fpl-green/20 px-4 py-2 text-sm font-semibold text-fpl-green transition-colors hover:bg-fpl-green/30"
               >
-                {submitted ? "Submitted ✓" : `${submitLabel} ▶`}
+                {`${submitLabel} ▶`}
               </button>
             )}
 
@@ -383,8 +381,10 @@ export function GwPlanWidget({
                 selectedSubstitutions,
               ).sort((a, b) => a - b)}
               onSuccess={() => {
-                setSubmitted(true);
                 setShowSubmitModal(false);
+                // Clear submitted selections so the button disappears naturally
+                setSelectedTransfers(new Set());
+                setSelectedSubstitutions(new Set());
                 onTransferSuccess?.(gameweek);
                 void queryClient.invalidateQueries({
                   queryKey: ["manager-picks"],

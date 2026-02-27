@@ -110,7 +110,8 @@ export function SubmitPlanModal({
           body: JSON.stringify({
             sessionId,
             planId: plan.id,
-            substitutions: selectedSubstitutions,
+            confirm: true,
+            substitutionIndices: selectedSubstitutionIndices,
           }),
         });
         const json = (await res.json()) as {

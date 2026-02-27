@@ -379,7 +379,15 @@ describe("SubmitPlanModal — substitutions", () => {
     await waitFor(() =>
       expect(vi.mocked(global.fetch)).toHaveBeenCalledWith(
         "/api/gw-plan/submit-lineup",
-        expect.objectContaining({ method: "POST" }),
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            sessionId: "sess-1",
+            planId: planWithSubs.id,
+            confirm: true,
+            substitutionIndices: [0],
+          }),
+        }),
       ),
     );
   });

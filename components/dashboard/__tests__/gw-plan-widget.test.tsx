@@ -718,7 +718,7 @@ describe("GwPlanWidget", () => {
     await waitFor(() => expect(onTransferSuccess).toHaveBeenCalledWith(28));
   });
 
-  it("shows Submitted after modal onSuccess", async () => {
+  it("hides submit button after modal onSuccess", async () => {
     mockFetch.mockImplementation((url: unknown) => {
       const urlStr = String(url);
       if (urlStr.includes("fpl-auth/status")) {
@@ -825,11 +825,13 @@ describe("GwPlanWidget", () => {
       expect(screen.getByText(/transfers submitted/i)).toBeInTheDocument();
     });
 
-    // Click Close to trigger onSuccess — modal closes, button becomes "Submitted ✓"
+    // Click Close to trigger onSuccess — modal closes, submit button disappears
     fireEvent.click(screen.getByRole("button", { name: /close/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Submitted ✓/i)).toBeInTheDocument();
+      expect(
+        screen.queryByText(/Submit \d+ Transfer/i),
+      ).not.toBeInTheDocument();
     });
   });
 

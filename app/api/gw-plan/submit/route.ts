@@ -9,6 +9,7 @@ import { getSession } from "@/lib/db/sessions";
 import { getGwPlanById } from "@/lib/db/gw-plan";
 import { getFplSession, authenticatedFetch } from "@/lib/fpl/auth-client";
 import { fplClient } from "@/lib/fpl/client";
+import type { ManagerPicks } from "@/lib/fpl/types";
 
 export const runtime = "nodejs";
 
@@ -70,20 +71,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const priceMap = new Map(bootstrap.elements.map((e) => [e.id, e.now_cost]));
 
   // Fetch authenticated picks for selling prices.
-  // GW N picks may return 404 before the deadline, so fall back to prior GWs
-  // (same pattern as plan generation). This ensures we always get the
-  // manager's actual selling_price rather than the generic now_cost.
+  // The unauthenticated fplClient omits selling_price; the authenticated endpoint
+  // includes the manager's actual per-player selling price. GW N picks may return
+  // 404 before the deadline, so fall back to prior GWs.
   const sellingPriceMap = new Map<number, number>();
+  const FPL_PICKS_BASE = "https://fantasy.premierleague.com/api/entry";
   for (let gw = gameweek; gw >= Math.max(1, gameweek - 2); gw--) {
     try {
-      const picks = await fplClient.getManagerPicks(managerId, gw);
+      const picksResp = await authenticatedFetch(
+        `${FPL_PICKS_BASE}/${managerId}/event/${gw}/picks/`,
+      );
+      if (!picksResp.ok) continue;
+      const picks = (await picksResp.json()) as ManagerPicks;
       for (const pick of picks.picks) {
         if (pick.selling_price)
           sellingPriceMap.set(pick.element, pick.selling_price);
       }
       break; // got picks — stop trying earlier GWs
     } catch {
-      // try previous GW
+      // network error — try previous GW
     }
   }
 

@@ -12,7 +12,6 @@ vi.mock("@/lib/fpl/auth-client", () => ({
 vi.mock("@/lib/fpl/client", () => ({
   fplClient: {
     getBootstrapStatic: vi.fn(),
-    getManagerPicks: vi.fn(),
   },
 }));
 
@@ -23,7 +22,7 @@ import { getGwPlanById } from "@/lib/db/gw-plan";
 import { getFplSession, authenticatedFetch } from "@/lib/fpl/auth-client";
 import { fplClient } from "@/lib/fpl/client";
 import type { GwPlan } from "@/lib/db/gw-plan";
-import type { BootstrapStatic, ManagerPicks } from "@/lib/fpl/types";
+import type { BootstrapStatic } from "@/lib/fpl/types";
 
 const SESSION_ID = "550e8400-e29b-41d4-a716-446655440000";
 const PLAN_ID = "660e8400-e29b-41d4-a716-446655440001";
@@ -69,7 +68,56 @@ function makeReq(body: unknown) {
   });
 }
 
-beforeEach(() => vi.clearAllMocks());
+/** Returns an authenticatedFetch mock that serves picks for /picks/ URLs
+ *  and the given transferResponse for the transfers URL. */
+function mockAuthFetch(
+  transferResponse: Response,
+  picksBody: object = {
+    picks: [],
+    entry_history: {
+      bank: 10,
+      event_transfers: 0,
+      event_transfers_cost: 0,
+      points: 55,
+      total_points: 1200,
+      rank: 5000,
+      event: 28,
+    },
+    active_chip: null,
+  },
+) {
+  vi.mocked(authenticatedFetch).mockImplementation(async (url) => {
+    if (String(url).includes("/picks/")) {
+      return new Response(JSON.stringify(picksBody), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    return transferResponse;
+  });
+}
+
+const mockBootstrap = {
+  elements: [
+    {
+      id: 10,
+      now_cost: 100,
+      element_type: 2,
+      web_name: "OldPlayer",
+      team: 1,
+    },
+    {
+      id: 20,
+      now_cost: 110,
+      element_type: 2,
+      web_name: "NewPlayer",
+      team: 2,
+    },
+  ],
+} as unknown as BootstrapStatic;
+
+// resetAllMocks clears implementations AND once-queues between tests
+beforeEach(() => vi.resetAllMocks());
 
 describe("POST /api/gw-plan/submit", () => {
   it("returns 400 for missing fields", async () => {
@@ -133,52 +181,34 @@ describe("POST /api/gw-plan/submit", () => {
     vi.mocked(getSession).mockReturnValue(mockSession);
     vi.mocked(getFplSession).mockReturnValue(mockFplSession);
     vi.mocked(getGwPlanById).mockReturnValue(mockPlan);
-    vi.mocked(fplClient.getBootstrapStatic).mockResolvedValue({
-      elements: [
-        {
-          id: 10,
-          now_cost: 100,
-          element_type: 2,
-          web_name: "OldPlayer",
-          team: 1,
-        },
-        {
-          id: 20,
-          now_cost: 110,
-          element_type: 2,
-          web_name: "NewPlayer",
-          team: 2,
-        },
-      ],
-    } as unknown as BootstrapStatic);
-    vi.mocked(fplClient.getManagerPicks).mockResolvedValue({
-      picks: [
-        {
-          element: 10,
-          position: 1,
-          multiplier: 1,
-          is_captain: false,
-          is_vice_captain: false,
-          selling_price: 105,
-        },
-      ],
-      entry_history: {
-        bank: 10,
-        event_transfers: 0,
-        event_transfers_cost: 0,
-        points: 55,
-        total_points: 1200,
-        rank: 5000,
-        event: 28,
-      },
-      active_chip: null,
-    } as unknown as ManagerPicks);
-    // FPL validation POST (confirm: false) — dry-run
-    vi.mocked(authenticatedFetch).mockResolvedValue(
+    vi.mocked(fplClient.getBootstrapStatic).mockResolvedValue(mockBootstrap);
+    mockAuthFetch(
       new Response(JSON.stringify({ status: "ok" }), {
         status: 200,
         headers: { "content-type": "application/json" },
       }),
+      {
+        picks: [
+          {
+            element: 10,
+            position: 1,
+            multiplier: 1,
+            is_captain: false,
+            is_vice_captain: false,
+            selling_price: 105,
+          },
+        ],
+        entry_history: {
+          bank: 10,
+          event_transfers: 0,
+          event_transfers_cost: 0,
+          points: 55,
+          total_points: 1200,
+          rank: 5000,
+          event: 28,
+        },
+        active_chip: null,
+      },
     );
 
     const res = await POST(
@@ -198,38 +228,8 @@ describe("POST /api/gw-plan/submit", () => {
     vi.mocked(getSession).mockReturnValue(mockSession);
     vi.mocked(getFplSession).mockReturnValue(mockFplSession);
     vi.mocked(getGwPlanById).mockReturnValue(mockPlan);
-    vi.mocked(fplClient.getBootstrapStatic).mockResolvedValue({
-      elements: [
-        {
-          id: 10,
-          now_cost: 100,
-          element_type: 2,
-          web_name: "OldPlayer",
-          team: 1,
-        },
-        {
-          id: 20,
-          now_cost: 110,
-          element_type: 2,
-          web_name: "NewPlayer",
-          team: 2,
-        },
-      ],
-    } as unknown as BootstrapStatic);
-    vi.mocked(fplClient.getManagerPicks).mockResolvedValue({
-      picks: [],
-      entry_history: {
-        bank: 10,
-        event_transfers: 0,
-        event_transfers_cost: 0,
-        points: 55,
-        total_points: 1200,
-        rank: 5000,
-        event: 28,
-      },
-      active_chip: null,
-    } as unknown as ManagerPicks);
-    vi.mocked(authenticatedFetch).mockResolvedValue(
+    vi.mocked(fplClient.getBootstrapStatic).mockResolvedValue(mockBootstrap);
+    mockAuthFetch(
       new Response(JSON.stringify({ transfers_made: 1 }), {
         status: 200,
         headers: { "content-type": "application/json" },
@@ -291,20 +291,7 @@ describe("POST /api/gw-plan/submit", () => {
         { id: 40, now_cost: 90, element_type: 3, web_name: "PlayerD", team: 4 },
       ],
     } as unknown as BootstrapStatic);
-    vi.mocked(fplClient.getManagerPicks).mockResolvedValue({
-      picks: [],
-      entry_history: {
-        bank: 10,
-        event_transfers: 0,
-        event_transfers_cost: 0,
-        points: 55,
-        total_points: 1200,
-        rank: 5000,
-        event: 28,
-      },
-      active_chip: null,
-    } as unknown as ManagerPicks);
-    vi.mocked(authenticatedFetch).mockResolvedValue(
+    mockAuthFetch(
       new Response(JSON.stringify({ status: "ok" }), {
         status: 200,
         headers: { "content-type": "application/json" },
@@ -331,38 +318,8 @@ describe("POST /api/gw-plan/submit", () => {
     vi.mocked(getSession).mockReturnValue(mockSession);
     vi.mocked(getFplSession).mockReturnValue(mockFplSession);
     vi.mocked(getGwPlanById).mockReturnValue(mockPlan);
-    vi.mocked(fplClient.getBootstrapStatic).mockResolvedValue({
-      elements: [
-        {
-          id: 10,
-          now_cost: 100,
-          element_type: 2,
-          web_name: "OldPlayer",
-          team: 1,
-        },
-        {
-          id: 20,
-          now_cost: 110,
-          element_type: 2,
-          web_name: "NewPlayer",
-          team: 2,
-        },
-      ],
-    } as unknown as BootstrapStatic);
-    vi.mocked(fplClient.getManagerPicks).mockResolvedValue({
-      picks: [],
-      entry_history: {
-        bank: 10,
-        event_transfers: 0,
-        event_transfers_cost: 0,
-        points: 55,
-        total_points: 1200,
-        rank: 5000,
-        event: 28,
-      },
-      active_chip: null,
-    } as unknown as ManagerPicks);
-    vi.mocked(authenticatedFetch).mockResolvedValue(
+    vi.mocked(fplClient.getBootstrapStatic).mockResolvedValue(mockBootstrap);
+    mockAuthFetch(
       new Response(
         JSON.stringify({
           transfers: [
@@ -393,38 +350,8 @@ describe("POST /api/gw-plan/submit", () => {
     vi.mocked(getSession).mockReturnValue(mockSession);
     vi.mocked(getFplSession).mockReturnValue(mockFplSession);
     vi.mocked(getGwPlanById).mockReturnValue(mockPlan);
-    vi.mocked(fplClient.getBootstrapStatic).mockResolvedValue({
-      elements: [
-        {
-          id: 10,
-          now_cost: 100,
-          element_type: 2,
-          web_name: "OldPlayer",
-          team: 1,
-        },
-        {
-          id: 20,
-          now_cost: 110,
-          element_type: 2,
-          web_name: "NewPlayer",
-          team: 2,
-        },
-      ],
-    } as unknown as BootstrapStatic);
-    vi.mocked(fplClient.getManagerPicks).mockResolvedValue({
-      picks: [],
-      entry_history: {
-        bank: 10,
-        event_transfers: 0,
-        event_transfers_cost: 0,
-        points: 55,
-        total_points: 1200,
-        rank: 5000,
-        event: 28,
-      },
-      active_chip: null,
-    } as unknown as ManagerPicks);
-    vi.mocked(authenticatedFetch).mockResolvedValue(
+    vi.mocked(fplClient.getBootstrapStatic).mockResolvedValue(mockBootstrap);
+    mockAuthFetch(
       new Response(
         JSON.stringify({
           transfers: [
@@ -451,32 +378,18 @@ describe("POST /api/gw-plan/submit", () => {
     expect(body.error).toBe("Selling price for element_out has changed");
   });
 
-  it("falls back to previous GW picks when current GW picks return 404", async () => {
+  it("uses authenticated picks endpoint for current GW selling prices", async () => {
     vi.mocked(getSession).mockReturnValue(mockSession);
     vi.mocked(getFplSession).mockReturnValue(mockFplSession);
     vi.mocked(getGwPlanById).mockReturnValue(mockPlan);
-    vi.mocked(fplClient.getBootstrapStatic).mockResolvedValue({
-      elements: [
-        {
-          id: 10,
-          now_cost: 100,
-          element_type: 2,
-          web_name: "OldPlayer",
-          team: 1,
-        },
-        {
-          id: 20,
-          now_cost: 110,
-          element_type: 2,
-          web_name: "NewPlayer",
-          team: 2,
-        },
-      ],
-    } as unknown as BootstrapStatic);
-    // First call (GW28) throws, second call (GW27) returns selling price 95
-    vi.mocked(fplClient.getManagerPicks)
-      .mockRejectedValueOnce(new Error("404"))
-      .mockResolvedValueOnce({
+    vi.mocked(fplClient.getBootstrapStatic).mockResolvedValue(mockBootstrap);
+    // Picks endpoint returns selling_price: 95 (not now_cost 100)
+    mockAuthFetch(
+      new Response(JSON.stringify({ status: "ok" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+      {
         picks: [
           {
             element: 10,
@@ -494,25 +407,94 @@ describe("POST /api/gw-plan/submit", () => {
           points: 55,
           total_points: 1200,
           rank: 5000,
-          event: 27,
+          event: 28,
         },
         active_chip: null,
-      } as unknown as ManagerPicks);
-    vi.mocked(authenticatedFetch).mockResolvedValue(
-      new Response(JSON.stringify({ status: "ok" }), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      }),
+      },
     );
 
     const res = await POST(
       makeReq({ sessionId: SESSION_ID, planId: PLAN_ID, confirm: false }),
     );
     expect(res.status).toBe(200);
+    // selling_price in the FPL transfer payload must be 95 (from auth picks), not 100 (now_cost)
+    const transfersCall = vi
+      .mocked(authenticatedFetch)
+      .mock.calls.find(
+        ([url]) => url === "https://fantasy.premierleague.com/api/transfers/",
+      );
+    expect(transfersCall).toBeDefined();
+    const callBody = JSON.parse(transfersCall![1]?.body as string) as {
+      transfers: Array<{ selling_price: number }>;
+    };
+    expect(callBody.transfers[0].selling_price).toBe(95);
+    // Unauthenticated fplClient must NOT be used for picks
+    expect(vi.mocked(fplClient).getBootstrapStatic).toBeDefined(); // still used for purchase prices
+  });
+
+  it("falls back to previous GW picks when current GW picks return 404", async () => {
+    vi.mocked(getSession).mockReturnValue(mockSession);
+    vi.mocked(getFplSession).mockReturnValue(mockFplSession);
+    vi.mocked(getGwPlanById).mockReturnValue(mockPlan);
+    vi.mocked(fplClient.getBootstrapStatic).mockResolvedValue(mockBootstrap);
+    let picksCallCount = 0;
+    vi.mocked(authenticatedFetch).mockImplementation(async (url) => {
+      if (String(url).includes("/picks/")) {
+        picksCallCount++;
+        if (picksCallCount === 1) {
+          // GW28 picks: 404
+          return new Response("Not Found", {
+            status: 404,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        // GW27 picks: selling_price: 95
+        return new Response(
+          JSON.stringify({
+            picks: [
+              {
+                element: 10,
+                position: 1,
+                multiplier: 1,
+                is_captain: false,
+                is_vice_captain: false,
+                selling_price: 95,
+              },
+            ],
+            entry_history: {
+              bank: 10,
+              event_transfers: 0,
+              event_transfers_cost: 0,
+              points: 55,
+              total_points: 1200,
+              rank: 5000,
+              event: 27,
+            },
+            active_chip: null,
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      // Transfers call
+      return new Response(JSON.stringify({ status: "ok" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    });
+
+    const res = await POST(
+      makeReq({ sessionId: SESSION_ID, planId: PLAN_ID, confirm: false }),
+    );
+    expect(res.status).toBe(200);
     // Verify the selling price used was 95 (from GW27 picks, not now_cost 100)
-    const callBody = JSON.parse(
-      vi.mocked(authenticatedFetch).mock.calls[0][1]?.body as string,
-    ) as { transfers: Array<{ selling_price: number }> };
+    const transfersCall = vi
+      .mocked(authenticatedFetch)
+      .mock.calls.find(
+        ([url]) => url === "https://fantasy.premierleague.com/api/transfers/",
+      );
+    const callBody = JSON.parse(transfersCall![1]?.body as string) as {
+      transfers: Array<{ selling_price: number }>;
+    };
     expect(callBody.transfers[0].selling_price).toBe(95);
   });
 
@@ -520,38 +502,8 @@ describe("POST /api/gw-plan/submit", () => {
     vi.mocked(getSession).mockReturnValue(mockSession);
     vi.mocked(getFplSession).mockReturnValue(mockFplSession);
     vi.mocked(getGwPlanById).mockReturnValue(mockPlan);
-    vi.mocked(fplClient.getBootstrapStatic).mockResolvedValue({
-      elements: [
-        {
-          id: 10,
-          now_cost: 100,
-          element_type: 2,
-          web_name: "OldPlayer",
-          team: 1,
-        },
-        {
-          id: 20,
-          now_cost: 110,
-          element_type: 2,
-          web_name: "NewPlayer",
-          team: 2,
-        },
-      ],
-    } as unknown as BootstrapStatic);
-    vi.mocked(fplClient.getManagerPicks).mockResolvedValue({
-      picks: [],
-      entry_history: {
-        bank: 10,
-        event_transfers: 0,
-        event_transfers_cost: 0,
-        points: 55,
-        total_points: 1200,
-        rank: 5000,
-        event: 28,
-      },
-      active_chip: null,
-    } as unknown as ManagerPicks);
-    vi.mocked(authenticatedFetch).mockResolvedValue(
+    vi.mocked(fplClient.getBootstrapStatic).mockResolvedValue(mockBootstrap);
+    mockAuthFetch(
       new Response(
         JSON.stringify({ non_form_errors: ["Transfer deadline passed"] }),
         { status: 400, headers: { "content-type": "application/json" } },

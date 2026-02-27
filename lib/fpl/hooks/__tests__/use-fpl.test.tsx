@@ -12,6 +12,7 @@ import {
   useManagerHistory,
   useManagerPicks,
   useLeagueStandings,
+  usePendingPicks,
 } from "../use-fpl";
 
 // Mock fetch globally
@@ -442,6 +443,45 @@ describe("FPL Data Hooks", () => {
       });
 
       expect(result.current.isLoading).toBe(false);
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("usePendingPicks", () => {
+    it("fetches pending picks when managerId is provided", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          picks: [
+            {
+              element: 440,
+              position: 1,
+              multiplier: 1,
+              is_captain: false,
+              is_vice_captain: false,
+            },
+          ],
+        }),
+      });
+
+      const { result } = renderHook(() => usePendingPicks(123), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+      expect(result.current.data?.picks).toHaveLength(1);
+      expect(result.current.data?.picks[0].element).toBe(440);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/api/fpl/my-team?managerId=123"),
+      );
+    });
+
+    it("does not fetch when managerId is null", () => {
+      const { result } = renderHook(() => usePendingPicks(null), {
+        wrapper: createWrapper(),
+      });
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.data).toBeNull();
       expect(mockFetch).not.toHaveBeenCalled();
     });
   });

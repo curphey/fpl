@@ -89,7 +89,7 @@ Key principles:
    - MID out → MID in only
    - FWD out → FWD in only
    Never recommend a transfer that swaps positions — it is an illegal move in FPL.
-7. Substitutions: Review the starting XI and bench. If any bench player has higher predicted points than a starting player of the same type (outfield vs GK), recommend swapping them. Output these as structured substitutions with clear reasoning. If no swap is beneficial, output an empty substitutions array.
+7. Substitutions: Review the starting XI and bench. If a bench outfield player has higher predicted points than a starting outfield player AND the substitution would not break the minimum formation (at least 3 DEF, 2 MID, 1 FWD must remain on the pitch), recommend swapping them. A bench GK can only replace a starting GK. Output these as structured substitutions with clear reasoning. If no swap is beneficial or no valid swap exists, output an empty substitutions array.
 
 Always respond with valid JSON matching the expected schema.`;
 

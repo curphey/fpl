@@ -170,6 +170,7 @@ describe("GW plan prompt — substitutions schema", () => {
   it("system prompt instructs Claude to output substitutions", () => {
     expect(GW_PLAN_SYSTEM_PROMPT).toContain("substitutions");
     expect(GW_PLAN_SYSTEM_PROMPT).toContain("Substitutions");
+    expect(GW_PLAN_SYSTEM_PROMPT).toContain("empty substitutions array");
   });
 
   it("buildGwPlanPrompt JSON schema includes substitutions array", () => {

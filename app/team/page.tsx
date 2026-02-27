@@ -5,6 +5,7 @@ import { useManagerContext } from "@/lib/fpl/manager-context";
 import {
   useBootstrapStatic,
   useManagerPicks,
+  usePendingPicks,
   useLiveGameweek,
   useManagerHistory,
 } from "@/lib/fpl/hooks/use-fpl";
@@ -40,6 +41,9 @@ export default function TeamPage() {
     refetch: bsRefetch,
   } = useBootstrapStatic();
 
+  const nextGwId = bootstrap?.events.find((e) => e.is_next)?.id;
+  const isPendingView = nextGwId !== undefined && selectedGw === nextGwId;
+
   const gwId = selectedGw;
 
   const {
@@ -57,6 +61,12 @@ export default function TeamPage() {
   } = useLiveGameweek(gwId);
 
   const { data: historyData } = useManagerHistory(managerId);
+
+  const {
+    data: pendingPicksData,
+    isLoading: pendingPicksLoading,
+    error: pendingPicksError,
+  } = usePendingPicks(isPendingView ? managerId : null);
 
   const playerMap = useMemo(
     () => (bootstrap ? buildPlayerMap(bootstrap.elements) : new Map()),
@@ -79,9 +89,10 @@ export default function TeamPage() {
 
   const gameweekName = useMemo(() => {
     if (!bootstrap || !gwId) return "";
+    if (isPendingView && nextGwId) return `GW${nextGwId} Pending`;
     const gw = bootstrap.events.find((e) => e.id === gwId);
     return gw?.name ?? `Gameweek ${gwId}`;
-  }, [bootstrap, gwId]);
+  }, [bootstrap, gwId, isPendingView, nextGwId]);
 
   // Squad value calculation
   const squadValueSummary = useMemo(() => {
@@ -102,15 +113,18 @@ export default function TeamPage() {
   }, [historyCurrentData]);
 
   const hasPrev = !!manager && selectedGw > manager.started_event;
-  const hasNext = !!manager && selectedGw < manager.current_event;
+  const hasNext = !!manager && selectedGw < (nextGwId ?? manager.current_event);
 
   // Guard: require manager connection
   if (!manager) {
     return <ConnectPrompt />;
   }
 
-  const isLoading = bsLoading || picksLoading || liveLoading;
-  const error = bsError || picksError || liveError;
+  const isLoading =
+    bsLoading ||
+    (isPendingView ? pendingPicksLoading : picksLoading) ||
+    liveLoading;
+  const error = bsError || (isPendingView ? null : picksError) || liveError;
 
   if (isLoading && !picksData) {
     return <PitchSkeleton />;
@@ -127,6 +141,49 @@ export default function TeamPage() {
           liveRefetch();
         }}
       />
+    );
+  }
+
+  if (isPendingView) {
+    const isAuthError =
+      pendingPicksError !== null &&
+      (pendingPicksError.message.toLowerCase().includes("reconnect") ||
+        pendingPicksError.message.toLowerCase().includes("unauthorized"));
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-start justify-between">
+          <TeamHeader manager={manager} entryHistory={null} />
+        </div>
+        <GameweekNav
+          gameweekName={gameweekName}
+          onPrev={() => setSelectedGw((gw) => gw - 1)}
+          onNext={() => setSelectedGw((gw) => gw + 1)}
+          hasPrev={hasPrev}
+          hasNext={hasNext}
+        />
+        {isAuthError ? (
+          <div className="rounded-lg border border-fpl-border bg-fpl-card p-8 text-center">
+            <p className="text-sm text-fpl-muted">
+              Connect your FPL account in Settings to see pending transfers.
+            </p>
+          </div>
+        ) : pendingPicksData ? (
+          <PitchView
+            picks={pendingPicksData.picks}
+            playerMap={playerMap}
+            teamMap={teamMap}
+            livePointsMap={null}
+            autoSubs={[]}
+          />
+        ) : (
+          <div className="rounded-lg border border-fpl-border bg-fpl-card p-8 text-center">
+            <p className="mt-2 text-sm text-fpl-muted">
+              No pending squad data available.
+            </p>
+          </div>
+        )}
+      </div>
     );
   }
 

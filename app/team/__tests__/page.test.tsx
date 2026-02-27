@@ -1,0 +1,236 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import TeamPage from "../page";
+
+// Mock all hooks the page uses
+vi.mock("@/lib/fpl/manager-context", () => ({
+  useManagerContext: vi.fn(),
+}));
+vi.mock("@/lib/fpl/hooks/use-fpl", () => ({
+  useBootstrapStatic: vi.fn(),
+  useManagerPicks: vi.fn(),
+  usePendingPicks: vi.fn(),
+  useLiveGameweek: vi.fn(),
+  useManagerHistory: vi.fn(),
+}));
+vi.mock("@/components/chat", () => ({ AskAiButton: () => null }));
+
+import { useManagerContext } from "@/lib/fpl/manager-context";
+import {
+  useBootstrapStatic,
+  useManagerPicks,
+  usePendingPicks,
+  useLiveGameweek,
+  useManagerHistory,
+} from "@/lib/fpl/hooks/use-fpl";
+
+const mockManager = {
+  id: 1,
+  current_event: 27,
+  started_event: 1,
+  player_first_name: "Tim",
+  player_last_name: "Smith",
+  name: "Test FC",
+  summary_overall_points: 1000,
+  summary_overall_rank: 5000,
+  summary_event_points: 55,
+  summary_event_rank: 10000,
+  last_deadline_bank: 10,
+  last_deadline_value: 1000,
+  last_deadline_total_transfers: 5,
+};
+
+const mockBootstrap = {
+  events: [
+    {
+      id: 27,
+      name: "Gameweek 27",
+      is_current: true,
+      is_next: false,
+      is_previous: false,
+      deadline_time: "2026-02-20T11:30:00Z",
+    },
+    {
+      id: 28,
+      name: "Gameweek 28",
+      is_current: false,
+      is_next: true,
+      is_previous: false,
+      deadline_time: "2026-02-27T11:30:00Z",
+    },
+  ],
+  elements: [],
+  teams: [],
+};
+
+const mockPicks = {
+  picks: [
+    {
+      element: 694,
+      position: 1,
+      multiplier: 1,
+      is_captain: false,
+      is_vice_captain: false,
+    },
+  ],
+  entry_history: {
+    event: 27,
+    points: 55,
+    total_points: 1000,
+    rank: 10000,
+    rank_sort: 10000,
+    percentile_rank: 50,
+    overall_rank: 5000,
+    bank: 10,
+    value: 1000,
+    event_transfers: 1,
+    event_transfers_cost: 0,
+    points_on_bench: 5,
+  },
+  active_chip: null,
+  automatic_subs: [],
+};
+
+const mockPendingPicks = {
+  picks: [
+    {
+      element: 440,
+      position: 1,
+      multiplier: 1,
+      is_captain: false,
+      is_vice_captain: false,
+    },
+  ],
+};
+
+const noData = { data: null, isLoading: false, error: null, refetch: vi.fn() };
+
+function setupMocks() {
+  vi.mocked(useManagerContext).mockReturnValue({
+    managerId: 1,
+    manager: mockManager,
+  } as ReturnType<typeof useManagerContext>);
+  vi.mocked(useBootstrapStatic).mockReturnValue({
+    data: mockBootstrap,
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  } as ReturnType<typeof useBootstrapStatic>);
+  vi.mocked(useManagerPicks).mockReturnValue({
+    data: mockPicks,
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  } as ReturnType<typeof useManagerPicks>);
+  vi.mocked(usePendingPicks).mockReturnValue({
+    data: null,
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  } as ReturnType<typeof usePendingPicks>);
+  vi.mocked(useLiveGameweek).mockReturnValue(
+    noData as ReturnType<typeof useLiveGameweek>,
+  );
+  vi.mocked(useManagerHistory).mockReturnValue(
+    noData as ReturnType<typeof useManagerHistory>,
+  );
+}
+
+beforeEach(() => {
+  vi.resetAllMocks();
+  setupMocks();
+});
+
+describe("TeamPage pending squad", () => {
+  it("shows forward nav when is_next GW exists", () => {
+    render(<TeamPage />);
+    // The forward nav button should be enabled (hasNext=true)
+    // GameweekNav renders with hasPrev/hasNext props — the forward button should exist and not be disabled
+    const buttons = screen.getAllByRole("button");
+    // Find the next button — it contains a chevron-right icon
+    // Look for a button that's not disabled (hasNext=true means the next button is enabled)
+    const enabledButtons = buttons.filter((b) => !b.hasAttribute("disabled"));
+    expect(enabledButtons.length).toBeGreaterThan(0);
+  });
+
+  it("shows 'GW28 Pending' label when navigated to next GW", async () => {
+    render(<TeamPage />);
+    // Find the next button by aria-label or by position
+    // GameweekNav forward button — look for buttons near the gameweek name
+    // The next button should be clickable (not disabled)
+    const buttons = screen.getAllByRole("button");
+    // The nav buttons are typically prev/next around the gameweek name
+    // Click a non-disabled button that's not "Analyze my team", "Pitch View", "Squad Value"
+    const navButtons = buttons.filter(
+      (b) =>
+        !b.hasAttribute("disabled") &&
+        !b.textContent?.includes("Analyze") &&
+        !b.textContent?.includes("Pitch") &&
+        !b.textContent?.includes("Squad") &&
+        b.querySelector("svg"),
+    );
+    // The next nav button should be the last svg button (after prev and before nothing)
+    const nextBtn = navButtons[navButtons.length - 1];
+    fireEvent.click(nextBtn);
+    await waitFor(() =>
+      expect(screen.getByText(/GW28 Pending/i)).toBeInTheDocument(),
+    );
+  });
+
+  it("hides GameweekSummary when showing pending view", async () => {
+    vi.mocked(usePendingPicks).mockReturnValue({
+      data: mockPendingPicks,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    } as ReturnType<typeof usePendingPicks>);
+
+    render(<TeamPage />);
+    const buttons = screen.getAllByRole("button");
+    const navButtons = buttons.filter(
+      (b) =>
+        !b.hasAttribute("disabled") &&
+        !b.textContent?.includes("Analyze") &&
+        !b.textContent?.includes("Pitch") &&
+        !b.textContent?.includes("Squad") &&
+        b.querySelector("svg"),
+    );
+    const nextBtn = navButtons[navButtons.length - 1];
+    fireEvent.click(nextBtn);
+
+    // GameweekSummary should not be shown for pending view
+    // It shows points data - verify it's not rendered
+    await waitFor(() => {
+      expect(screen.queryByText(/gameweek points/i)).not.toBeInTheDocument();
+    });
+  });
+
+  it("shows connect message when pending picks returns auth error", async () => {
+    const authError = new Error(
+      "FPL session expired. Please reconnect in Settings.",
+    );
+    vi.mocked(usePendingPicks).mockReturnValue({
+      data: null,
+      isLoading: false,
+      error: authError,
+      refetch: vi.fn(),
+    } as ReturnType<typeof usePendingPicks>);
+
+    render(<TeamPage />);
+    const buttons = screen.getAllByRole("button");
+    const navButtons = buttons.filter(
+      (b) =>
+        !b.hasAttribute("disabled") &&
+        !b.textContent?.includes("Analyze") &&
+        !b.textContent?.includes("Pitch") &&
+        !b.textContent?.includes("Squad") &&
+        b.querySelector("svg"),
+    );
+    const nextBtn = navButtons[navButtons.length - 1];
+    fireEvent.click(nextBtn);
+
+    await waitFor(() =>
+      expect(screen.getByText(/connect your fpl account/i)).toBeInTheDocument(),
+    );
+  });
+});

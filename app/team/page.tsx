@@ -51,7 +51,7 @@ export default function TeamPage() {
     isLoading: picksLoading,
     error: picksError,
     refetch: picksRefetch,
-  } = useManagerPicks(managerId, isPendingView ? null : gwId);
+  } = useManagerPicks(managerId, isPendingView ? 0 : gwId);
 
   const {
     data: liveData,
@@ -124,9 +124,9 @@ export default function TeamPage() {
     bsLoading ||
     (isPendingView ? pendingPicksLoading : picksLoading) ||
     liveLoading;
-  const error = bsError || (isPendingView ? null : picksError) || liveError;
+  const error = bsError || (isPendingView ? null : picksError || liveError);
 
-  if (isLoading && !picksData && !pendingPicksData) {
+  if (isLoading && !(isPendingView ? pendingPicksData : picksData)) {
     return <PitchSkeleton />;
   }
 
@@ -173,7 +173,7 @@ export default function TeamPage() {
         ) : isNonAuthError ? (
           <div className="rounded-lg border border-fpl-border bg-fpl-card p-8 text-center">
             <p className="text-sm text-fpl-muted">
-              No pending squad data available.
+              Unable to load pending squad. Please try again.
             </p>
           </div>
         ) : pendingPicksData ? (

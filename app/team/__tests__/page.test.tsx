@@ -195,4 +195,24 @@ describe("TeamPage pending squad", () => {
       expect(screen.getByText(/connect your fpl account/i)).toBeInTheDocument(),
     );
   });
+
+  it("shows generic error message when pending picks returns non-auth error", async () => {
+    const serverError = new Error("FPL_API_ERROR");
+    vi.mocked(usePendingPicks).mockReturnValue({
+      data: null,
+      isLoading: false,
+      error: serverError,
+      refetch: vi.fn(),
+    } as ReturnType<typeof usePendingPicks>);
+
+    render(<TeamPage />);
+    const nextBtn = screen.getByRole("button", { name: /next gameweek/i });
+    fireEvent.click(nextBtn);
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/unable to load pending squad/i),
+      ).toBeInTheDocument(),
+    );
+  });
 });

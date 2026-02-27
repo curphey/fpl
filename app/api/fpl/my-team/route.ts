@@ -43,7 +43,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const data = (await resp.json()) as { picks: Pick[] };
     return NextResponse.json({ picks: data.picks });
   } catch (error) {
-    if (error instanceof Error && error.message === "FPL_SESSION_EXPIRED") {
+    if (
+      error instanceof Error &&
+      (error.message === "FPL_SESSION_EXPIRED" ||
+        error.message === "FPL_UNAUTHORIZED")
+    ) {
       return createErrorResponse(
         "FPL session expired. Please reconnect in Settings.",
         "UNAUTHORIZED",

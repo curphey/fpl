@@ -177,9 +177,7 @@ describe("TeamPage pending squad", () => {
   });
 
   it("shows connect message when pending picks returns auth error", async () => {
-    const authError = new Error(
-      "FPL session expired. Please reconnect in Settings.",
-    );
+    const authError = new Error("HTTP error: 401");
     vi.mocked(usePendingPicks).mockReturnValue({
       data: null,
       isLoading: false,

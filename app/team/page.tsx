@@ -122,8 +122,7 @@ export default function TeamPage() {
 
   const isLoading =
     bsLoading ||
-    (isPendingView ? pendingPicksLoading : picksLoading) ||
-    liveLoading;
+    (isPendingView ? pendingPicksLoading : picksLoading || liveLoading);
   const error = bsError || (isPendingView ? null : picksError || liveError);
 
   if (isLoading && !(isPendingView ? pendingPicksData : picksData)) {
@@ -146,9 +145,7 @@ export default function TeamPage() {
 
   if (isPendingView) {
     const isAuthError =
-      pendingPicksError !== null &&
-      (pendingPicksError.message.toLowerCase().includes("reconnect") ||
-        pendingPicksError.message.toLowerCase().includes("unauthorized"));
+      pendingPicksError !== null && pendingPicksError.message.includes("401");
 
     const isNonAuthError = pendingPicksError !== null && !isAuthError;
 

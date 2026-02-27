@@ -75,6 +75,15 @@ describe("GET /api/fpl/my-team", () => {
     expect(res.status).toBe(401);
   });
 
+  it("returns 401 when authenticatedFetch throws FPL_UNAUTHORIZED", async () => {
+    vi.mocked(getFplSession).mockReturnValue(mockSession);
+    vi.mocked(authenticatedFetch).mockRejectedValue(
+      new Error("FPL_UNAUTHORIZED"),
+    );
+    const res = await GET(makeReq("123"));
+    expect(res.status).toBe(401);
+  });
+
   it("returns error when FPL API returns non-ok response", async () => {
     vi.mocked(getFplSession).mockReturnValue(mockSession);
     vi.mocked(authenticatedFetch).mockResolvedValue(

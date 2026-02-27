@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { GwPlan } from "@/lib/db/gw-plan";
 
 export interface SubmitPlanModalProps {
@@ -10,23 +10,12 @@ export interface SubmitPlanModalProps {
   sessionId: string;
   /** Indices into plan.plan.transfers to submit. If absent, all transfers are submitted. */
   selectedTransferIndices?: number[];
+  /** Indices into plan.plan.substitutions to submit. If absent, all substitutions are submitted. */
+  selectedSubstitutionIndices?: number[];
   onSuccess?: () => void;
 }
 
-interface ValidateResponse {
-  valid: boolean;
-  transfers: Array<{
-    elementIn: number;
-    elementOut: number;
-    purchasePrice: number;
-    sellingPrice: number;
-  }>;
-  transferCost: number;
-  wildcardActive: boolean;
-  error?: string;
-}
-
-type ModalState = "loading" | "confirm" | "submitting" | "success" | "error";
+type ModalState = "confirm" | "submitting" | "success" | "error";
 
 export function SubmitPlanModal({
   open,
@@ -34,124 +23,143 @@ export function SubmitPlanModal({
   plan,
   sessionId,
   selectedTransferIndices,
+  selectedSubstitutionIndices,
   onSuccess,
 }: SubmitPlanModalProps) {
-  const [state, setState] = useState<ModalState>("loading");
-  const [validation, setValidation] = useState<ValidateResponse | null>(null);
+  const [state, setState] = useState<ModalState>("confirm");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [alreadyApplied, setAlreadyApplied] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
+  if (!open) return null;
 
-    const validate = async () => {
-      setState("loading");
-      setValidation(null);
-      setErrorMsg(null);
+  const selectedTransfers =
+    selectedTransferIndices !== undefined
+      ? plan.plan.transfers.filter((_, i) =>
+          selectedTransferIndices.includes(i),
+        )
+      : plan.plan.transfers;
 
-      try {
+  const selectedSubstitutions =
+    selectedSubstitutionIndices !== undefined
+      ? (plan.plan.substitutions ?? []).filter((_, i) =>
+          selectedSubstitutionIndices.includes(i),
+        )
+      : (plan.plan.substitutions ?? []);
+
+  const totalHitCost = selectedTransfers.reduce(
+    (sum, t) => sum + (t.hitCost ?? 0),
+    0,
+  );
+
+  const hasTransfers = selectedTransfers.length > 0;
+  const hasSubs = selectedSubstitutions.length > 0;
+
+  const modalTitle =
+    hasTransfers && hasSubs
+      ? "Confirm Changes"
+      : hasSubs
+        ? "Confirm Lineup Changes"
+        : "Confirm Transfers";
+
+  async function handleConfirm() {
+    setState("submitting");
+    setErrorMsg(null);
+    try {
+      if (hasTransfers) {
         const res = await fetch("/api/gw-plan/submit", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             sessionId,
             planId: plan.id,
-            confirm: false,
+            confirm: true,
             ...(selectedTransferIndices !== undefined && {
               transferIndices: selectedTransferIndices,
             }),
           }),
         });
-        const json = (await res.json()) as ValidateResponse & {
+        const json = (await res.json()) as {
+          submitted?: boolean;
+          alreadyApplied?: boolean;
           error?: string;
         };
-        if (!res.ok) {
-          setErrorMsg(json.error ?? "Validation failed");
+        if (!res.ok || !json.submitted) {
+          setErrorMsg(json.error ?? "Submission failed");
           setState("error");
-        } else {
-          setValidation(json);
-          setState("confirm");
+          return;
         }
-      } catch {
-        setErrorMsg("Network error during validation");
-        setState("error");
+        setAlreadyApplied(json.alreadyApplied ?? false);
       }
-    };
 
-    void validate();
-  }, [open, plan.id, sessionId]);
-
-  async function handleConfirm() {
-    setState("submitting");
-    try {
-      const res = await fetch("/api/gw-plan/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionId,
-          planId: plan.id,
-          confirm: true,
-          ...(selectedTransferIndices !== undefined && {
-            transferIndices: selectedTransferIndices,
+      if (hasSubs) {
+        const res = await fetch("/api/gw-plan/submit-lineup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId,
+            planId: plan.id,
+            substitutions: selectedSubstitutions,
           }),
-        }),
-      });
-      const json = (await res.json()) as {
-        submitted?: boolean;
-        error?: string;
-      };
-      if (!res.ok || !json.submitted) {
-        setErrorMsg(json.error ?? "Submission failed");
-        setState("error");
-      } else {
-        setState("success");
+        });
+        const json = (await res.json()) as {
+          submitted?: boolean;
+          error?: string;
+        };
+        if (!res.ok || !json.submitted) {
+          setErrorMsg(json.error ?? "Lineup submission failed");
+          setState("error");
+          return;
+        }
       }
+
+      setState("success");
     } catch {
       setErrorMsg("Network error during submission");
       setState("error");
     }
   }
 
-  if (!open) return null;
-
-  // Build player name lookup from plan
-  const outNames = new Map(
-    plan.plan.transfers.map((t) => [t.playerOut.id, t.playerOut.name]),
-  );
-  const inNames = new Map(
-    plan.plan.transfers.map((t) => [t.playerIn.id, t.playerIn.name]),
-  );
+  const successMessage =
+    hasTransfers && hasSubs
+      ? "Changes submitted ✓"
+      : hasSubs
+        ? "Lineup submitted ✓"
+        : alreadyApplied
+          ? "Transfers already applied to your FPL team ✓"
+          : "Transfers submitted ✓";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="w-full max-w-md rounded-xl border border-fpl-border bg-fpl-card p-6 shadow-xl">
-        <h2 className="mb-4 text-lg font-bold">Confirm Transfers</h2>
+        <h2 className="mb-4 text-lg font-bold">{modalTitle}</h2>
 
-        {state === "loading" && (
-          <div className="flex items-center gap-2 text-sm text-fpl-muted">
-            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-fpl-cyan border-t-transparent" />
-            Validating with FPL...
-          </div>
-        )}
-
-        {state === "confirm" && validation && (
+        {state === "confirm" && (
           <>
             <div className="mb-4 space-y-2">
-              {validation.transfers.map((t) => (
+              {selectedTransfers.map((t, i) => (
                 <div
-                  key={`${t.elementOut}-${t.elementIn}`}
+                  key={i}
                   className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-sm"
                 >
-                  <span className="text-fpl-danger">
-                    {outNames.get(t.elementOut) ?? `#${t.elementOut}`}
-                  </span>
+                  <span className="text-fpl-danger">{t.playerOut.name}</span>
                   <span className="text-fpl-muted">→</span>
-                  <span className="text-fpl-green">
-                    {inNames.get(t.elementIn) ?? `#${t.elementIn}`}
-                  </span>
-                  <span className="ml-auto text-xs text-fpl-muted">
-                    £{(t.sellingPrice / 10).toFixed(1)}m → £
-                    {(t.purchasePrice / 10).toFixed(1)}m
-                  </span>
+                  <span className="text-fpl-green">{t.playerIn.name}</span>
+                  {(t.hitCost ?? 0) > 0 && (
+                    <span className="ml-auto text-xs text-orange-400">
+                      -{t.hitCost} pts
+                    </span>
+                  )}
+                </div>
+              ))}
+              {selectedSubstitutions.map((s, i) => (
+                <div
+                  key={`sub-${i}`}
+                  className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-sm"
+                >
+                  <span className="text-fpl-danger">{s.playerOut.name}</span>
+                  <span className="text-fpl-muted">→</span>
+                  <span className="text-fpl-green">{s.playerIn.name}</span>
+                  <span className="ml-auto text-xs text-fpl-muted">Lineup</span>
                 </div>
               ))}
             </div>
@@ -163,9 +171,9 @@ export function SubmitPlanModal({
               </span>
             </div>
 
-            {validation.transferCost > 0 && (
+            {totalHitCost > 0 && (
               <p className="mb-3 text-sm text-orange-400">
-                Hit cost: -{validation.transferCost} pts
+                Hit cost: -{totalHitCost} pts
               </p>
             )}
 
@@ -199,9 +207,7 @@ export function SubmitPlanModal({
 
         {state === "success" && (
           <>
-            <p className="mb-6 text-center text-fpl-green">
-              Transfers submitted ✓
-            </p>
+            <p className="mb-6 text-center text-fpl-green">{successMessage}</p>
             <button
               onClick={() => {
                 onSuccess?.();

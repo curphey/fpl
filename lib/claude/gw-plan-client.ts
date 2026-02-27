@@ -82,7 +82,7 @@ Key principles:
    - 1 free transfer, make 3 transfers: hitCost = 8 (two hits)
    - Always factor the hit cost into pointsGain (i.e. pointsGain should already be net of the hit)
 4. Recommend the captain with the highest ceiling for the gameweek
-5. Only recommend a hit if the net pointsGain (after deducting hit cost) is clearly positive over 4 GWs
+5. Only recommend a hit if the net pointsGain (after deducting hit cost) is clearly positive over 4 gameweeks
 6. CRITICAL: Position matching is MANDATORY. You can ONLY transfer in a player of the EXACT SAME position as the player being transferred out:
    - GK out → GK in only
    - DEF out → DEF in only
@@ -95,7 +95,7 @@ Always respond with valid JSON matching the expected schema.`;
 
 export function buildGwPlanPrompt(req: GwPlanRequest): string {
   const formatPlayer = (p: GwPlanSquadPlayer) =>
-    `[${p.id}] ${p.name} (${p.position}, ${p.team}) £${p.sellingPrice.toFixed(1)}m — Next GW: ${p.predictedPtsNextGW}pts, 4GW: ${p.predicted4GW}pts, Form: ${p.form}, Difficulty: ${p.upcomingDifficulty}`;
+    `[${p.id}] ${p.name} (${p.position}, ${p.team}) £${p.sellingPrice.toFixed(1)}m — Next GW: ${p.predictedPtsNextGW}pts, next 4 gameweeks: ${p.predicted4GW}pts, Form: ${p.form}, Difficulty: ${p.upcomingDifficulty}`;
 
   const starters = req.squad.filter((p) => p.isStarter);
   const bench = req.squad
@@ -110,7 +110,7 @@ export function buildGwPlanPrompt(req: GwPlanRequest): string {
   const targetsStr = req.topTargets
     .map(
       (t) =>
-        `[${t.id}] ${t.name} (${t.position}, ${t.team}) £${t.cost.toFixed(1)}m — Score: ${t.score}, 4GW: ${t.predicted4GW}pts, Form: ${t.form}, Difficulty: ${t.upcomingDifficulty}`,
+        `[${t.id}] ${t.name} (${t.position}, ${t.team}) £${t.cost.toFixed(1)}m — Score: ${t.score}, next 4 gameweeks: ${t.predicted4GW}pts, Form: ${t.form}, Difficulty: ${t.upcomingDifficulty}`,
     )
     .join("\n");
 
@@ -164,9 +164,9 @@ Respond with JSON matching this schema exactly:
     {
       "playerOut": { "id": <number>, "name": "<string>", "predicted4GW": <number> },
       "playerIn": { "id": <number>, "name": "<string>", "predicted4GW": <number> },
-      "pointsGain": <number — net 4GW gain AFTER deducting hitCost>,
+      "pointsGain": <number — net gain over 4 gameweeks AFTER deducting hitCost>,
       "hitCost": <number — 0 if within free transfers; 4 per extra transfer (e.g. 1 hit = 4, 2 hits = 8)>,
-      "reasoning": "<1-2 sentence explanation including whether a hit is taken>"
+      "reasoning": "<1-2 sentence explanation including whether a hit is taken. Do not use abbreviations like '4GW' — write 'over 4 gameweeks' in full>"
     }
   ],
   "benchAdvice": "<bench order and substitution recommendations, or 'No bench changes required.' if none needed>",
@@ -204,6 +204,17 @@ export function parseGwPlanResult(text: string): GwPlanResult {
         }),
       ),
       benchAdvice: parsed.benchAdvice ?? "",
+      substitutions: (parsed.substitutions ?? []).map(
+        (s: {
+          playerOut: { id: number; name: string };
+          playerIn: { id: number; name: string };
+          reasoning: string;
+        }) => ({
+          playerOut: s.playerOut,
+          playerIn: s.playerIn,
+          reasoning: s.reasoning,
+        }),
+      ),
       notes: parsed.notes ?? "",
     };
   } catch {
@@ -215,6 +226,7 @@ export function parseGwPlanResult(text: string): GwPlanResult {
         reasoning: text,
       },
       transfers: [],
+      substitutions: [],
       notes: "Parse error — see raw response",
     };
   }

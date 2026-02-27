@@ -270,4 +270,37 @@ describe("parseGwPlanResult", () => {
     const result = parseGwPlanResult(json);
     expect(result.benchAdvice).toBe("");
   });
+
+  it("parseGwPlanResult extracts substitutions array", () => {
+    const raw = JSON.stringify({
+      predictedTeamPoints: 55,
+      captain: { playerId: 1, name: "Salah", reasoning: "Good fixture" },
+      transfers: [],
+      substitutions: [
+        {
+          playerOut: { id: 10, name: "Garner" },
+          playerIn: { id: 20, name: "Dalot" },
+          reasoning: "Dalot has better predicted points this week",
+        },
+      ],
+      notes: "",
+    });
+
+    const result = parseGwPlanResult(raw);
+    expect(result.substitutions).toHaveLength(1);
+    expect(result.substitutions[0].playerOut.name).toBe("Garner");
+    expect(result.substitutions[0].playerIn.name).toBe("Dalot");
+  });
+
+  it("parseGwPlanResult defaults substitutions to empty array when absent", () => {
+    const raw = JSON.stringify({
+      predictedTeamPoints: 55,
+      captain: { playerId: 1, name: "Salah", reasoning: "" },
+      transfers: [],
+      notes: "",
+    });
+
+    const result = parseGwPlanResult(raw);
+    expect(result.substitutions).toEqual([]);
+  });
 });

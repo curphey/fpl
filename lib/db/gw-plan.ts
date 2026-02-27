@@ -17,7 +17,13 @@ export interface GwPlanResult {
     reasoning: string;
   }>;
   /** Bench order and substitution advice. Explicitly states "No bench changes required" when none needed. */
+  /** @deprecated Use `substitutions` instead. Kept for backward compatibility with cached plans. */
   benchAdvice?: string;
+  substitutions: Array<{
+    playerOut: { id: number; name: string };
+    playerIn: { id: number; name: string };
+    reasoning: string;
+  }>;
   notes: string;
 }
 

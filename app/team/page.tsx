@@ -51,7 +51,7 @@ export default function TeamPage() {
     isLoading: picksLoading,
     error: picksError,
     refetch: picksRefetch,
-  } = useManagerPicks(managerId, gwId);
+  } = useManagerPicks(managerId, isPendingView ? null : gwId);
 
   const {
     data: liveData,
@@ -126,7 +126,7 @@ export default function TeamPage() {
     liveLoading;
   const error = bsError || (isPendingView ? null : picksError) || liveError;
 
-  if (isLoading && !picksData) {
+  if (isLoading && !picksData && !pendingPicksData) {
     return <PitchSkeleton />;
   }
 
@@ -150,6 +150,8 @@ export default function TeamPage() {
       (pendingPicksError.message.toLowerCase().includes("reconnect") ||
         pendingPicksError.message.toLowerCase().includes("unauthorized"));
 
+    const isNonAuthError = pendingPicksError !== null && !isAuthError;
+
     return (
       <div className="space-y-6">
         <div className="flex items-start justify-between">
@@ -166,6 +168,12 @@ export default function TeamPage() {
           <div className="rounded-lg border border-fpl-border bg-fpl-card p-8 text-center">
             <p className="text-sm text-fpl-muted">
               Connect your FPL account in Settings to see pending transfers.
+            </p>
+          </div>
+        ) : isNonAuthError ? (
+          <div className="rounded-lg border border-fpl-border bg-fpl-card p-8 text-center">
+            <p className="text-sm text-fpl-muted">
+              No pending squad data available.
             </p>
           </div>
         ) : pendingPicksData ? (

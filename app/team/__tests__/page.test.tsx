@@ -144,33 +144,13 @@ beforeEach(() => {
 describe("TeamPage pending squad", () => {
   it("shows forward nav when is_next GW exists", () => {
     render(<TeamPage />);
-    // The forward nav button should be enabled (hasNext=true)
-    // GameweekNav renders with hasPrev/hasNext props — the forward button should exist and not be disabled
-    const buttons = screen.getAllByRole("button");
-    // Find the next button — it contains a chevron-right icon
-    // Look for a button that's not disabled (hasNext=true means the next button is enabled)
-    const enabledButtons = buttons.filter((b) => !b.hasAttribute("disabled"));
-    expect(enabledButtons.length).toBeGreaterThan(0);
+    const nextBtn = screen.getByRole("button", { name: /next gameweek/i });
+    expect(nextBtn).not.toBeDisabled();
   });
 
   it("shows 'GW28 Pending' label when navigated to next GW", async () => {
     render(<TeamPage />);
-    // Find the next button by aria-label or by position
-    // GameweekNav forward button — look for buttons near the gameweek name
-    // The next button should be clickable (not disabled)
-    const buttons = screen.getAllByRole("button");
-    // The nav buttons are typically prev/next around the gameweek name
-    // Click a non-disabled button that's not "Analyze my team", "Pitch View", "Squad Value"
-    const navButtons = buttons.filter(
-      (b) =>
-        !b.hasAttribute("disabled") &&
-        !b.textContent?.includes("Analyze") &&
-        !b.textContent?.includes("Pitch") &&
-        !b.textContent?.includes("Squad") &&
-        b.querySelector("svg"),
-    );
-    // The next nav button should be the last svg button (after prev and before nothing)
-    const nextBtn = navButtons[navButtons.length - 1];
+    const nextBtn = screen.getByRole("button", { name: /next gameweek/i });
     fireEvent.click(nextBtn);
     await waitFor(() =>
       expect(screen.getByText(/GW28 Pending/i)).toBeInTheDocument(),
@@ -186,16 +166,7 @@ describe("TeamPage pending squad", () => {
     } as ReturnType<typeof usePendingPicks>);
 
     render(<TeamPage />);
-    const buttons = screen.getAllByRole("button");
-    const navButtons = buttons.filter(
-      (b) =>
-        !b.hasAttribute("disabled") &&
-        !b.textContent?.includes("Analyze") &&
-        !b.textContent?.includes("Pitch") &&
-        !b.textContent?.includes("Squad") &&
-        b.querySelector("svg"),
-    );
-    const nextBtn = navButtons[navButtons.length - 1];
+    const nextBtn = screen.getByRole("button", { name: /next gameweek/i });
     fireEvent.click(nextBtn);
 
     // GameweekSummary should not be shown for pending view
@@ -217,16 +188,7 @@ describe("TeamPage pending squad", () => {
     } as ReturnType<typeof usePendingPicks>);
 
     render(<TeamPage />);
-    const buttons = screen.getAllByRole("button");
-    const navButtons = buttons.filter(
-      (b) =>
-        !b.hasAttribute("disabled") &&
-        !b.textContent?.includes("Analyze") &&
-        !b.textContent?.includes("Pitch") &&
-        !b.textContent?.includes("Squad") &&
-        b.querySelector("svg"),
-    );
-    const nextBtn = navButtons[navButtons.length - 1];
+    const nextBtn = screen.getByRole("button", { name: /next gameweek/i });
     fireEvent.click(nextBtn);
 
     await waitFor(() =>

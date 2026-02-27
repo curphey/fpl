@@ -70,27 +70,35 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const bootstrap = await fplClient.getBootstrapStatic();
   const priceMap = new Map(bootstrap.elements.map((e) => [e.id, e.now_cost]));
 
-  // Fetch authenticated picks for selling prices.
-  // The unauthenticated fplClient omits selling_price; the authenticated endpoint
-  // includes the manager's actual per-player selling price. GW N picks may return
-  // 404 before the deadline, so fall back to prior GWs.
+  // Fetch selling prices from /api/my-team/{id}/ — the only FPL endpoint that
+  // returns the manager's current squad with per-player selling_price regardless
+  // of deadline status. Historical picks endpoints omit selling_price entirely.
   const sellingPriceMap = new Map<number, number>();
-  const FPL_PICKS_BASE = "https://fantasy.premierleague.com/api/entry";
-  for (let gw = gameweek; gw >= Math.max(1, gameweek - 2); gw--) {
-    try {
-      const picksResp = await authenticatedFetch(
-        `${FPL_PICKS_BASE}/${managerId}/event/${gw}/picks/`,
+  try {
+    const myTeamResp = await authenticatedFetch(
+      `https://fantasy.premierleague.com/api/my-team/${managerId}/`,
+    );
+    console.log(`[submit] my-team status=${myTeamResp.status}`);
+    if (myTeamResp.ok) {
+      const myTeam = (await myTeamResp.json()) as {
+        picks: ManagerPicks["picks"];
+      };
+      console.log(
+        `[submit] my-team selling_prices:`,
+        JSON.stringify(
+          myTeam.picks.map((p) => ({
+            element: p.element,
+            selling_price: p.selling_price,
+          })),
+        ),
       );
-      if (!picksResp.ok) continue;
-      const picks = (await picksResp.json()) as ManagerPicks;
-      for (const pick of picks.picks) {
+      for (const pick of myTeam.picks) {
         if (pick.selling_price)
           sellingPriceMap.set(pick.element, pick.selling_price);
       }
-      break; // got picks — stop trying earlier GWs
-    } catch {
-      // network error — try previous GW
     }
+  } catch {
+    // non-critical — fall back to now_cost
   }
 
   // Build transfer array for FPL API
@@ -101,6 +109,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     selling_price:
       sellingPriceMap.get(t.playerOut.id) ?? priceMap.get(t.playerOut.id) ?? 0,
   }));
+
+  console.log("[submit] transfers:", JSON.stringify(transfers));
 
   try {
     const fplResp = await authenticatedFetch(FPL_TRANSFERS_URL, {
@@ -156,6 +166,31 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           // Shape B: { transfers: [{ non_field_errors: [{message, code}] }] }
           const transferErrors = errBody.transfers;
           if (Array.isArray(transferErrors) && transferErrors.length > 0) {
+            // Detect "already applied": every transfer has both element_out_not_pick AND element_in_is_pick
+            const isAlreadyApplied = (
+              transferErrors as Record<string, unknown>[]
+            ).every((t) => {
+              const outErrs = Array.isArray(t.element_out)
+                ? (t.element_out as Record<string, unknown>[])
+                : [];
+              const inErrs = Array.isArray(t.element_in)
+                ? (t.element_in as Record<string, unknown>[])
+                : [];
+              return (
+                outErrs.some(
+                  (e) => e.code === "transfer_element_out_not_pick",
+                ) &&
+                inErrs.some((e) => e.code === "transfer_element_in_is_pick")
+              );
+            });
+            if (isAlreadyApplied) {
+              return NextResponse.json({
+                submitted: true,
+                alreadyApplied: true,
+                transfersMade: 0,
+              });
+            }
+
             const first = transferErrors[0] as Record<string, unknown>;
             // Shape B: non_field_errors
             if (

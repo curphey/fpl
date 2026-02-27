@@ -4,12 +4,14 @@ import { useMemo, useState } from "react";
 import { useManagerContext } from "@/lib/fpl/manager-context";
 import {
   useBootstrapStatic,
+  useFixtures,
   useManagerPicks,
   usePendingPicks,
   useLiveGameweek,
   useManagerHistory,
 } from "@/lib/fpl/hooks/use-fpl";
-import { buildPlayerMap, buildTeamMap } from "@/lib/fpl/utils";
+import { buildPlayerMap, buildTeamMap, enrichPlayers } from "@/lib/fpl/utils";
+import { predictPoints } from "@/lib/fpl/points-model";
 import { calculateSquadValue, buildValueHistory } from "@/lib/fpl/squad-value";
 import { ConnectPrompt } from "@/components/leagues/connect-prompt";
 import { PitchSkeleton } from "@/components/ui/loading-skeleton";
@@ -51,7 +53,10 @@ export default function TeamPage() {
     isLoading: picksLoading,
     error: picksError,
     refetch: picksRefetch,
-  } = useManagerPicks(managerId, isPendingView ? 0 : gwId);
+  } = useManagerPicks(
+    managerId,
+    isPendingView ? (manager?.current_event ?? 0) : gwId,
+  );
 
   const {
     data: liveData,
@@ -61,6 +66,7 @@ export default function TeamPage() {
   } = useLiveGameweek(gwId);
 
   const { data: historyData } = useManagerHistory(managerId);
+  const { data: fixturesData } = useFixtures();
 
   const {
     data: pendingPicksData,
@@ -86,6 +92,47 @@ export default function TeamPage() {
     }
     return map;
   }, [liveData]);
+
+  // Predicted points for the next GW — same model as GW Planner for consistency.
+  // Captain's points are doubled. Round: 0.6+ rounds up, 0.5 and below rounds down.
+  const predictedPointsMap = useMemo(() => {
+    if (!isPendingView || !bootstrap || !fixturesData || !nextGwId) return null;
+    const enriched = enrichPlayers(bootstrap);
+    const predictions = predictPoints(enriched, fixturesData, nextGwId);
+    const map = new Map<number, number>();
+    for (const pred of predictions) {
+      if (pred.predictedPoints > 0)
+        map.set(pred.player.id, Math.floor(pred.predictedPoints + 0.4));
+    }
+    // Double the captain's predicted points (pending picks take priority)
+    const activePicks = pendingPicksData?.picks ?? picksData?.picks;
+    const captainPick = activePicks?.find((p) => p.is_captain);
+    if (captainPick) {
+      const pts = map.get(captainPick.element);
+      if (pts !== undefined) map.set(captainPick.element, pts * 2);
+    }
+    return map;
+  }, [
+    isPendingView,
+    bootstrap,
+    fixturesData,
+    nextGwId,
+    pendingPicksData,
+    picksData,
+  ]);
+
+  // Predicted total score for the pending GW — sum starters' predicted pts (captain already doubled)
+  const predictedTeamScore = useMemo(() => {
+    if (!predictedPointsMap) return null;
+    const starters = (pendingPicksData?.picks ?? picksData?.picks)?.filter(
+      (p) => p.position <= 11,
+    );
+    if (!starters) return null;
+    return starters.reduce(
+      (sum, p) => sum + (predictedPointsMap.get(p.element) ?? 0),
+      0,
+    );
+  }, [predictedPointsMap, pendingPicksData, picksData]);
 
   const gameweekName = useMemo(() => {
     if (!bootstrap || !gwId) return "";
@@ -121,11 +168,10 @@ export default function TeamPage() {
   }
 
   const isLoading =
-    bsLoading ||
-    (isPendingView ? pendingPicksLoading : picksLoading || liveLoading);
+    bsLoading || (isPendingView ? picksLoading : picksLoading || liveLoading);
   const error = bsError || (isPendingView ? null : picksError || liveError);
 
-  if (isLoading && !(isPendingView ? pendingPicksData : picksData)) {
+  if (isLoading && !picksData) {
     return <PitchSkeleton />;
   }
 
@@ -149,6 +195,10 @@ export default function TeamPage() {
 
     const isNonAuthError = pendingPicksError !== null && !isAuthError;
 
+    // Use authenticated pending picks if available; fall back to current GW picks on auth error
+    const activePicks =
+      pendingPicksData?.picks ?? (isAuthError ? picksData?.picks : null);
+
     return (
       <div className="space-y-6">
         <div className="flex items-start justify-between">
@@ -161,26 +211,42 @@ export default function TeamPage() {
           hasPrev={hasPrev}
           hasNext={hasNext}
         />
-        {isAuthError ? (
-          <div className="rounded-lg border border-fpl-border bg-fpl-card p-8 text-center">
-            <p className="text-sm text-fpl-muted">
-              Connect your FPL account in Settings to see pending transfers.
-            </p>
+        {predictedTeamScore !== null && (
+          <div className="flex items-center gap-2 rounded-lg border border-fpl-border bg-fpl-card px-4 py-3">
+            <span className="text-sm text-fpl-muted">Predicted Score</span>
+            <span className="ml-auto text-2xl font-bold text-fpl-green">
+              {predictedTeamScore}
+            </span>
           </div>
-        ) : isNonAuthError ? (
+        )}
+        {isNonAuthError ? (
           <div className="rounded-lg border border-fpl-border bg-fpl-card p-8 text-center">
             <p className="text-sm text-fpl-muted">
               Unable to load pending squad. Please try again.
             </p>
           </div>
-        ) : pendingPicksData ? (
-          <PitchView
-            picks={pendingPicksData.picks}
-            playerMap={playerMap}
-            teamMap={teamMap}
-            livePointsMap={null}
-            autoSubs={[]}
-          />
+        ) : activePicks ? (
+          <>
+            {isAuthError && (
+              <p className="text-center text-xs text-fpl-muted">
+                Showing current squad · Connect your FPL account in Settings to
+                see pending transfers.
+              </p>
+            )}
+            <PitchView
+              picks={activePicks}
+              playerMap={playerMap}
+              teamMap={teamMap}
+              livePointsMap={predictedPointsMap}
+              autoSubs={[]}
+            />
+          </>
+        ) : isAuthError ? (
+          <div className="rounded-lg border border-fpl-border bg-fpl-card p-8 text-center">
+            <p className="text-sm text-fpl-muted">
+              Connect your FPL account in Settings to see pending transfers.
+            </p>
+          </div>
         ) : (
           <div className="rounded-lg border border-fpl-border bg-fpl-card p-8 text-center">
             <p className="mt-2 text-sm text-fpl-muted">

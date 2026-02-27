@@ -8,6 +8,7 @@ vi.mock("@/lib/fpl/manager-context", () => ({
 }));
 vi.mock("@/lib/fpl/hooks/use-fpl", () => ({
   useBootstrapStatic: vi.fn(),
+  useFixtures: vi.fn(),
   useManagerPicks: vi.fn(),
   usePendingPicks: vi.fn(),
   useLiveGameweek: vi.fn(),
@@ -18,6 +19,7 @@ vi.mock("@/components/chat", () => ({ AskAiButton: () => null }));
 import { useManagerContext } from "@/lib/fpl/manager-context";
 import {
   useBootstrapStatic,
+  useFixtures,
   useManagerPicks,
   usePendingPicks,
   useLiveGameweek,
@@ -116,6 +118,9 @@ function setupMocks() {
     error: null,
     refetch: vi.fn(),
   } as ReturnType<typeof useBootstrapStatic>);
+  vi.mocked(useFixtures).mockReturnValue(
+    noData as ReturnType<typeof useFixtures>,
+  );
   vi.mocked(useManagerPicks).mockReturnValue({
     data: mockPicks,
     isLoading: false,

@@ -68,14 +68,17 @@ export const PlayerCard = memo(function PlayerCard({
       )}
 
       {/* Kit image */}
-      <div className="flex h-14 w-[72px] items-center justify-center rounded-t-md bg-white/10">
+      <div
+        className="flex h-20 w-20 items-center justify-center rounded-t-md"
+        style={{ background: "linear-gradient(to bottom, #2d7a2d, #1a0a3e)" }}
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={kitUrl}
           alt={`${teamShortName} kit`}
-          width={48}
-          height={48}
-          className="h-12 w-auto object-contain drop-shadow-lg"
+          width={64}
+          height={64}
+          className="h-16 w-auto object-contain drop-shadow-lg"
           onError={(e) => {
             (e.target as HTMLImageElement).style.display = "none";
           }}
@@ -83,14 +86,25 @@ export const PlayerCard = memo(function PlayerCard({
       </div>
 
       {/* Name + points */}
-      <div className="w-[72px] rounded-b-md bg-fpl-purple px-1 py-1 text-center">
-        <p className="truncate text-[10px] font-semibold leading-tight text-white">
-          {player.web_name}
-        </p>
-        <p className="mt-0.5 text-[10px] font-bold leading-tight text-fpl-green">
-          {points !== null ? points : "-"}
-        </p>
-      </div>
+      {isBench ? (
+        <div className="w-20 rounded-b-md bg-white px-1 py-1.5 text-center">
+          <p className="truncate text-[11px] font-semibold leading-tight text-gray-900">
+            {player.web_name}
+          </p>
+          <p className="mt-0.5 text-[11px] font-bold leading-tight text-fpl-purple">
+            {points !== null ? points : "-"}
+          </p>
+        </div>
+      ) : (
+        <div className="w-20 rounded-b-md bg-fpl-purple px-1 py-1.5 text-center">
+          <p className="truncate text-[11px] font-semibold leading-tight text-white">
+            {player.web_name}
+          </p>
+          <p className="mt-0.5 text-[11px] font-bold leading-tight text-fpl-green">
+            {points !== null ? points : "-"}
+          </p>
+        </div>
+      )}
     </div>
   );
 });

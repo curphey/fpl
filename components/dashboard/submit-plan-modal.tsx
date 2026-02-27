@@ -29,6 +29,18 @@ export function SubmitPlanModal({
   const [state, setState] = useState<ModalState>("confirm");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [alreadyApplied, setAlreadyApplied] = useState(false);
+  // Track previous `open` value in state so we can detect the false→true
+  // transition during render and reset internal state without a useEffect.
+  const [prevOpen, setPrevOpen] = useState(open);
+
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
+      setState("confirm");
+      setErrorMsg(null);
+      setAlreadyApplied(false);
+    }
+  }
 
   if (!open) return null;
 
@@ -119,6 +131,13 @@ export function SubmitPlanModal({
     }
   }
 
+  const submittingMessage =
+    hasTransfers && hasSubs
+      ? "Submitting changes..."
+      : hasSubs
+        ? "Submitting lineup..."
+        : "Submitting transfers...";
+
   const successMessage =
     hasTransfers && hasSubs
       ? "Changes submitted ✓"
@@ -201,7 +220,7 @@ export function SubmitPlanModal({
         {state === "submitting" && (
           <div className="flex items-center gap-2 text-sm text-fpl-muted">
             <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-fpl-cyan border-t-transparent" />
-            Submitting transfers...
+            {submittingMessage}
           </div>
         )}
 

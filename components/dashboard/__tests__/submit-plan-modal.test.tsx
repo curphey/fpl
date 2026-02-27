@@ -407,4 +407,85 @@ describe("SubmitPlanModal — substitutions", () => {
       expect(screen.getByText(/Lineup submitted/i)).toBeInTheDocument(),
     );
   });
+
+  it("resets to confirm state when re-opened after success", async () => {
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({ submitted: true }),
+    } as Response);
+
+    const { rerender } = render(
+      <SubmitPlanModal
+        open={true}
+        onClose={vi.fn()}
+        plan={mockPlan}
+        sessionId="sess-1"
+        selectedTransferIndices={[0]}
+      />,
+    );
+
+    // Submit to reach success state
+    fireEvent.click(screen.getByRole("button", { name: /confirm/i }));
+    await waitFor(() =>
+      expect(screen.getByText(/transfers submitted/i)).toBeInTheDocument(),
+    );
+
+    // Close then re-open
+    rerender(
+      <SubmitPlanModal
+        open={false}
+        onClose={vi.fn()}
+        plan={mockPlan}
+        sessionId="sess-1"
+        selectedTransferIndices={[0]}
+      />,
+    );
+    rerender(
+      <SubmitPlanModal
+        open={true}
+        onClose={vi.fn()}
+        plan={mockPlan}
+        sessionId="sess-1"
+        selectedTransferIndices={[0]}
+      />,
+    );
+
+    // Should be back in confirm state
+    expect(
+      screen.getByRole("button", { name: /confirm/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows 'Submitting lineup...' text for lineup-only submission", async () => {
+    // Keep fetch pending so we can observe the submitting state
+    let resolveFetch!: (value: Response) => void;
+    vi.mocked(global.fetch).mockReturnValueOnce(
+      new Promise<Response>((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+
+    render(
+      <SubmitPlanModal
+        open={true}
+        onClose={vi.fn()}
+        plan={planWithSubs}
+        sessionId="sess-1"
+        selectedTransferIndices={[]}
+        selectedSubstitutionIndices={[0]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /confirm/i }));
+
+    await waitFor(() =>
+      expect(screen.getByText(/submitting lineup/i)).toBeInTheDocument(),
+    );
+
+    // Resolve to avoid dangling promise
+    resolveFetch({
+      ok: true,
+      json: async () => ({ submitted: true }),
+    } as Response);
+  });
 });

@@ -2,6 +2,16 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { GwPlanWidget } from "../gw-plan-widget";
 
+// Mock useQueryClient so widget can call invalidateQueries without a real QueryClientProvider
+const mockInvalidateQueries = vi.fn();
+vi.mock("@tanstack/react-query", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
+  return {
+    ...actual,
+    useQueryClient: vi.fn(() => ({ invalidateQueries: mockInvalidateQueries })),
+  };
+});
+
 // Mock fetch globally
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -821,5 +831,375 @@ describe("GwPlanWidget", () => {
     await waitFor(() => {
       expect(screen.getByText(/Submitted ✓/i)).toBeInTheDocument();
     });
+  });
+
+  // --- SUBSTITUTION TESTS ---
+
+  it("renders substitutions section when plan has substitutions", async () => {
+    mockFetch.mockImplementation((url: unknown) => {
+      const urlStr = String(url);
+      if (urlStr.includes("fpl-auth/status")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ connected: false }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan/predictions")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ predictions: [] }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            id: "plan1",
+            sessionId: "sess1",
+            gameweek: 28,
+            plan: {
+              predictedTeamPoints: 62,
+              captain: { playerId: 1, name: "Salah", reasoning: "fixtures" },
+              transfers: [],
+              substitutions: [
+                {
+                  playerOut: { id: 10, name: "Garner" },
+                  playerIn: { id: 20, name: "Dalot" },
+                  reasoning: "Dalot better",
+                },
+              ],
+              notes: "",
+            },
+            thinking: "",
+            generatedAt: "2026-02-25",
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        json: async () => ({}),
+      });
+    });
+
+    render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Substitutions/i)).toBeInTheDocument();
+    });
+    expect(screen.getByText("Garner")).toBeInTheDocument();
+    expect(screen.getByText("Dalot")).toBeInTheDocument();
+  });
+
+  it("substitution checkbox is checked by default", async () => {
+    mockFetch.mockImplementation((url: unknown) => {
+      const urlStr = String(url);
+      if (urlStr.includes("fpl-auth/status")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ connected: false }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan/predictions")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ predictions: [] }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            id: "plan1",
+            sessionId: "sess1",
+            gameweek: 28,
+            plan: {
+              predictedTeamPoints: 62,
+              captain: { playerId: 1, name: "Salah", reasoning: "fixtures" },
+              transfers: [],
+              substitutions: [
+                {
+                  playerOut: { id: 10, name: "Garner" },
+                  playerIn: { id: 20, name: "Dalot" },
+                  reasoning: "Dalot better",
+                },
+              ],
+              notes: "",
+            },
+            thinking: "",
+            generatedAt: "2026-02-25",
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        json: async () => ({}),
+      });
+    });
+
+    render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("checkbox")).toBeInTheDocument();
+    });
+    expect(screen.getByRole("checkbox")).toBeChecked();
+  });
+
+  it("unchecking a substitution removes it from selection", async () => {
+    mockFetch.mockImplementation((url: unknown) => {
+      const urlStr = String(url);
+      if (urlStr.includes("fpl-auth/status")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ connected: false }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan/predictions")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ predictions: [] }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            id: "plan1",
+            sessionId: "sess1",
+            gameweek: 28,
+            plan: {
+              predictedTeamPoints: 62,
+              captain: { playerId: 1, name: "Salah", reasoning: "fixtures" },
+              transfers: [],
+              substitutions: [
+                {
+                  playerOut: { id: 10, name: "Garner" },
+                  playerIn: { id: 20, name: "Dalot" },
+                  reasoning: "Dalot better",
+                },
+              ],
+              notes: "",
+            },
+            thinking: "",
+            generatedAt: "2026-02-25",
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        json: async () => ({}),
+      });
+    });
+
+    render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("checkbox")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("checkbox")); // uncheck
+
+    await waitFor(() => {
+      expect(screen.getByRole("checkbox")).not.toBeChecked();
+    });
+  });
+
+  it("shows Submit button when FPL connected and only substitutions are selected (no transfers)", async () => {
+    mockFetch.mockImplementation((url: unknown) => {
+      const urlStr = String(url);
+      if (urlStr.includes("fpl-auth/status")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ connected: true }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan/predictions")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ predictions: [] }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            id: "plan1",
+            sessionId: "sess1",
+            gameweek: 28,
+            plan: {
+              predictedTeamPoints: 62,
+              captain: { playerId: 1, name: "Salah", reasoning: "fixtures" },
+              transfers: [],
+              substitutions: [
+                {
+                  playerOut: { id: 10, name: "Garner" },
+                  playerIn: { id: 20, name: "Dalot" },
+                  reasoning: "Dalot better",
+                },
+              ],
+              notes: "",
+            },
+            thinking: "",
+            generatedAt: "2026-02-25",
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        json: async () => ({}),
+      });
+    });
+
+    render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Submit.*Sub/i)).toBeInTheDocument();
+    });
+  });
+
+  it("does not render benchAdvice section", async () => {
+    mockFetch.mockImplementation((url: unknown) => {
+      const urlStr = String(url);
+      if (urlStr.includes("fpl-auth/status")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ connected: false }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan/predictions")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ predictions: [] }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            id: "plan1",
+            sessionId: "sess1",
+            gameweek: 28,
+            plan: {
+              predictedTeamPoints: 62,
+              captain: { playerId: 1, name: "Salah", reasoning: "fixtures" },
+              transfers: [],
+              substitutions: [],
+              benchAdvice: "Keep Dalot on bench",
+              notes: "",
+            },
+            thinking: "",
+            generatedAt: "2026-02-25",
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        json: async () => ({}),
+      });
+    });
+
+    render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Salah")).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(/Bench.*Substitutions/i)).toBeNull();
+    expect(screen.queryByText("Keep Dalot on bench")).toBeNull();
+  });
+
+  it("invalidates manager-picks cache after successful transfer submission", async () => {
+    mockFetch.mockImplementation((url: unknown) => {
+      const urlStr = String(url);
+      if (urlStr.includes("fpl-auth/status")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ connected: true }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan?")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            id: "plan-1",
+            sessionId: "sess1",
+            gameweek: 28,
+            plan: {
+              predictedTeamPoints: 60,
+              captain: { playerId: 1, name: "Salah", reasoning: "" },
+              transfers: [
+                {
+                  playerOut: { id: 10, name: "OldPlayer", predicted4GW: 5 },
+                  playerIn: { id: 20, name: "NewPlayer", predicted4GW: 10 },
+                  pointsGain: 5,
+                  hitCost: 0,
+                  reasoning: "",
+                },
+              ],
+              notes: "",
+            },
+            thinking: "",
+            generatedAt: new Date().toISOString(),
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        json: async () => ({}),
+      });
+    });
+
+    render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/submit/i)).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /submit/i }));
+
+    // Mock the submit API call
+    mockFetch.mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({ submitted: true }),
+      }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /confirm/i }));
+
+    await waitFor(() =>
+      expect(screen.getByText(/transfers submitted/i)).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /close/i }));
+
+    await waitFor(() =>
+      expect(mockInvalidateQueries).toHaveBeenCalledWith({
+        queryKey: ["manager-picks"],
+      }),
+    );
   });
 });

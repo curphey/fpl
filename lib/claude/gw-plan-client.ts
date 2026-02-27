@@ -89,7 +89,7 @@ Key principles:
    - MID out → MID in only
    - FWD out → FWD in only
    Never recommend a transfer that swaps positions — it is an illegal move in FPL.
-7. Bench analysis: Review the bench order (Slot 1 = highest auto-sub priority). Recommend reordering if a lower-predicted bench player is ahead of a higher-predicted one. Also consider if any bench player should start over a struggling XI player. If no changes are needed, explicitly state "No bench changes required."
+7. Substitutions: Review the starting XI and bench. If any bench player has higher predicted points than a starting player of the same type (outfield vs GK), recommend swapping them. Output these as structured substitutions with clear reasoning. If no swap is beneficial, output an empty substitutions array.
 
 Always respond with valid JSON matching the expected schema.`;
 
@@ -169,7 +169,13 @@ Respond with JSON matching this schema exactly:
       "reasoning": "<1-2 sentence explanation including whether a hit is taken. Do not use abbreviations like '4GW' — write 'over 4 gameweeks' in full>"
     }
   ],
-  "benchAdvice": "<bench order and substitution recommendations, or 'No bench changes required.' if none needed>",
+  "substitutions": [
+    {
+      "playerOut": { "id": <number — starter being moved to bench>, "name": "<string>" },
+      "playerIn": { "id": <number — bench player coming on>, "name": "<string>" },
+      "reasoning": "<1-2 sentence explanation>"
+    }
+  ],
   "notes": "<any additional strategic notes, chip suggestions, or warnings>"
 }`;
 }

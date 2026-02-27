@@ -160,9 +160,44 @@ describe("buildGwPlanPrompt", () => {
     expect(prompt).toMatch(/Slot 2.*BenchPlayer|BenchPlayer.*Slot 2/i);
   });
 
-  it("includes benchAdvice in the JSON schema", () => {
+  it("includes substitutions in the JSON schema", () => {
     const prompt = buildGwPlanPrompt(baseRequest);
-    expect(prompt).toContain("benchAdvice");
+    expect(prompt).toContain('"substitutions"');
+  });
+});
+
+describe("GW plan prompt — substitutions schema", () => {
+  it("system prompt instructs Claude to output substitutions", () => {
+    expect(GW_PLAN_SYSTEM_PROMPT).toContain("substitutions");
+    expect(GW_PLAN_SYSTEM_PROMPT).toContain("Substitutions");
+  });
+
+  it("buildGwPlanPrompt JSON schema includes substitutions array", () => {
+    const prompt = buildGwPlanPrompt({
+      gameweek: 28,
+      squad: [],
+      freeTransfers: 1,
+      bank: 10,
+      topTargets: [],
+      captainOptions: [],
+    });
+    expect(prompt).toContain('"substitutions"');
+    expect(prompt).toContain('"playerOut"');
+    expect(prompt).toContain('"playerIn"');
+    // bench player coming on
+    expect(prompt).toContain("bench player");
+  });
+
+  it("buildGwPlanPrompt JSON schema does not include benchAdvice", () => {
+    const prompt = buildGwPlanPrompt({
+      gameweek: 28,
+      squad: [],
+      freeTransfers: 1,
+      bank: 10,
+      topTargets: [],
+      captainOptions: [],
+    });
+    expect(prompt).not.toContain('"benchAdvice"');
   });
 });
 

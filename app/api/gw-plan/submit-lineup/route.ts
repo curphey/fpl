@@ -8,8 +8,11 @@ import {
 import { getSession } from "@/lib/db/sessions";
 import { getGwPlanById } from "@/lib/db/gw-plan";
 import { getFplSession, authenticatedFetch } from "@/lib/fpl/auth-client";
+import type { ManagerPicks } from "@/lib/fpl/types";
 
 export const runtime = "nodejs";
+
+const FPL_MY_TEAM_BASE_URL = "https://fantasy.premierleague.com/api/my-team";
 
 const bodySchema = z.object({
   sessionId: z.string().uuid("Invalid session ID"),
@@ -63,7 +66,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   // Fetch current my-team picks (includes current positions 1-15)
   const myTeamResp = await authenticatedFetch(
-    `https://fantasy.premierleague.com/api/my-team/${managerId}/`,
+    `${FPL_MY_TEAM_BASE_URL}/${managerId}/`,
   );
   if (!myTeamResp.ok) {
     if (myTeamResp.status === 401 || myTeamResp.status === 403) {
@@ -75,14 +78,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 
-  const myTeam = (await myTeamResp.json()) as {
-    picks: Array<{
-      element: number;
-      position: number;
-      is_captain: boolean;
-      is_vice_captain: boolean;
-    }>;
-  };
+  const myTeam = (await myTeamResp.json()) as { picks: ManagerPicks["picks"] };
 
   // Build a mutable position map: element id → position
   const positionMap = new Map(myTeam.picks.map((p) => [p.element, p.position]));
@@ -115,7 +111,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   try {
     const fplResp = await authenticatedFetch(
-      `https://fantasy.premierleague.com/api/my-team/${managerId}/`,
+      `${FPL_MY_TEAM_BASE_URL}/${managerId}/`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

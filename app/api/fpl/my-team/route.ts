@@ -1,32 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { withRateLimit } from "@/lib/api/rate-limit";
 import {
   createValidationErrorResponse,
   createErrorResponse,
 } from "@/lib/api/errors";
+import { managerIdSchema } from "@/lib/api/validation";
 import { getFplSession, authenticatedFetch } from "@/lib/fpl/auth-client";
 import type { Pick } from "@/lib/fpl/types";
 
-export const runtime = "nodejs";
-
-const querySchema = z.object({
-  managerId: z
-    .string()
-    .regex(/^\d+$/, "managerId must be a positive integer")
-    .transform(Number),
-});
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const rl = await withRateLimit(request, "fpl");
   if (rl) return rl;
 
-  const parsed = querySchema.safeParse({
-    managerId: request.nextUrl.searchParams.get("managerId"),
-  });
-  if (!parsed.success) return createValidationErrorResponse(parsed.error);
+  const managerIdResult = managerIdSchema.safeParse(
+    request.nextUrl.searchParams.get("managerId"),
+  );
+  if (!managerIdResult.success)
+    return createValidationErrorResponse(managerIdResult.error);
 
-  const { managerId } = parsed.data;
+  const managerId = managerIdResult.data;
 
   const fplSession = getFplSession();
   if (!fplSession) {
@@ -55,6 +49,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         "UNAUTHORIZED",
       );
     }
+    console.error("Failed to fetch pending squad:", error);
     return createErrorResponse(
       "Failed to fetch pending squad",
       "INTERNAL_ERROR",

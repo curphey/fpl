@@ -74,4 +74,15 @@ describe("GET /api/fpl/my-team", () => {
     const res = await GET(makeReq("123"));
     expect(res.status).toBe(401);
   });
+
+  it("returns error when FPL API returns non-ok response", async () => {
+    vi.mocked(getFplSession).mockReturnValue(mockSession);
+    vi.mocked(authenticatedFetch).mockResolvedValue(
+      new Response(null, { status: 403 }),
+    );
+    const res = await GET(makeReq("123"));
+    expect(res.status).not.toBe(200);
+    const body = await res.json();
+    expect(body.code).toBe("FPL_API_ERROR");
+  });
 });

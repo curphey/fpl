@@ -389,6 +389,133 @@ describe("POST /api/gw-plan/submit", () => {
     expect(body.error).toBe("Element out is not a current pick");
   });
 
+  it("surfaces non_field_errors message from FPL transfers shape B", async () => {
+    vi.mocked(getSession).mockReturnValue(mockSession);
+    vi.mocked(getFplSession).mockReturnValue(mockFplSession);
+    vi.mocked(getGwPlanById).mockReturnValue(mockPlan);
+    vi.mocked(fplClient.getBootstrapStatic).mockResolvedValue({
+      elements: [
+        {
+          id: 10,
+          now_cost: 100,
+          element_type: 2,
+          web_name: "OldPlayer",
+          team: 1,
+        },
+        {
+          id: 20,
+          now_cost: 110,
+          element_type: 2,
+          web_name: "NewPlayer",
+          team: 2,
+        },
+      ],
+    } as unknown as BootstrapStatic);
+    vi.mocked(fplClient.getManagerPicks).mockResolvedValue({
+      picks: [],
+      entry_history: {
+        bank: 10,
+        event_transfers: 0,
+        event_transfers_cost: 0,
+        points: 55,
+        total_points: 1200,
+        rank: 5000,
+        event: 28,
+      },
+      active_chip: null,
+    } as unknown as ManagerPicks);
+    vi.mocked(authenticatedFetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          transfers: [
+            {
+              non_field_errors: [
+                {
+                  message: "Selling price for element_out has changed",
+                  code: "transfer_element_out_price_mismatch",
+                },
+              ],
+            },
+          ],
+        }),
+        { status: 400, headers: { "content-type": "application/json" } },
+      ),
+    );
+
+    const res = await POST(
+      makeReq({ sessionId: SESSION_ID, planId: PLAN_ID, confirm: false }),
+    );
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe("VALIDATION_ERROR");
+    expect(body.error).toBe("Selling price for element_out has changed");
+  });
+
+  it("falls back to previous GW picks when current GW picks return 404", async () => {
+    vi.mocked(getSession).mockReturnValue(mockSession);
+    vi.mocked(getFplSession).mockReturnValue(mockFplSession);
+    vi.mocked(getGwPlanById).mockReturnValue(mockPlan);
+    vi.mocked(fplClient.getBootstrapStatic).mockResolvedValue({
+      elements: [
+        {
+          id: 10,
+          now_cost: 100,
+          element_type: 2,
+          web_name: "OldPlayer",
+          team: 1,
+        },
+        {
+          id: 20,
+          now_cost: 110,
+          element_type: 2,
+          web_name: "NewPlayer",
+          team: 2,
+        },
+      ],
+    } as unknown as BootstrapStatic);
+    // First call (GW28) throws, second call (GW27) returns selling price 95
+    vi.mocked(fplClient.getManagerPicks)
+      .mockRejectedValueOnce(new Error("404"))
+      .mockResolvedValueOnce({
+        picks: [
+          {
+            element: 10,
+            position: 1,
+            multiplier: 1,
+            is_captain: false,
+            is_vice_captain: false,
+            selling_price: 95,
+          },
+        ],
+        entry_history: {
+          bank: 10,
+          event_transfers: 0,
+          event_transfers_cost: 0,
+          points: 55,
+          total_points: 1200,
+          rank: 5000,
+          event: 27,
+        },
+        active_chip: null,
+      } as unknown as ManagerPicks);
+    vi.mocked(authenticatedFetch).mockResolvedValue(
+      new Response(JSON.stringify({ status: "ok" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+
+    const res = await POST(
+      makeReq({ sessionId: SESSION_ID, planId: PLAN_ID, confirm: false }),
+    );
+    expect(res.status).toBe(200);
+    // Verify the selling price used was 95 (from GW27 picks, not now_cost 100)
+    const callBody = JSON.parse(
+      vi.mocked(authenticatedFetch).mock.calls[0][1]?.body as string,
+    ) as { transfers: Array<{ selling_price: number }> };
+    expect(callBody.transfers[0].selling_price).toBe(95);
+  });
+
   it("returns DEADLINE_PASSED when FPL says deadline has passed", async () => {
     vi.mocked(getSession).mockReturnValue(mockSession);
     vi.mocked(getFplSession).mockReturnValue(mockFplSession);

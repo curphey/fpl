@@ -69,16 +69,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const bootstrap = await fplClient.getBootstrapStatic();
   const priceMap = new Map(bootstrap.elements.map((e) => [e.id, e.now_cost]));
 
-  // Fetch authenticated picks for selling prices (non-critical)
+  // Fetch authenticated picks for selling prices.
+  // GW N picks may return 404 before the deadline, so fall back to prior GWs
+  // (same pattern as plan generation). This ensures we always get the
+  // manager's actual selling_price rather than the generic now_cost.
   const sellingPriceMap = new Map<number, number>();
-  try {
-    const picks = await fplClient.getManagerPicks(managerId, gameweek);
-    for (const pick of picks.picks) {
-      if (pick.selling_price)
-        sellingPriceMap.set(pick.element, pick.selling_price);
+  for (let gw = gameweek; gw >= Math.max(1, gameweek - 2); gw--) {
+    try {
+      const picks = await fplClient.getManagerPicks(managerId, gw);
+      for (const pick of picks.picks) {
+        if (pick.selling_price)
+          sellingPriceMap.set(pick.element, pick.selling_price);
+      }
+      break; // got picks — stop trying earlier GWs
+    } catch {
+      // try previous GW
     }
-  } catch {
-    // 404 expected before deadline; now_cost is used as fallback
   }
 
   // Build transfer array for FPL API
@@ -113,6 +119,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         string,
         unknown
       >;
+      console.error(
+        "FPL transfer API error",
+        fplResp.status,
+        JSON.stringify(errBody),
+      );
       if (fplResp.status === 400) {
         // FPL returns errors in two shapes:
         // 1. { non_form_errors: ["deadline passed", ...] }
@@ -134,10 +145,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         }
 
         if (!firstNonForm) {
-          // Try per-transfer error shape
+          // Try per-transfer error shapes:
+          // Shape A: { transfers: [{ element_out: [{message}], element_in: [{message}] }] }
+          // Shape B: { transfers: [{ non_field_errors: [{message, code}] }] }
           const transferErrors = errBody.transfers;
           if (Array.isArray(transferErrors) && transferErrors.length > 0) {
             const first = transferErrors[0] as Record<string, unknown>;
+            // Shape B: non_field_errors
+            if (
+              Array.isArray(first.non_field_errors) &&
+              first.non_field_errors.length > 0
+            ) {
+              const msg = String(
+                (first.non_field_errors[0] as Record<string, unknown>)
+                  .message ?? "",
+              );
+              if (msg) return createErrorResponse(msg, "VALIDATION_ERROR");
+            }
+            // Shape A: element_out / element_in field errors
             const errArr = Array.isArray(first.element_out)
               ? (first.element_out as Record<string, unknown>[])
               : Array.isArray(first.element_in)

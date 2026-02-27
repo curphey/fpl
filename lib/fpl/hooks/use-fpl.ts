@@ -237,7 +237,7 @@ export function usePendingPicks(
       fetchFplData<{ picks: Pick[] }>(
         `/api/fpl/my-team?managerId=${managerId}`,
       ),
-    staleTime: STALE_TIMES.manager,
+    staleTime: 0,
     enabled: managerId !== null && managerId > 0,
   });
   return useQueryAdapter(query);

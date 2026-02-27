@@ -484,5 +484,14 @@ describe("FPL Data Hooks", () => {
       expect(result.current.data).toBeNull();
       expect(mockFetch).not.toHaveBeenCalled();
     });
+
+    it("does not fetch when managerId is 0", () => {
+      const { result } = renderHook(() => usePendingPicks(0), {
+        wrapper: createWrapper(),
+      });
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.data).toBeNull();
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
   });
 });

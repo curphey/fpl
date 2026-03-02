@@ -127,18 +127,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     });
 
-  // Bench: players NOT in the starting XI, ordered by their original bench slot
-  // (preserve auto-sub priority). The newly benched player takes the slot of the
-  // player that moved to start.
-  const bench = myTeam.picks
-    .filter((p) => !starterIds.has(p.element))
+  // Bench: players NOT in the starting XI. FPL requires the bench GK to always
+  // occupy position 15; outfield bench players fill positions 12–14 in their
+  // original priority order (preserves auto-sub priority).
+  const benchGk = myTeam.picks.find(
+    (p) => !starterIds.has(p.element) && elementTypeMap.get(p.element) === 1,
+  );
+  const benchOutfield = myTeam.picks
+    .filter(
+      (p) => !starterIds.has(p.element) && elementTypeMap.get(p.element) !== 1,
+    )
     .sort((a, b) => {
       const origA = originalOrder.get(a.element) ?? 99;
       const origB = originalOrder.get(b.element) ?? 99;
       return origA - origB;
     });
 
-  // Assign positions: starters get 1–11, bench gets 12–15.
+  // Assign positions: starters 1–11, outfield bench 12–14, GK bench 15.
   const updatedPicks = [
     ...starters.map((p, i) => ({
       element: p.element,
@@ -147,13 +152,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       is_vice_captain: p.is_vice_captain,
       multiplier: p.is_captain ? 2 : 1,
     })),
-    ...bench.map((p, i) => ({
+    ...benchOutfield.map((p, i) => ({
       element: p.element,
       position: 12 + i,
       is_captain: false,
       is_vice_captain: p.is_vice_captain,
       multiplier: 0,
     })),
+    ...(benchGk
+      ? [
+          {
+            element: benchGk.element,
+            position: 15,
+            is_captain: false,
+            is_vice_captain: benchGk.is_vice_captain,
+            multiplier: 0,
+          },
+        ]
+      : []),
   ];
 
   if (!confirm) {

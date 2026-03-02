@@ -101,49 +101,41 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
   }
 
-  // Build the new starting XI and bench by moving players between groups.
-  const starterIds = new Set(
-    myTeam.picks.filter((p) => p.position <= 11).map((p) => p.element),
-  );
+  // Swap positions between each playerOut (starter→bench) and playerIn (bench→starter).
+  // We preserve every bench player's original slot so FPL's bench-GK position
+  // constraint is respected without us needing to know which slot the GK occupies.
+  const positionMap = new Map(myTeam.picks.map((p) => [p.element, p.position]));
   for (const sub of selectedSubs) {
-    starterIds.delete(sub.playerOut.id); // moved to bench
-    starterIds.add(sub.playerIn.id); // moved to start
+    const outPos = positionMap.get(sub.playerOut.id)!;
+    const inPos = positionMap.get(sub.playerIn.id)!;
+    positionMap.set(sub.playerOut.id, inPos);
+    positionMap.set(sub.playerIn.id, outPos);
   }
 
   // Sort starting XI by element_type (GK=1, DEF=2, MID=3, FWD=4) so FPL
   // accepts the ordering. Within the same type keep original squad order.
-  const originalOrder = new Map(
-    myTeam.picks.map((p) => [p.element, p.position]),
-  );
   const starters = myTeam.picks
-    .filter((p) => starterIds.has(p.element))
+    .filter((p) => (positionMap.get(p.element) ?? 99) <= 11)
     .sort((a, b) => {
       const typeA = elementTypeMap.get(a.element) ?? 0;
       const typeB = elementTypeMap.get(b.element) ?? 0;
       if (typeA !== typeB) return typeA - typeB;
       return (
-        (originalOrder.get(a.element) ?? 0) -
-        (originalOrder.get(b.element) ?? 0)
+        (positionMap.get(a.element) ?? 0) - (positionMap.get(b.element) ?? 0)
       );
     });
 
-  // Bench: players NOT in the starting XI. FPL requires the bench GK to always
-  // occupy position 15; outfield bench players fill positions 12–14 in their
-  // original priority order (preserves auto-sub priority).
-  const benchGk = myTeam.picks.find(
-    (p) => !starterIds.has(p.element) && elementTypeMap.get(p.element) === 1,
-  );
-  const benchOutfield = myTeam.picks
-    .filter(
-      (p) => !starterIds.has(p.element) && elementTypeMap.get(p.element) !== 1,
-    )
-    .sort((a, b) => {
-      const origA = originalOrder.get(a.element) ?? 99;
-      const origB = originalOrder.get(b.element) ?? 99;
-      return origA - origB;
-    });
+  // Bench: keep exact positions from the swap above so the GK bench slot is
+  // never disturbed (FPL enforces which positions allow which element types).
+  const bench = myTeam.picks
+    .filter((p) => (positionMap.get(p.element) ?? 99) > 11)
+    .sort(
+      (a, b) =>
+        (positionMap.get(a.element) ?? 99) - (positionMap.get(b.element) ?? 99),
+    );
 
-  // Assign positions: starters 1–11, outfield bench 12–14, GK bench 15.
+  // Assign positions: starters get 1–11 (re-sorted by element_type),
+  // bench players keep the positions they hold after the swap.
   const updatedPicks = [
     ...starters.map((p, i) => ({
       element: p.element,
@@ -152,24 +144,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       is_vice_captain: p.is_vice_captain,
       multiplier: p.is_captain ? 2 : 1,
     })),
-    ...benchOutfield.map((p, i) => ({
+    ...bench.map((p) => ({
       element: p.element,
-      position: 12 + i,
+      position: positionMap.get(p.element)!,
       is_captain: false,
       is_vice_captain: p.is_vice_captain,
       multiplier: 0,
     })),
-    ...(benchGk
-      ? [
-          {
-            element: benchGk.element,
-            position: 15,
-            is_captain: false,
-            is_vice_captain: benchGk.is_vice_captain,
-            multiplier: 0,
-          },
-        ]
-      : []),
   ];
 
   if (!confirm) {
@@ -199,6 +180,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         fplResp.status,
         JSON.stringify(errBody),
       );
+      console.error("Picks sent:", JSON.stringify(updatedPicks));
       return createErrorResponse("FPL lineup request failed", "FPL_API_ERROR");
     }
 

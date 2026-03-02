@@ -43,13 +43,13 @@ describe("TransferTracker", () => {
     expect(screen.getByText("Salah")).toBeInTheDocument();
   });
 
-  it("shows predicted gain", () => {
+  it("shows predicted gain rounded to whole number", () => {
     render(
       <TransferTracker
         predictions={[makePrediction({ predictedGainPts: 8.2 })]}
       />,
     );
-    expect(screen.getByText(/8\.2/)).toBeInTheDocument();
+    expect(screen.getByText(/\+8 pts predicted/)).toBeInTheDocument();
   });
 
   it("shows 'pending' status badge for pending predictions", () => {
@@ -98,13 +98,13 @@ describe("TransferTracker", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows actual gain when available", () => {
+  it("shows actual gain rounded to whole number when available", () => {
     render(
       <TransferTracker
         predictions={[makePrediction({ actualGainPts: 6.5 })]}
       />,
     );
-    expect(screen.getByText(/6\.5/)).toBeInTheDocument();
+    expect(screen.getByText(/actual: 7/)).toBeInTheDocument();
   });
 
   it("shows gameweek made", () => {

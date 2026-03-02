@@ -45,9 +45,11 @@ export function TransferTracker({
                   </span>
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-400">
-                  <span>+{pred.predictedGainPts.toFixed(1)} pts predicted</span>
+                  <span>
+                    +{Math.round(pred.predictedGainPts)} pts predicted
+                  </span>
                   {pred.actualGainPts !== null && (
-                    <span>(actual: {pred.actualGainPts.toFixed(1)})</span>
+                    <span>(actual: {Math.round(pred.actualGainPts)})</span>
                   )}
                 </div>
                 {pred.trackingNotes && (

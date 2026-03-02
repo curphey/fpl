@@ -231,7 +231,7 @@ export function GwPlanWidget({
             <div>
               <p className="text-xs text-fpl-muted">Predicted Team Score</p>
               <p className="text-2xl font-bold text-fpl-green">
-                {plan.plan.predictedTeamPoints}
+                {Math.round(plan.plan.predictedTeamPoints)}
               </p>
             </div>
           </div>

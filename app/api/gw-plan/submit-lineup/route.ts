@@ -8,6 +8,7 @@ import {
 import { getSession } from "@/lib/db/sessions";
 import { getGwPlanById } from "@/lib/db/gw-plan";
 import { getFplSession, authenticatedFetch } from "@/lib/fpl/auth-client";
+import { fplClient } from "@/lib/fpl/client";
 import type { ManagerPicks } from "@/lib/fpl/types";
 
 export const runtime = "nodejs";
@@ -80,30 +81,80 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const myTeam = (await myTeamResp.json()) as { picks: ManagerPicks["picks"] };
 
-  // Build a mutable position map: element id → position
-  const positionMap = new Map(myTeam.picks.map((p) => [p.element, p.position]));
+  // Fetch element types so we can re-sort the starting XI after the swap.
+  // FPL requires picks in-play to be ordered by ascending element_type (GK→DEF→MID→FWD).
+  const bootstrap = await fplClient.getBootstrapStatic();
+  const elementTypeMap = new Map(
+    bootstrap.elements.map((e) => [e.id, e.element_type]),
+  );
 
-  // Apply each substitution: swap positions between playerOut and playerIn
+  // Determine which elements are being swapped (starter ↔ bench).
+  // Validate both players are in the current squad before mutating anything.
   for (const sub of selectedSubs) {
-    const outPos = positionMap.get(sub.playerOut.id);
-    const inPos = positionMap.get(sub.playerIn.id);
-    if (outPos === undefined || inPos === undefined) {
+    const outPick = myTeam.picks.find((p) => p.element === sub.playerOut.id);
+    const inPick = myTeam.picks.find((p) => p.element === sub.playerIn.id);
+    if (!outPick || !inPick) {
       return createErrorResponse(
         `Player ${sub.playerOut.name} or ${sub.playerIn.name} not found in current squad`,
         "VALIDATION_ERROR",
       );
     }
-    positionMap.set(sub.playerOut.id, inPos);
-    positionMap.set(sub.playerIn.id, outPos);
   }
 
-  // Build updated picks array
-  const updatedPicks = myTeam.picks.map((p) => ({
-    element: p.element,
-    position: positionMap.get(p.element) ?? p.position,
-    is_captain: p.is_captain,
-    is_vice_captain: p.is_vice_captain,
-  }));
+  // Build the new starting XI and bench by moving players between groups.
+  const starterIds = new Set(
+    myTeam.picks.filter((p) => p.position <= 11).map((p) => p.element),
+  );
+  for (const sub of selectedSubs) {
+    starterIds.delete(sub.playerOut.id); // moved to bench
+    starterIds.add(sub.playerIn.id); // moved to start
+  }
+
+  // Sort starting XI by element_type (GK=1, DEF=2, MID=3, FWD=4) so FPL
+  // accepts the ordering. Within the same type keep original squad order.
+  const originalOrder = new Map(
+    myTeam.picks.map((p) => [p.element, p.position]),
+  );
+  const starters = myTeam.picks
+    .filter((p) => starterIds.has(p.element))
+    .sort((a, b) => {
+      const typeA = elementTypeMap.get(a.element) ?? 0;
+      const typeB = elementTypeMap.get(b.element) ?? 0;
+      if (typeA !== typeB) return typeA - typeB;
+      return (
+        (originalOrder.get(a.element) ?? 0) -
+        (originalOrder.get(b.element) ?? 0)
+      );
+    });
+
+  // Bench: players NOT in the starting XI, ordered by their original bench slot
+  // (preserve auto-sub priority). The newly benched player takes the slot of the
+  // player that moved to start.
+  const bench = myTeam.picks
+    .filter((p) => !starterIds.has(p.element))
+    .sort((a, b) => {
+      const origA = originalOrder.get(a.element) ?? 99;
+      const origB = originalOrder.get(b.element) ?? 99;
+      return origA - origB;
+    });
+
+  // Assign positions: starters get 1–11, bench gets 12–15.
+  const updatedPicks = [
+    ...starters.map((p, i) => ({
+      element: p.element,
+      position: i + 1,
+      is_captain: p.is_captain,
+      is_vice_captain: p.is_vice_captain,
+      multiplier: p.is_captain ? 2 : 1,
+    })),
+    ...bench.map((p, i) => ({
+      element: p.element,
+      position: 12 + i,
+      is_captain: false,
+      is_vice_captain: p.is_vice_captain,
+      multiplier: 0,
+    })),
+  ];
 
   if (!confirm) {
     return NextResponse.json({ valid: true, picks: updatedPicks });

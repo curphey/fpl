@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { FplAccount } from "@/components/settings/fpl-account";
 
 function getSessionId(): string | null {
   try {
@@ -20,6 +21,7 @@ export default function SettingsPage() {
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadSettings() {
@@ -34,6 +36,10 @@ export default function SettingsPage() {
       }
     }
     loadSettings();
+  }, []);
+
+  useEffect(() => {
+    setSessionId(getSessionId());
   }, []);
 
   async function handleSave(e: React.FormEvent) {
@@ -109,6 +115,21 @@ export default function SettingsPage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
       <h1 className="text-2xl font-bold mb-8">Settings</h1>
+
+      {sessionId && (
+        <Card className="mb-6">
+          <CardHeader>
+            <h2 className="text-lg font-semibold">FPL Account</h2>
+            <p className="text-sm text-fpl-muted">
+              Connect your FPL account to unlock exact selling prices, real free
+              transfer counts, and transfer submission.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <FplAccount sessionId={sessionId} />
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

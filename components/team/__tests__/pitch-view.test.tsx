@@ -239,7 +239,7 @@ describe("PitchView", () => {
       />,
     );
     // Bench section label
-    expect(screen.getByText("Bench")).toBeInTheDocument();
+    expect(screen.getByText("Substitutes")).toBeInTheDocument();
   });
 
   it("shows bench player position labels", () => {

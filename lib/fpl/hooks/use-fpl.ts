@@ -10,6 +10,7 @@ import type {
   ManagerHistory,
   ManagerPicks,
   LeagueStandings,
+  Pick,
 } from "../types";
 import type { EnrichedPlayer } from "../utils";
 import { STALE_TIMES } from "@/lib/query";
@@ -39,6 +40,7 @@ export const queryKeys = {
     ["manager-history", managerId] as const,
   managerPicks: (managerId: number, gameweek: number) =>
     ["manager-picks", managerId, gameweek] as const,
+  pendingPicks: (managerId: number) => ["pending-picks", managerId] as const,
   leagueStandings: (leagueId: number, page: number) =>
     ["league-standings", leagueId, page] as const,
 } as const;
@@ -219,6 +221,24 @@ export function useManagerPicks(
     staleTime: STALE_TIMES.manager,
     enabled:
       managerId !== null && managerId > 0 && gameweek > 0 && gameweek <= 38,
+  });
+  return useQueryAdapter(query);
+}
+
+/**
+ * Hook to fetch pending (current week) picks for a manager via my-team endpoint
+ */
+export function usePendingPicks(
+  managerId: number | null,
+): UseFplDataResult<{ picks: Pick[] }> {
+  const query = useQuery({
+    queryKey: queryKeys.pendingPicks(managerId ?? 0),
+    queryFn: () =>
+      fetchFplData<{ picks: Pick[] }>(
+        `/api/fpl/my-team?managerId=${managerId}`,
+      ),
+    staleTime: 0,
+    enabled: managerId !== null && managerId > 0,
   });
   return useQueryAdapter(query);
 }

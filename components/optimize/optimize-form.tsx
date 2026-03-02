@@ -11,6 +11,7 @@ import {
   useManager,
   useManagerPicks,
   useBootstrapStatic,
+  usePendingPicks,
 } from "@/lib/fpl/hooks/use-fpl";
 import { getCurrentGameweek } from "@/lib/fpl/utils";
 
@@ -59,6 +60,8 @@ export function OptimizeForm({ onSubmit, isLoading }: OptimizeFormProps) {
     ? (getCurrentGameweek(bootstrap.events)?.id ?? 1)
     : 1;
   const { data: picks } = useManagerPicks(managerId, currentGw);
+  // Prefer pending (GW28) picks when available — these reflect already-submitted transfers
+  const { data: pendingPicks } = usePendingPicks(managerId);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -73,7 +76,9 @@ export function OptimizeForm({ onSubmit, isLoading }: OptimizeFormProps) {
         3: "MID",
         4: "FWD",
       };
-      const squadPlayers = picks.picks.map((pick) => {
+      // Prefer pending picks (post-transfer GW28 squad) over current GW picks (pre-transfer GW27)
+      const activePicks = pendingPicks?.picks ?? picks.picks;
+      const squadPlayers = activePicks.map((pick) => {
         const player = bootstrap.elements.find((p) => p.id === pick.element);
         const team = bootstrap.teams.find((t) => t.id === player?.team);
         return {
@@ -85,10 +90,13 @@ export function OptimizeForm({ onSubmit, isLoading }: OptimizeFormProps) {
         };
       });
 
+      // If 0 transfers were made last GW, the free transfer rolled → 2 available; otherwise 1
+      const freeTransfers = picks.entry_history.event_transfers === 0 ? 2 : 1;
+
       currentTeam = {
         players: squadPlayers,
         bank: (entry.last_deadline_bank ?? 0) / 10,
-        freeTransfers: entry.last_deadline_total_transfers === 0 ? 1 : 1,
+        freeTransfers,
         chipsUsed: [], // Would need chip history to populate
       };
     }

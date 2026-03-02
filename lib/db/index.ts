@@ -3,3 +3,4 @@ export { db } from "./client";
 export * from "./sessions";
 export * from "./notifications";
 export * from "./manager-cache";
+export * from "./gw-plan";

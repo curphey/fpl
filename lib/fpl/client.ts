@@ -14,6 +14,7 @@ import type {
   LeagueStandings,
 } from "./types";
 import { SERVER_CACHE_TTL } from "@/lib/cache-config";
+import { getFplSession, authenticatedFetch } from "@/lib/fpl/auth-client";
 
 const FPL_API_BASE = "https://fantasy.premierleague.com/api";
 
@@ -198,6 +199,19 @@ export const fplClient = {
     managerId: number,
     gameweek: number,
   ): Promise<ManagerPicks> {
+    // Use authenticated fetch when a valid session exists — returns selling_price + purchase_price
+    const session = getFplSession();
+    if (session) {
+      const url = `${FPL_API_BASE}/entry/${managerId}/event/${gameweek}/picks/`;
+      try {
+        const resp = await authenticatedFetch(url);
+        if (resp.ok) {
+          return resp.json() as Promise<ManagerPicks>;
+        }
+      } catch {
+        // Session expired or network error — fall through to unauthenticated
+      }
+    }
     return fetchFPL<ManagerPicks>(
       `/entry/${managerId}/event/${gameweek}/picks/`,
     );
@@ -213,6 +227,13 @@ export const fplClient = {
     return fetchFPL<LeagueStandings>(
       `/leagues-classic/${leagueId}/standings/?page_standings=${page}`,
     );
+  },
+
+  /**
+   * Alias for getPlayerSummary — get detailed player summary (history, fixtures, past seasons)
+   */
+  async getElementSummary(playerId: number): Promise<ElementSummary> {
+    return this.getPlayerSummary(playerId);
   },
 };
 

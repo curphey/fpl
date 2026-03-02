@@ -88,4 +88,40 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_notifications_session ON notification_preferences(session_id);
   CREATE INDEX IF NOT EXISTS idx_history_session ON notification_history(session_id, sent_at DESC);
   CREATE INDEX IF NOT EXISTS idx_manager_cache_time ON manager_cache(cached_at);
+
+  -- GW plans: Cached Claude-generated gameweek plans
+  CREATE TABLE IF NOT EXISTS gw_plans (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    gameweek INTEGER NOT NULL,
+    plan_json TEXT NOT NULL,
+    thinking TEXT,
+    generated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+  );
+
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_gw_plans_session_gw ON gw_plans(session_id, gameweek);
+
+  -- Transfer predictions: Per-transfer tracking (predicted vs actual over 4 GWs)
+  CREATE TABLE IF NOT EXISTS transfer_predictions (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    gameweek_made INTEGER NOT NULL,
+    player_out_id INTEGER NOT NULL,
+    player_out_name TEXT NOT NULL,
+    player_in_id INTEGER NOT NULL,
+    player_in_name TEXT NOT NULL,
+    predicted_gain_pts REAL NOT NULL,
+    actual_gain_pts REAL,
+    gw_actuals TEXT DEFAULT '{}',
+    status TEXT DEFAULT 'pending',
+    reasoning TEXT,
+    tracking_notes TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_transfer_predictions_session
+    ON transfer_predictions(session_id, gameweek_made DESC);
 `);

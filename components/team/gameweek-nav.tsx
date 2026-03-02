@@ -16,6 +16,7 @@ export function GameweekNav({
       <button
         onClick={onPrev}
         disabled={!hasPrev}
+        aria-label="Previous gameweek"
         className="rounded-md p-1.5 text-fpl-muted transition-colors hover:bg-fpl-border hover:text-white disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-fpl-muted"
       >
         <svg
@@ -39,6 +40,7 @@ export function GameweekNav({
       <button
         onClick={onNext}
         disabled={!hasNext}
+        aria-label="Next gameweek"
         className="rounded-md p-1.5 text-fpl-muted transition-colors hover:bg-fpl-border hover:text-white disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-fpl-muted"
       >
         <svg

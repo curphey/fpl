@@ -221,29 +221,36 @@ export function PitchView({
       </svg>
 
       {/* Pitch rows */}
-      <div className="relative z-10 flex flex-col items-center gap-3 p-4 pb-2">
+      <div className="relative z-10 flex flex-col gap-4 px-2 pt-4 pb-2">
         {rows.map((row) => (
-          <div key={row.position} className="flex justify-center gap-3">
+          <div key={row.position} className="flex w-full justify-evenly">
             {row.picks.map((pick) => renderPick(pick))}
           </div>
         ))}
       </div>
 
       {/* Bench area */}
-      <div className="relative z-10 mx-4 mb-4 rounded-lg border border-cyan-400/40 bg-black/30 p-3">
-        <p className="mb-2 text-center text-xs font-semibold uppercase tracking-wide text-cyan-300/80">
-          Bench
+      <div
+        className="relative z-10 mx-3 mb-3 rounded-xl border-2 border-cyan-400/70 p-3"
+        style={{
+          background:
+            "linear-gradient(to bottom, rgba(0,0,0,0.15), rgba(20,8,50,0.85))",
+          boxShadow: "0 0 18px rgba(34,211,238,0.25)",
+        }}
+      >
+        <p className="mb-3 text-center text-[11px] font-bold uppercase tracking-widest text-cyan-300">
+          Substitutes
         </p>
-        <div className="flex justify-center gap-3">
+        <div className="flex w-full justify-evenly">
           {bench.map((pick, index) => {
             const label = getBenchLabel(pick, index);
             return (
               <div
                 key={pick.element}
-                className="flex flex-col items-center gap-1"
+                className="flex flex-col items-center gap-1.5"
               >
                 {label && (
-                  <span className="text-[9px] font-semibold uppercase tracking-wider text-cyan-300/70">
+                  <span className="border-b border-dotted border-cyan-300/60 pb-0.5 text-[9px] font-bold uppercase tracking-widest text-cyan-300/90">
                     {label}
                   </span>
                 )}

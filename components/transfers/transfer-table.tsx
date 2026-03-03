@@ -20,7 +20,7 @@ const ScoreBar = memo(function ScoreBar({
           style={{ width: `${pct}%` }}
         />
       </div>
-      <span className="text-xs text-fpl-muted">{value.toFixed(1)}</span>
+      <span className="text-xs text-fpl-muted">{Math.round(value)}</span>
     </div>
   );
 });
@@ -89,7 +89,7 @@ export const TransferTable = memo(function TransferTable({
         className: "w-14 text-right",
         render: (r) => (
           <span className="font-semibold text-fpl-green">
-            {r.score.toFixed(1)}
+            {Math.round(r.score)}
           </span>
         ),
       },

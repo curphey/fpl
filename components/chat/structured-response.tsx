@@ -331,7 +331,7 @@ function CaptainRecommendations({ data }: { data: CaptainRec[] }) {
           </div>
           <div className="text-right">
             <div className="text-lg font-bold text-fpl-green">
-              {rec.score.toFixed(1)}
+              {Math.round(rec.score)}
             </div>
             <div className="text-xs text-fpl-muted">score</div>
           </div>
@@ -375,7 +375,7 @@ function TransferRecommendations({ data }: { data: TransferRec[] }) {
                 <FDRBadge difficulty={rec.upcomingDifficulty} />
               </td>
               <td className="px-2 py-2 text-center font-medium text-fpl-green">
-                {rec.score.toFixed(1)}
+                {Math.round(rec.score)}
               </td>
             </tr>
           ))}

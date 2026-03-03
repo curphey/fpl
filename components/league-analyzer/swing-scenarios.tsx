@@ -1,10 +1,6 @@
-import type { SwingScenario } from '@/lib/fpl/league-analyzer';
+import type { SwingScenario } from "@/lib/fpl/league-analyzer";
 
-export function SwingScenariosTable({
-  data,
-}: {
-  data: SwingScenario[];
-}) {
+export function SwingScenariosTable({ data }: { data: SwingScenario[] }) {
   if (data.length === 0) {
     return (
       <div className="rounded-lg border border-fpl-border bg-fpl-card p-8 text-center text-sm text-fpl-muted">
@@ -20,7 +16,8 @@ export function SwingScenariosTable({
           Points Swing Scenarios
         </h3>
         <p className="mt-0.5 text-xs text-fpl-muted">
-          Net impact on your average rank gap if a player you don&apos;t own scores
+          Net impact on your average rank gap if a player you don&apos;t own
+          scores
         </p>
       </div>
 
@@ -76,6 +73,11 @@ export function SwingScenariosTable({
 }
 
 function ImpactCell({ value }: { value: number }) {
-  const color = value < -3 ? 'text-fpl-danger' : value < -1 ? 'text-yellow-400' : 'text-fpl-muted';
-  return <span className={color}>{value.toFixed(1)}</span>;
+  const color =
+    value < -3
+      ? "text-fpl-danger"
+      : value < -1
+        ? "text-yellow-400"
+        : "text-fpl-muted";
+  return <span className={color}>{Math.round(value)}</span>;
 }

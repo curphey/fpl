@@ -1,5 +1,5 @@
-import type { Differential } from '@/lib/fpl/league-analyzer';
-import { Badge } from '@/components/ui/badge';
+import type { Differential } from "@/lib/fpl/league-analyzer";
+import { Badge } from "@/components/ui/badge";
 
 export function DifferentialsView({
   attack,
@@ -51,7 +51,7 @@ export function DifferentialsView({
                       {d.form.toFixed(1)}
                     </td>
                     <td className="px-4 py-2 text-right tabular-nums">
-                      {d.expectedPoints.toFixed(1)}
+                      {Math.round(d.expectedPoints)}
                     </td>
                     <td className="px-4 py-2 text-right">
                       <Badge variant="green">Attack</Badge>
@@ -63,7 +63,8 @@ export function DifferentialsView({
           </div>
         ) : (
           <div className="p-6 text-center text-sm text-fpl-muted">
-            No attack differentials &mdash; all your players are also owned by rivals.
+            No attack differentials &mdash; all your players are also owned by
+            rivals.
           </div>
         )}
       </div>
@@ -89,7 +90,9 @@ export function DifferentialsView({
                   <th className="hidden px-4 py-2 md:table-cell">Team</th>
                   <th className="px-4 py-2 text-right">Rivals</th>
                   <th className="px-4 py-2 text-right">Form</th>
-                  <th className="hidden px-4 py-2 text-right sm:table-cell">Exp Pts</th>
+                  <th className="hidden px-4 py-2 text-right sm:table-cell">
+                    Exp Pts
+                  </th>
                   <th className="px-4 py-2">Risk</th>
                   <th className="px-4 py-2 text-right">Type</th>
                 </tr>
@@ -114,7 +117,7 @@ export function DifferentialsView({
                       {d.form.toFixed(1)}
                     </td>
                     <td className="hidden px-4 py-2 text-right tabular-nums sm:table-cell">
-                      {d.expectedPoints.toFixed(1)}
+                      {Math.round(d.expectedPoints)}
                     </td>
                     <td className="px-4 py-2">
                       <RiskBar value={d.riskScore} />
@@ -139,7 +142,11 @@ export function DifferentialsView({
 
 function RiskBar({ value }: { value: number }) {
   const color =
-    value >= 60 ? 'bg-fpl-danger' : value >= 30 ? 'bg-yellow-500' : 'bg-fpl-green';
+    value >= 60
+      ? "bg-fpl-danger"
+      : value >= 30
+        ? "bg-yellow-500"
+        : "bg-fpl-green";
   return (
     <div className="flex items-center gap-2">
       <div className="h-1.5 w-16 overflow-hidden rounded-full bg-fpl-purple-light">

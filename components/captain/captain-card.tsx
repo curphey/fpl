@@ -23,7 +23,7 @@ const MiniBar = memo(function MiniBar({
         />
       </div>
       <span className="w-7 text-right text-xs text-fpl-muted">
-        {value.toFixed(1)}
+        {Math.round(value)}
       </span>
     </div>
   );
@@ -64,7 +64,7 @@ export const CaptainCard = memo(function CaptainCard({
         </div>
         <div className="text-right">
           <p className="text-2xl font-bold text-fpl-green">
-            {pick.score.toFixed(1)}
+            {Math.round(pick.score)}
           </p>
           <Badge variant={pick.category === "safe" ? "green" : "pink"}>
             {pick.category === "safe" ? "Safe" : "Differential"}

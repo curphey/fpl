@@ -102,7 +102,7 @@ export function ExpectedPointsTable({
       className: "w-16 text-right",
       render: (p) => (
         <span className="font-semibold text-fpl-green">
-          {p.ep_next_value.toFixed(1)}
+          {Math.round(p.ep_next_value)}
         </span>
       ),
     },

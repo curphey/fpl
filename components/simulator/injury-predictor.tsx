@@ -203,7 +203,7 @@ export function InjuryPredictor({
               <div className="text-right">
                 <span className="text-gray-400">xPts on Return:</span>
                 <span className="ml-2 text-white font-medium">
-                  {response.prediction.expectedPointsOnReturn.toFixed(1)}
+                  {Math.round(response.prediction.expectedPointsOnReturn)}
                 </span>
               </div>
             </div>

@@ -150,7 +150,7 @@ export function DecisionSimulator({
                 <option value="">Select player</option>
                 {squad.map((p) => (
                   <option key={p.id} value={p.name}>
-                    {p.name} (xPts: {p.expectedPoints.toFixed(1)})
+                    {p.name} (xPts: {Math.round(p.expectedPoints)})
                   </option>
                 ))}
               </select>

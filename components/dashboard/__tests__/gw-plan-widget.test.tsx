@@ -48,6 +48,27 @@ describe("GwPlanWidget", () => {
     });
   });
 
+  it("shows generate button even when auth status fetch throws a network error", async () => {
+    mockFetch.mockImplementation((url: unknown) => {
+      const urlStr = String(url);
+      if (urlStr.includes("fpl-auth/status")) {
+        return Promise.reject(new Error("Network error"));
+      }
+      // gw-plan returns 404 => no cached plan
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        json: async () => ({}),
+      });
+    });
+
+    render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Generate GW Plan/i)).toBeInTheDocument();
+    });
+  });
+
   it("shows the plan when a cached plan exists", async () => {
     mockFetch.mockImplementation((url: unknown) => {
       const urlStr = String(url);

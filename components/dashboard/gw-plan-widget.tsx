@@ -57,6 +57,10 @@ export function GwPlanWidget({
 
   // On mount: check FPL auth status and chip availability
   useEffect(() => {
+    // Note: initialChecking is owned by the checkCachedPlan effect below.
+    // Auth fetch errors are intentionally swallowed — the component falls back
+    // to the disconnected state, and initialChecking will be set false by
+    // checkCachedPlan regardless.
     void fetch(
       `/api/fpl-auth/status?sessionId=${encodeURIComponent(sessionId)}`,
     )
@@ -94,7 +98,9 @@ export function GwPlanWidget({
           }
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        /* auth errors are non-fatal */
+      });
   }, [sessionId, gameweek]);
 
   // On mount: check for a cached plan
@@ -231,6 +237,30 @@ export function GwPlanWidget({
     return null;
   }
 
+  const chipButtons =
+    fplConnected && (availableChips.wildcard || availableChips.freehit) ? (
+      <div className="mt-2 flex gap-2">
+        {availableChips.wildcard && (
+          <button
+            onClick={() => void generateChip("wildcard")}
+            disabled={loading}
+            className="rounded-lg border border-fpl-green/40 bg-fpl-green/10 px-4 py-2 text-sm font-semibold text-fpl-green hover:bg-fpl-green/20 transition-colors"
+          >
+            Wildcard
+          </button>
+        )}
+        {availableChips.freehit && (
+          <button
+            onClick={() => void generateChip("freehit")}
+            disabled={loading}
+            className="rounded-lg border border-fpl-cyan/40 bg-fpl-cyan/10 px-4 py-2 text-sm font-semibold text-fpl-cyan hover:bg-fpl-cyan/20 transition-colors"
+          >
+            Free Hit
+          </button>
+        )}
+      </div>
+    ) : null;
+
   const selectedCount = selectedTransfers.size;
   const submitLabel = chipType
     ? chipType === "wildcard"
@@ -283,26 +313,7 @@ export function GwPlanWidget({
           >
             Generate GW Plan
           </button>
-          {fplConnected && (
-            <div className="mt-2 flex gap-2">
-              {availableChips.wildcard && (
-                <button
-                  onClick={() => void generateChip("wildcard")}
-                  className="rounded-lg border border-fpl-green/40 bg-fpl-green/10 px-4 py-2 text-sm font-semibold text-fpl-green hover:bg-fpl-green/20 transition-colors"
-                >
-                  Wildcard
-                </button>
-              )}
-              {availableChips.freehit && (
-                <button
-                  onClick={() => void generateChip("freehit")}
-                  className="rounded-lg border border-fpl-cyan/40 bg-fpl-cyan/10 px-4 py-2 text-sm font-semibold text-fpl-cyan hover:bg-fpl-cyan/20 transition-colors"
-                >
-                  Free Hit
-                </button>
-              )}
-            </div>
-          )}
+          {chipButtons}
         </div>
       )}
 
@@ -315,26 +326,7 @@ export function GwPlanWidget({
           >
             Generate GW Plan
           </button>
-          {fplConnected && (
-            <div className="mt-2 flex gap-2">
-              {availableChips.wildcard && (
-                <button
-                  onClick={() => void generateChip("wildcard")}
-                  className="rounded-lg border border-fpl-green/40 bg-fpl-green/10 px-4 py-2 text-sm font-semibold text-fpl-green hover:bg-fpl-green/20 transition-colors"
-                >
-                  Wildcard
-                </button>
-              )}
-              {availableChips.freehit && (
-                <button
-                  onClick={() => void generateChip("freehit")}
-                  className="rounded-lg border border-fpl-cyan/40 bg-fpl-cyan/10 px-4 py-2 text-sm font-semibold text-fpl-cyan hover:bg-fpl-cyan/20 transition-colors"
-                >
-                  Free Hit
-                </button>
-              )}
-            </div>
-          )}
+          {chipButtons}
         </div>
       )}
 

@@ -152,9 +152,16 @@ export function SubmitPlanModal({
           : "Transfers submitted ✓";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="submit-modal-title"
+    >
       <div className="w-full max-w-md rounded-xl border border-fpl-border bg-fpl-card p-6 shadow-xl">
-        <h2 className="mb-4 text-lg font-bold">{modalTitle}</h2>
+        <h2 id="submit-modal-title" className="mb-4 text-lg font-bold">
+          {modalTitle}
+        </h2>
 
         {state === "confirm" && (
           <>

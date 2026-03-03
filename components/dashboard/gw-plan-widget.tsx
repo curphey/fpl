@@ -482,6 +482,8 @@ export function GwPlanWidget({
               </button>
             )}
 
+          {chipButtons}
+
           {showSubmitModal && plan && (
             <SubmitPlanModal
               open={showSubmitModal}

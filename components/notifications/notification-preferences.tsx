@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   useNotificationPreferences,
   usePushNotificationStatus,
@@ -103,6 +103,13 @@ export function NotificationPreferencesForm() {
   } = usePushNotificationStatus();
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [emailInput, setEmailInput] = useState<string>(
+    preferences?.email_address ?? "",
+  );
+
+  useEffect(() => {
+    setEmailInput(preferences?.email_address ?? "");
+  }, [preferences?.email_address]);
 
   const handleUpdate = async (updates: NotificationPreferencesUpdate) => {
     setSaving(true);
@@ -262,9 +269,12 @@ export function NotificationPreferencesForm() {
                 <label className="text-sm text-fpl-muted">Email address</label>
                 <input
                   type="email"
-                  value={prefs.email_address ?? ""}
-                  onChange={(e) =>
-                    handleUpdate({ email_address: e.target.value || null })
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                  onBlur={() =>
+                    handleUpdate({
+                      email_address: emailInput.trim() || null,
+                    })
                   }
                   placeholder="your@email.com"
                   className="mt-1 w-full rounded-md border border-fpl-border bg-fpl-card px-3 py-2 text-sm"

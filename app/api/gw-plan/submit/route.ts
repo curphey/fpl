@@ -19,6 +19,7 @@ const bodySchema = z.object({
   confirm: z.boolean(),
   /** Optional subset of transfer indices to submit. If absent, all transfers are submitted. */
   transferIndices: z.array(z.number().int().min(0)).optional(),
+  chipType: z.enum(["wildcard", "freehit"]).optional(),
 });
 
 const FPL_TRANSFERS_URL = "https://fantasy.premierleague.com/api/transfers/";
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const parsed = bodySchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) return createValidationErrorResponse(parsed.error);
 
-  const { sessionId, planId, confirm, transferIndices } = parsed.data;
+  const { sessionId, planId, confirm, transferIndices, chipType } = parsed.data;
 
   const session = getSession(sessionId);
   if (!session?.fpl_manager_id) {
@@ -125,8 +126,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         entry: managerId,
         event: gameweek,
         transfers,
-        wildcard: false,
-        freehit: false,
+        wildcard: chipType === "wildcard",
+        freehit: chipType === "freehit",
       }),
     });
 
@@ -240,7 +241,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           (sum, t) => sum + (t.hitCost ?? 0),
           0,
         ),
-        wildcardActive: false,
+        wildcardActive: chipType === "wildcard",
       });
     }
 

@@ -27,6 +27,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       connected: false,
       managerName: null,
       expiresAt: null,
+      managerId: session.fpl_manager_id ?? null,
     });
   }
 
@@ -34,5 +35,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     connected: true,
     managerName: fplSession.managerName,
     expiresAt: fplSession.expiresAt,
+    managerId: session.fpl_manager_id ?? null,
   });
 }

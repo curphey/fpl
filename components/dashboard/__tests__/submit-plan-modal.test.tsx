@@ -312,6 +312,105 @@ describe("SubmitPlanModal", () => {
   });
 });
 
+describe("SubmitPlanModal — chipType prop", () => {
+  it("shows 'Wildcard' in submit button label when chipType='wildcard'", () => {
+    render(
+      <SubmitPlanModal
+        open={true}
+        onClose={vi.fn()}
+        plan={mockPlan}
+        sessionId={SESSION_ID}
+        chipType="wildcard"
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: /wildcard/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows 'Free Hit' in submit button label when chipType='freehit'", () => {
+    render(
+      <SubmitPlanModal
+        open={true}
+        onClose={vi.fn()}
+        plan={mockPlan}
+        sessionId={SESSION_ID}
+        chipType="freehit"
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: /free hit/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps existing label when chipType is undefined", () => {
+    render(
+      <SubmitPlanModal
+        open={true}
+        onClose={vi.fn()}
+        plan={mockPlan}
+        sessionId={SESSION_ID}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: /confirm & submit/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("includes chipType in request body when chipType='wildcard'", async () => {
+    mockFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ submitted: true }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+
+    render(
+      <SubmitPlanModal
+        open={true}
+        onClose={vi.fn()}
+        plan={mockPlan}
+        sessionId={SESSION_ID}
+        chipType="wildcard"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /wildcard/i }));
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledOnce());
+    const [, options] = mockFetch.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(options.body as string) as {
+      chipType?: string;
+    };
+    expect(body.chipType).toBe("wildcard");
+  });
+
+  it("does not include chipType in request body when chipType is undefined", async () => {
+    mockFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ submitted: true }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+
+    render(
+      <SubmitPlanModal
+        open={true}
+        onClose={vi.fn()}
+        plan={mockPlan}
+        sessionId={SESSION_ID}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /confirm & submit/i }));
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledOnce());
+    const [, options] = mockFetch.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(options.body as string) as {
+      chipType?: string;
+    };
+    expect(body.chipType).toBeUndefined();
+  });
+});
+
 describe("SubmitPlanModal — substitutions", () => {
   const planWithSubs: GwPlan = {
     ...mockPlan,

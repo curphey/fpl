@@ -25,6 +25,12 @@ export function GwPlanWidget({
   const [initialChecking, setInitialChecking] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fplConnected, setFplConnected] = useState(false);
+  const [managerId, setManagerId] = useState<number | null>(null);
+  const [availableChips, setAvailableChips] = useState<{
+    wildcard: boolean;
+    freehit: boolean;
+  }>({ wildcard: false, freehit: false });
+  const [chipType, setChipType] = useState<"wildcard" | "freehit" | null>(null);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [selectedTransfers, setSelectedTransfers] = useState<Set<number>>(
     new Set(),
@@ -49,15 +55,47 @@ export function GwPlanWidget({
     }
   }, [sessionId]);
 
-  // On mount: check FPL auth status
+  // On mount: check FPL auth status and chip availability
   useEffect(() => {
     void fetch(
       `/api/fpl-auth/status?sessionId=${encodeURIComponent(sessionId)}`,
     )
       .then((r) => r.json())
-      .then((d) => setFplConnected((d as { connected: boolean }).connected))
+      .then(async (d) => {
+        const data = d as {
+          connected: boolean;
+          managerId?: number | null;
+        };
+        setFplConnected(data.connected);
+        const mid = data.managerId ?? null;
+        setManagerId(mid);
+        if (data.connected && mid !== null) {
+          try {
+            const histRes = await fetch(`/api/fpl/entry/${mid}/history`);
+            if (histRes.ok) {
+              const hist = (await histRes.json()) as {
+                chips: Array<{ name: string; event: number }>;
+              };
+              const chips = hist.chips ?? [];
+              const isFirstHalf = gameweek <= 19;
+              const wildcardUsed = chips.some(
+                (c) =>
+                  c.name === "wildcard" &&
+                  (isFirstHalf ? c.event <= 19 : c.event > 19),
+              );
+              const freehitUsed = chips.some((c) => c.name === "freehit");
+              setAvailableChips({
+                wildcard: !wildcardUsed,
+                freehit: !freehitUsed,
+              });
+            }
+          } catch {
+            // chip availability is non-critical; ignore errors
+          }
+        }
+      })
       .catch(() => {});
-  }, [sessionId]);
+  }, [sessionId, gameweek]);
 
   // On mount: check for a cached plan
   useEffect(() => {
@@ -89,6 +127,7 @@ export function GwPlanWidget({
   const generate = async () => {
     setLoading(true);
     setError(null);
+    setChipType(null);
 
     try {
       const res = await fetch("/api/gw-plan", {
@@ -111,6 +150,41 @@ export function GwPlanWidget({
       await fetchPredictions();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate plan");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateChip = async (type: "wildcard" | "freehit") => {
+    setLoading(true);
+    setError(null);
+    setChipType(null);
+
+    try {
+      const res = await fetch("/api/gw-plan/chip-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, gameweek, chipType: type }),
+      });
+
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string };
+        throw new Error(data.error ?? `Failed to generate ${type} plan`);
+      }
+
+      const data = (await res.json()) as GwPlan;
+      setPlan(data);
+      setChipType(type);
+      // Pre-select all transfers (chip plans are all-or-nothing)
+      setSelectedTransfers(new Set(data.plan.transfers.map((_, i) => i)));
+      setSelectedSubstitutions(
+        new Set((data.plan.substitutions ?? []).map((_, i) => i)),
+      );
+      await fetchPredictions();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : `Failed to generate ${type} plan`,
+      );
     } finally {
       setLoading(false);
     }
@@ -158,10 +232,11 @@ export function GwPlanWidget({
   }
 
   const selectedCount = selectedTransfers.size;
-  const submitLabel = buildSubmitLabel(
-    selectedCount,
-    selectedSubstitutions.size,
-  );
+  const submitLabel = chipType
+    ? chipType === "wildcard"
+      ? `Submit Wildcard (${selectedCount} transfers)`
+      : `Submit Free Hit (${selectedCount} transfers)`
+    : buildSubmitLabel(selectedCount, selectedSubstitutions.size);
 
   return (
     <div className="rounded-lg border border-fpl-border bg-fpl-card p-4 sm:p-6">
@@ -208,6 +283,26 @@ export function GwPlanWidget({
           >
             Generate GW Plan
           </button>
+          {fplConnected && (
+            <div className="mt-2 flex gap-2">
+              {availableChips.wildcard && (
+                <button
+                  onClick={() => void generateChip("wildcard")}
+                  className="rounded-lg border border-fpl-green/40 bg-fpl-green/10 px-4 py-2 text-sm font-semibold text-fpl-green hover:bg-fpl-green/20 transition-colors"
+                >
+                  Wildcard
+                </button>
+              )}
+              {availableChips.freehit && (
+                <button
+                  onClick={() => void generateChip("freehit")}
+                  className="rounded-lg border border-fpl-cyan/40 bg-fpl-cyan/10 px-4 py-2 text-sm font-semibold text-fpl-cyan hover:bg-fpl-cyan/20 transition-colors"
+                >
+                  Free Hit
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -220,12 +315,39 @@ export function GwPlanWidget({
           >
             Generate GW Plan
           </button>
+          {fplConnected && (
+            <div className="mt-2 flex gap-2">
+              {availableChips.wildcard && (
+                <button
+                  onClick={() => void generateChip("wildcard")}
+                  className="rounded-lg border border-fpl-green/40 bg-fpl-green/10 px-4 py-2 text-sm font-semibold text-fpl-green hover:bg-fpl-green/20 transition-colors"
+                >
+                  Wildcard
+                </button>
+              )}
+              {availableChips.freehit && (
+                <button
+                  onClick={() => void generateChip("freehit")}
+                  className="rounded-lg border border-fpl-cyan/40 bg-fpl-cyan/10 px-4 py-2 text-sm font-semibold text-fpl-cyan hover:bg-fpl-cyan/20 transition-colors"
+                >
+                  Free Hit
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
       {/* Plan display */}
       {plan && !loading && (
         <div className="mt-4 space-y-4">
+          {/* Chip badge */}
+          {chipType && (
+            <span className="inline-block rounded px-2 py-0.5 text-xs font-bold uppercase tracking-wide bg-fpl-green/20 text-fpl-green border border-fpl-green/30">
+              {chipType === "wildcard" ? "Wildcard Plan" : "Free Hit Plan"}
+            </span>
+          )}
+
           {/* Predicted team score */}
           <div className="flex items-center gap-3">
             <div>
@@ -380,6 +502,7 @@ export function GwPlanWidget({
               selectedSubstitutionIndices={Array.from(
                 selectedSubstitutions,
               ).sort((a, b) => a - b)}
+              chipType={chipType ?? undefined}
               onSuccess={() => {
                 setShowSubmitModal(false);
                 // Clear submitted selections so the button disappears naturally

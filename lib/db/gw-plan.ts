@@ -36,6 +36,7 @@ export interface GwPlan {
   plan: GwPlanResult;
   thinking: string;
   generatedAt: string;
+  chipType?: "wildcard" | "freehit";
 }
 
 export interface TransferPrediction {
@@ -69,12 +70,20 @@ export function saveGwPlan(
   gameweek: number,
   plan: GwPlanResult,
   thinking: string,
+  chipType?: "wildcard" | "freehit",
 ): GwPlan {
   const id = randomUUID();
   db.prepare(
-    `INSERT OR REPLACE INTO gw_plans (id, session_id, gameweek, plan_json, thinking)
-     VALUES (?, ?, ?, ?, ?)`,
-  ).run(id, sessionId, gameweek, JSON.stringify(plan), thinking);
+    `INSERT OR REPLACE INTO gw_plans (id, session_id, gameweek, plan_json, thinking, chip_type)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+  ).run(
+    id,
+    sessionId,
+    gameweek,
+    JSON.stringify(plan),
+    thinking,
+    chipType ?? null,
+  );
   return {
     id,
     sessionId,
@@ -82,6 +91,7 @@ export function saveGwPlan(
     plan,
     thinking,
     generatedAt: new Date().toISOString(),
+    chipType,
   };
 }
 
@@ -175,6 +185,7 @@ function rowToGwPlan(row: Record<string, unknown>): GwPlan {
     plan: JSON.parse(row.plan_json as string) as GwPlanResult,
     thinking: (row.thinking as string) ?? "",
     generatedAt: row.generated_at as string,
+    chipType: (row.chip_type as "wildcard" | "freehit" | null) ?? undefined,
   };
 }
 

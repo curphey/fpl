@@ -20,7 +20,8 @@ export type ApiErrorCode =
   | "INTERNAL_ERROR"
   | "BAD_REQUEST"
   | "SERVICE_UNAVAILABLE"
-  | "DEADLINE_PASSED";
+  | "DEADLINE_PASSED"
+  | "CONFLICT";
 
 /**
  * Standard API error response structure.
@@ -40,6 +41,7 @@ const ERROR_STATUS_CODES: Record<ApiErrorCode, number> = {
   UNAUTHORIZED: 401,
   FORBIDDEN: 403,
   NOT_FOUND: 404,
+  CONFLICT: 409,
   RATE_LIMITED: 429,
   FPL_API_ERROR: 502,
   CLAUDE_API_ERROR: 502,

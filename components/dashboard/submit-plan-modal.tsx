@@ -13,6 +13,7 @@ export interface SubmitPlanModalProps {
   /** Indices into plan.plan.substitutions to submit. If absent, all substitutions are submitted. */
   selectedSubstitutionIndices?: number[];
   onSuccess?: () => void;
+  chipType?: "wildcard" | "freehit";
 }
 
 type ModalState = "confirm" | "submitting" | "success" | "error";
@@ -25,6 +26,7 @@ export function SubmitPlanModal({
   selectedTransferIndices,
   selectedSubstitutionIndices,
   onSuccess,
+  chipType,
 }: SubmitPlanModalProps) {
   const [state, setState] = useState<ModalState>("confirm");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -88,6 +90,7 @@ export function SubmitPlanModal({
             ...(selectedTransferIndices !== undefined && {
               transferIndices: selectedTransferIndices,
             }),
+            ...(chipType !== undefined && { chipType }),
           }),
         });
         const json = (await res.json()) as {
@@ -149,9 +152,16 @@ export function SubmitPlanModal({
           : "Transfers submitted ✓";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="submit-modal-title"
+    >
       <div className="w-full max-w-md rounded-xl border border-fpl-border bg-fpl-card p-6 shadow-xl">
-        <h2 className="mb-4 text-lg font-bold">{modalTitle}</h2>
+        <h2 id="submit-modal-title" className="mb-4 text-lg font-bold">
+          {modalTitle}
+        </h2>
 
         {state === "confirm" && (
           <>
@@ -212,7 +222,11 @@ export function SubmitPlanModal({
                 onClick={() => void handleConfirm()}
                 className="flex-1 rounded-lg bg-fpl-purple px-4 py-2 text-sm font-semibold transition-colors hover:bg-fpl-purple/80"
               >
-                Confirm &amp; Submit ▶
+                {chipType === "wildcard"
+                  ? `Submit Wildcard (${selectedTransfers.length} transfers) ▶`
+                  : chipType === "freehit"
+                    ? `Submit Free Hit (${selectedTransfers.length} transfers) ▶`
+                    : "Confirm & Submit ▶"}
               </button>
             </div>
           </>

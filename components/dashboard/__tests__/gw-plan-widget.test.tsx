@@ -48,6 +48,27 @@ describe("GwPlanWidget", () => {
     });
   });
 
+  it("shows generate button even when auth status fetch throws a network error", async () => {
+    mockFetch.mockImplementation((url: unknown) => {
+      const urlStr = String(url);
+      if (urlStr.includes("fpl-auth/status")) {
+        return Promise.reject(new Error("Network error"));
+      }
+      // gw-plan returns 404 => no cached plan
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        json: async () => ({}),
+      });
+    });
+
+    render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Generate GW Plan/i)).toBeInTheDocument();
+    });
+  });
+
   it("shows the plan when a cached plan exists", async () => {
     mockFetch.mockImplementation((url: unknown) => {
       const urlStr = String(url);
@@ -1203,5 +1224,300 @@ describe("GwPlanWidget", () => {
         queryKey: ["manager-picks"],
       }),
     );
+  });
+
+  // --- CHIP BUTTON TESTS (5b, 5c, 5e) ---
+
+  it("shows Wildcard button when connected, managerId present, and wildcard available", async () => {
+    mockFetch.mockImplementation((url: unknown) => {
+      const urlStr = String(url);
+      if (urlStr.includes("fpl-auth/status")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ connected: true, managerId: 123 }),
+        });
+      }
+      if (urlStr.includes("/api/fpl/entry/123/history")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ chips: [] }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan/predictions")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ predictions: [] }),
+        });
+      }
+      // gw-plan 404 => no cached plan
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        json: async () => ({}),
+      });
+    });
+
+    render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /wildcard/i }),
+      ).toBeInTheDocument(),
+    );
+  });
+
+  it("shows Free Hit button when connected, managerId present, and free hit available", async () => {
+    mockFetch.mockImplementation((url: unknown) => {
+      const urlStr = String(url);
+      if (urlStr.includes("fpl-auth/status")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ connected: true, managerId: 123 }),
+        });
+      }
+      if (urlStr.includes("/api/fpl/entry/123/history")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ chips: [] }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan/predictions")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ predictions: [] }),
+        });
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        json: async () => ({}),
+      });
+    });
+
+    render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /free hit/i }),
+      ).toBeInTheDocument(),
+    );
+  });
+
+  it("does not show Wildcard button when not connected", async () => {
+    // default impl: connected: false
+    render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Generate GW Plan/i)).toBeInTheDocument(),
+    );
+    expect(screen.queryByRole("button", { name: /wildcard/i })).toBeNull();
+  });
+
+  it("does not show Wildcard button when wildcard already used in current half", async () => {
+    mockFetch.mockImplementation((url: unknown) => {
+      const urlStr = String(url);
+      if (urlStr.includes("fpl-auth/status")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ connected: true, managerId: 123 }),
+        });
+      }
+      if (urlStr.includes("/api/fpl/entry/123/history")) {
+        // GW28 is second half (>19); wildcard used in event 25 (second half)
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            chips: [{ name: "wildcard", event: 25 }],
+          }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan/predictions")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ predictions: [] }),
+        });
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        json: async () => ({}),
+      });
+    });
+
+    render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Generate GW Plan/i)).toBeInTheDocument(),
+    );
+    expect(screen.queryByRole("button", { name: /wildcard/i })).toBeNull();
+  });
+
+  it("does not show Free Hit button when free hit already used", async () => {
+    mockFetch.mockImplementation((url: unknown) => {
+      const urlStr = String(url);
+      if (urlStr.includes("fpl-auth/status")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ connected: true, managerId: 123 }),
+        });
+      }
+      if (urlStr.includes("/api/fpl/entry/123/history")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            chips: [{ name: "freehit", event: 10 }],
+          }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan/predictions")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ predictions: [] }),
+        });
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        json: async () => ({}),
+      });
+    });
+
+    render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Generate GW Plan/i)).toBeInTheDocument(),
+    );
+    expect(screen.queryByRole("button", { name: /free hit/i })).toBeNull();
+  });
+
+  it("shows WILDCARD PLAN badge when chipType is set to wildcard after chip plan loads", async () => {
+    mockFetch.mockImplementation((url: unknown) => {
+      const urlStr = String(url);
+      if (urlStr.includes("fpl-auth/status")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ connected: true, managerId: 123 }),
+        });
+      }
+      if (urlStr.includes("/api/fpl/entry/123/history")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ chips: [] }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan/chip-plan")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            id: "chip-plan-1",
+            sessionId: "sess1",
+            gameweek: 28,
+            chipType: "wildcard",
+            plan: {
+              predictedTeamPoints: 75,
+              captain: { playerId: 1, name: "Salah", reasoning: "great" },
+              transfers: [],
+              notes: "",
+            },
+            thinking: "",
+            generatedAt: "2026-03-03",
+          }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan/predictions")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ predictions: [] }),
+        });
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        json: async () => ({}),
+      });
+    });
+
+    render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+    // Wait for chip buttons to appear
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /wildcard/i }),
+      ).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /wildcard/i }));
+
+    await waitFor(() =>
+      expect(screen.getByText(/wildcard plan/i)).toBeInTheDocument(),
+    );
+  });
+
+  it("clicking Wildcard button POSTs to /api/gw-plan/chip-plan with chipType=wildcard", async () => {
+    mockFetch.mockImplementation((url: unknown) => {
+      const urlStr = String(url);
+      if (urlStr.includes("fpl-auth/status")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ connected: true, managerId: 123 }),
+        });
+      }
+      if (urlStr.includes("/api/fpl/entry/123/history")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ chips: [] }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan/chip-plan")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            id: "chip-plan-1",
+            sessionId: "sess1",
+            gameweek: 28,
+            chipType: "wildcard",
+            plan: {
+              predictedTeamPoints: 75,
+              captain: { playerId: 1, name: "Salah", reasoning: "great" },
+              transfers: [],
+              notes: "",
+            },
+            thinking: "",
+            generatedAt: "2026-03-03",
+          }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan/predictions")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ predictions: [] }),
+        });
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        json: async () => ({}),
+      });
+    });
+
+    render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /wildcard/i }),
+      ).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /wildcard/i }));
+
+    await waitFor(() => {
+      const chipPlanCall = mockFetch.mock.calls.find(([u]: [unknown]) =>
+        String(u).includes("/api/gw-plan/chip-plan"),
+      );
+      expect(chipPlanCall).toBeDefined();
+      const [, options] = chipPlanCall as [string, RequestInit];
+      const body = JSON.parse(options.body as string) as { chipType: string };
+      expect(body.chipType).toBe("wildcard");
+    });
   });
 });

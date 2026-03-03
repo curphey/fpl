@@ -125,3 +125,10 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_transfer_predictions_session
     ON transfer_predictions(session_id, gameweek_made DESC);
 `);
+
+// Migrate: add chip_type column if it doesn't exist yet
+try {
+  db.exec("ALTER TABLE gw_plans ADD COLUMN chip_type TEXT");
+} catch {
+  // column already exists — ignore
+}

@@ -65,4 +65,27 @@ describe("GET /api/fpl-auth/status", () => {
     expect(body.managerName).toBe("Tim Smith");
     expect(body.expiresAt).toBe("2026-12-01T00:00:00Z");
   });
+
+  it("returns managerId: null when session has no fpl_manager_id", async () => {
+    vi.mocked(getSession).mockReturnValue(validSession); // validSession has fpl_manager_id: null
+    vi.mocked(getFplSession).mockReturnValue(null);
+    const res = await GET(makeRequest(VALID_SESSION_ID));
+    const body = await res.json();
+    expect(body.managerId).toBeNull();
+  });
+
+  it("returns managerId from session when present", async () => {
+    vi.mocked(getSession).mockReturnValue({
+      ...validSession,
+      fpl_manager_id: 4343974,
+    });
+    vi.mocked(getFplSession).mockReturnValue({
+      managerName: "Tim Smith",
+      entryId: 4343974,
+      expiresAt: "2026-12-01T00:00:00Z",
+    });
+    const res = await GET(makeRequest(VALID_SESSION_ID));
+    const body = await res.json();
+    expect(body.managerId).toBe(4343974);
+  });
 });

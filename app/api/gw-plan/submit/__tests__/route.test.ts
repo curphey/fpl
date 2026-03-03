@@ -491,4 +491,84 @@ describe("POST /api/gw-plan/submit", () => {
     const body = await res.json();
     expect(body.code).toBe("DEADLINE_PASSED");
   });
+
+  it("passes wildcard: true when chipType is 'wildcard'", async () => {
+    // Need a plan with at least one transfer for submit to proceed
+    vi.mocked(getGwPlanById).mockReturnValue({
+      ...mockPlan,
+      chipType: "wildcard" as const,
+    } as ReturnType<typeof getGwPlanById>);
+    vi.mocked(getSession).mockReturnValue(mockSession);
+    vi.mocked(getFplSession).mockReturnValue(mockFplSession);
+    vi.mocked(fplClient.getBootstrapStatic).mockResolvedValue(mockBootstrap);
+    mockAuthFetch(
+      new Response(JSON.stringify({ transfers_made: 1 }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+
+    const req = makeReq({
+      sessionId: SESSION_ID,
+      planId: PLAN_ID,
+      confirm: true,
+      chipType: "wildcard",
+      // Don't include transferIndices — use all transfers
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+
+    const transfersCall = vi
+      .mocked(authenticatedFetch)
+      .mock.calls.find(
+        (c) =>
+          typeof c[0] === "string" && (c[0] as string).includes("transfers"),
+      );
+    expect(transfersCall).toBeDefined();
+    const body = JSON.parse(transfersCall![1]!.body as string) as {
+      wildcard: boolean;
+      freehit: boolean;
+    };
+    expect(body.wildcard).toBe(true);
+    expect(body.freehit).toBe(false);
+  });
+
+  it("passes freehit: true when chipType is 'freehit'", async () => {
+    vi.mocked(getGwPlanById).mockReturnValue({
+      ...mockPlan,
+      chipType: "freehit" as const,
+    } as ReturnType<typeof getGwPlanById>);
+    vi.mocked(getSession).mockReturnValue(mockSession);
+    vi.mocked(getFplSession).mockReturnValue(mockFplSession);
+    vi.mocked(fplClient.getBootstrapStatic).mockResolvedValue(mockBootstrap);
+    mockAuthFetch(
+      new Response(JSON.stringify({ transfers_made: 1 }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+
+    const req = makeReq({
+      sessionId: SESSION_ID,
+      planId: PLAN_ID,
+      confirm: true,
+      chipType: "freehit",
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+
+    const transfersCall = vi
+      .mocked(authenticatedFetch)
+      .mock.calls.find(
+        (c) =>
+          typeof c[0] === "string" && (c[0] as string).includes("transfers"),
+      );
+    expect(transfersCall).toBeDefined();
+    const body = JSON.parse(transfersCall![1]!.body as string) as {
+      wildcard: boolean;
+      freehit: boolean;
+    };
+    expect(body.wildcard).toBe(false);
+    expect(body.freehit).toBe(true);
+  });
 });

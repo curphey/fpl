@@ -74,6 +74,7 @@ describe("saveGwPlan", () => {
       27,
       JSON.stringify(plan),
       "thinking text",
+      null,
     );
   });
 

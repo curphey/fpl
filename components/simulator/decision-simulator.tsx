@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useSimulation } from "@/lib/claude/simulator-hooks";
+import { useBootstrapStatic } from "@/lib/fpl";
 import type {
   SimulationAction,
   SimulationPlayer,
@@ -22,17 +23,55 @@ export function DecisionSimulator({
   leagueContext,
 }: DecisionSimulatorProps) {
   const { simulate, response, isLoading, error, reset } = useSimulation();
+  const { data: bootstrap } = useBootstrapStatic();
   const [actionType, setActionType] =
     useState<SimulationAction["type"]>("captain_change");
   const [captainFrom, setCaptainFrom] = useState("");
   const [captainTo, setCaptainTo] = useState("");
   const [transferOut, setTransferOut] = useState("");
   const [transferIn, setTransferIn] = useState("");
+  const [transferInQuery, setTransferInQuery] = useState("");
+  const [showTransferDropdown, setShowTransferDropdown] = useState(false);
+  const transferInRef = useRef<HTMLDivElement>(null);
   const [transferCost, setTransferCost] = useState(0);
   const [chipType, setChipType] = useState<
     "freehit" | "wildcard" | "benchboost" | "triplecaptain"
   >("benchboost");
   const [holdDescription, setHoldDescription] = useState("");
+
+  const teamMap = useMemo(() => {
+    if (!bootstrap?.teams) return new Map<number, string>();
+    return new Map(bootstrap.teams.map((t) => [t.id, t.short_name]));
+  }, [bootstrap]);
+
+  const posLabel = (t: number) =>
+    (["GK", "DEF", "MID", "FWD"] as const)[t - 1] ?? "";
+
+  const filteredPlayers = useMemo(() => {
+    if (!bootstrap?.elements || transferInQuery.trim().length < 1) return [];
+    const q = transferInQuery.toLowerCase();
+    return bootstrap.elements
+      .filter(
+        (p) =>
+          p.web_name.toLowerCase().includes(q) ||
+          p.first_name.toLowerCase().includes(q) ||
+          p.second_name.toLowerCase().includes(q),
+      )
+      .slice(0, 10);
+  }, [bootstrap, transferInQuery]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        transferInRef.current &&
+        !transferInRef.current.contains(e.target as Node)
+      ) {
+        setShowTransferDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleSimulate = async () => {
     let action: SimulationAction;
@@ -177,13 +216,42 @@ export function DecisionSimulator({
             </div>
             <div className="space-y-2">
               <label className="text-sm text-gray-400">Transfer In</label>
-              <input
-                type="text"
-                value={transferIn}
-                onChange={(e) => setTransferIn(e.target.value)}
-                placeholder="Player name"
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
-              />
+              <div ref={transferInRef} className="relative">
+                <input
+                  type="text"
+                  value={transferInQuery}
+                  onChange={(e) => {
+                    setTransferInQuery(e.target.value);
+                    setTransferIn(e.target.value);
+                    setShowTransferDropdown(true);
+                  }}
+                  onFocus={() => setShowTransferDropdown(true)}
+                  placeholder="Search player..."
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
+                />
+                {showTransferDropdown && filteredPlayers.length > 0 && (
+                  <ul className="absolute z-10 mt-1 w-full rounded-lg border border-gray-600 bg-gray-800 shadow-lg max-h-60 overflow-y-auto">
+                    {filteredPlayers.map((p) => (
+                      <li
+                        key={p.id}
+                        onMouseDown={() => {
+                          setTransferIn(p.web_name);
+                          setTransferInQuery(p.web_name);
+                          setShowTransferDropdown(false);
+                        }}
+                        className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-gray-700 text-sm"
+                      >
+                        <span className="text-white font-medium">
+                          {p.web_name}
+                        </span>
+                        <span className="text-gray-400 text-xs">
+                          {posLabel(p.element_type)} {teamMap.get(p.team) ?? ""}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
             <div className="space-y-2">
               <label className="text-sm text-gray-400">Point Cost</label>

@@ -4,7 +4,7 @@ import { useState, useRef, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useSimulation } from "@/lib/claude/simulator-hooks";
-import { useBootstrapStatic } from "@/lib/fpl";
+import { useBootstrapStatic } from "@/lib/fpl/hooks/use-fpl";
 import type {
   SimulationAction,
   SimulationPlayer,

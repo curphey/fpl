@@ -419,6 +419,17 @@ export async function executeTool(
 
       let playersToScore = enrichedPlayers.filter((p) => p.minutes > 0);
 
+      // Exclude players already in the user's squad
+      if (managerId) {
+        try {
+          const picks = await fplClient.getManagerPicks(managerId, currentGw);
+          const squadIds = new Set(picks.picks.map((p) => p.element));
+          playersToScore = playersToScore.filter((p) => !squadIds.has(p.id));
+        } catch {
+          // If squad fetch fails, proceed without filtering
+        }
+      }
+
       if (positionFilter) {
         const posId = positionIdMap[positionFilter];
         if (posId) {

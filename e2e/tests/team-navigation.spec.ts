@@ -172,12 +172,29 @@ test.describe("Team Page - Connected State", () => {
     await expect(navButtons.first()).toBeVisible({ timeout: 10000 });
   });
 
-  test("next button is disabled at current gameweek", async ({ page }) => {
+  test("next button is enabled at current gameweek when next gameweek exists", async ({
+    page,
+  }) => {
     // Find the navigation area with gameweek name
     const gameweekNav = page.locator("text=/Gameweek \\d+/").locator("..");
 
-    // The next button (second button in nav) should be disabled at current GW
+    // The next button should be enabled at GW15 because GW16 (next GW) exists
     const nextButton = gameweekNav.locator("button").last();
+    await expect(nextButton).toBeEnabled();
+  });
+
+  test("next button is disabled at the latest available gameweek", async ({
+    page,
+  }) => {
+    // Navigate forward to the next gameweek (GW16)
+    const gameweekNav = page.locator("text=/Gameweek \\d+/").locator("..");
+    const nextButton = gameweekNav.locator("button").last();
+    await nextButton.click();
+
+    // Wait for navigation to GW16
+    await expect(page.getByText("Gameweek 16")).toBeVisible({ timeout: 5000 });
+
+    // Now at GW16 (latest), the next button should be disabled
     await expect(nextButton).toBeDisabled();
   });
 

@@ -39,7 +39,7 @@ Rules:
 - **Database:** SQLite (file-based, via better-sqlite3)
 - **Hosting:** Docker container (standalone Next.js build)
 - **CI/CD:** GitHub Actions (build & push to GHCR on push to `main`)
-- **Testing:** Vitest with 679+ tests
+- **Testing:** Vitest with 920+ tests
 - **AI:** Claude API (Sonnet for news search, extended thinking for optimization/simulation)
 - **PWA:** Service worker, offline support, push notifications
 - **Linting:** ESLint 9 + Prettier + lint-staged + Husky
@@ -159,6 +159,13 @@ lib/claude/
   simulator-types.ts    # Types for decision simulator, rival analyzer, injury predictor
   simulator-client.ts   # Claude API client for simulateDecision, analyzeRival, predictInjuryReturn
   simulator-hooks.ts    # React hooks for simulator features (useSimulation, useRivalAnalysis, useInjuryPrediction)
+lib/chat/
+  types.ts              # Chat message and tool types
+  tools.ts              # Claude tool definitions (15 tools: squad, players, transfers, captain, chips, league, etc.)
+  tool-executor.ts      # Executes chat tools against the FPL data layer; uses managerId to personalise results
+  prompts.ts            # System prompt builders for the chat assistant
+  storage.ts            # localStorage-based chat history with versioning and quota handling
+  hooks.ts              # React hooks for chat state and speech recognition
 lib/notifications/
   types.ts              # Notification preference and history types
   hooks.ts              # useNotificationPreferences, useNotificationHistory, usePushNotificationStatus, subscribeToPushNotifications
@@ -196,7 +203,7 @@ next.config.ts          # Next.js config (standalone output, image optimization,
 
 ## Conventions
 
-- **Imports:** Use `@/` path alias (maps to project root)
+- **Imports:** Use `@/` path alias (maps to project root). **Never import from the `@/lib/fpl` barrel (`lib/fpl/index.ts`) in client components** — the barrel re-exports `auth-client.ts` → `db/client.ts` → Node.js `fs`, which breaks Turbopack. Import directly from the specific file instead (e.g. `import { useBootstrapStatic } from "@/lib/fpl/hooks/use-fpl"`).
 - **Components:** Named exports, one component per file, PascalCase filenames for components
 - **Styling:** Tailwind utility classes; custom colors via CSS variables (`--fpl-purple`, `--fpl-green`, etc.)
 - **Theme:** Dark-only (no light/dark toggle); PL brand palette

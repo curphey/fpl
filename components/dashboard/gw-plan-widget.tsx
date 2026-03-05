@@ -275,14 +275,6 @@ export function GwPlanWidget({
         <h2 className="text-base font-bold text-foreground sm:text-lg">
           GW Plan &mdash; Gameweek {gameweek}
         </h2>
-        {plan && !loading && (
-          <button
-            onClick={() => void generate()}
-            className="rounded px-3 py-1 text-xs font-medium text-fpl-cyan hover:text-white transition-colors"
-          >
-            Regenerate &#8635;
-          </button>
-        )}
       </div>
 
       {/* Error */}
@@ -482,7 +474,34 @@ export function GwPlanWidget({
               </button>
             )}
 
-          {chipButtons}
+          {/* Plan actions: regenerate + chip options */}
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              onClick={() => void generate()}
+              disabled={loading}
+              className="rounded-lg border border-fpl-purple/40 bg-fpl-purple/10 px-4 py-2 text-sm font-semibold text-fpl-purple hover:bg-fpl-purple/20 transition-colors"
+            >
+              Regenerate Plan
+            </button>
+            {fplConnected && availableChips.wildcard && (
+              <button
+                onClick={() => void generateChip("wildcard")}
+                disabled={loading}
+                className="rounded-lg border border-fpl-green/40 bg-fpl-green/10 px-4 py-2 text-sm font-semibold text-fpl-green hover:bg-fpl-green/20 transition-colors"
+              >
+                Wildcard
+              </button>
+            )}
+            {fplConnected && availableChips.freehit && (
+              <button
+                onClick={() => void generateChip("freehit")}
+                disabled={loading}
+                className="rounded-lg border border-fpl-cyan/40 bg-fpl-cyan/10 px-4 py-2 text-sm font-semibold text-fpl-cyan hover:bg-fpl-cyan/20 transition-colors"
+              >
+                Free Hit
+              </button>
+            )}
+          </div>
 
           {showSubmitModal && plan && (
             <SubmitPlanModal

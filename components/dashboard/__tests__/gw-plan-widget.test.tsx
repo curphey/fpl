@@ -1520,4 +1520,65 @@ describe("GwPlanWidget", () => {
       expect(body.chipType).toBe("wildcard");
     });
   });
+
+  it("shows Regenerate Plan button alongside chip buttons when plan is displayed", async () => {
+    mockFetch.mockImplementation((url: unknown) => {
+      const urlStr = String(url);
+      if (urlStr.includes("fpl-auth/status")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ connected: true, managerId: 123 }),
+        });
+      }
+      if (urlStr.includes("/api/fpl/entry/123/history")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ chips: [] }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan/predictions")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ predictions: [] }),
+        });
+      }
+      if (urlStr.includes("/api/gw-plan")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            id: "plan1",
+            sessionId: "sess1",
+            gameweek: 28,
+            plan: {
+              predictedTeamPoints: 55,
+              captain: { playerId: 2, name: "Palmer", reasoning: "form" },
+              transfers: [],
+              notes: "",
+            },
+            thinking: "",
+            generatedAt: "2026-02-25",
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        json: async () => ({}),
+      });
+    });
+
+    render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+    // Chip buttons should be visible
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /wildcard/i }),
+      ).toBeInTheDocument(),
+    );
+
+    // A "Regenerate Plan" button must also be visible alongside the chip buttons
+    expect(
+      screen.getByRole("button", { name: /regenerate plan/i }),
+    ).toBeInTheDocument();
+  });
 });

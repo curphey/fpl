@@ -1581,4 +1581,135 @@ describe("GwPlanWidget", () => {
       screen.getByRole("button", { name: /regenerate plan/i }),
     ).toBeInTheDocument();
   });
+
+  describe("Lineup plan display (chip plans)", () => {
+    const mockLineupPlan = {
+      startingXI: [
+        { id: 10, name: "Salah" },
+        { id: 11, name: "Haaland" },
+        { id: 12, name: "Palmer" },
+        { id: 13, name: "Saka" },
+        { id: 14, name: "Watkins" },
+        { id: 5, name: "Alexander-Arnold" },
+        { id: 6, name: "Pedro Porro" },
+        { id: 7, name: "Mykolenko" },
+        { id: 8, name: "Trippier" },
+        { id: 3, name: "Raya" },
+        { id: 15, name: "Nkunku" },
+      ],
+      benchOrder: [
+        { id: 9, name: "Bench GK" },
+        { id: 4, name: "Bench DEF" },
+        { id: 16, name: "Bench MID" },
+        { id: 17, name: "Bench FWD" },
+      ],
+    };
+
+    function setupLineupPlanMocks(
+      chipType: "wildcard" | "freehit" = "wildcard",
+    ) {
+      mockFetch.mockImplementation((url: unknown) => {
+        const urlStr = String(url);
+        if (urlStr.includes("fpl-auth/status")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ connected: true, managerId: 123 }),
+          });
+        }
+        if (urlStr.includes("/api/fpl/entry/123/history")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              chips: [],
+            }),
+          });
+        }
+        if (urlStr.includes("/api/gw-plan/predictions")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ predictions: [] }),
+          });
+        }
+        if (urlStr.includes("/api/gw-plan")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              id: "plan1",
+              sessionId: "sess1",
+              gameweek: 28,
+              chipType,
+              plan: {
+                predictedTeamPoints: 75,
+                captain: {
+                  playerId: 10,
+                  name: "Salah",
+                  reasoning: "best form",
+                },
+                transfers: [
+                  {
+                    playerOut: { id: 99, name: "OldPlayer", predicted4GW: 10 },
+                    playerIn: { id: 10, name: "Salah", predicted4GW: 40 },
+                    pointsGain: 30,
+                    hitCost: 0,
+                    reasoning: "Upgrade",
+                  },
+                ],
+                substitutions: [],
+                lineupPlan: mockLineupPlan,
+                notes: "",
+              },
+              thinking: "",
+              generatedAt: "2026-02-25",
+            }),
+          });
+        }
+        return Promise.resolve({
+          ok: false,
+          status: 404,
+          json: async () => ({}),
+        });
+      });
+    }
+
+    it("shows lineup section when chip plan has lineupPlan", async () => {
+      setupLineupPlanMocks("wildcard");
+      render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/recommended lineup/i)).toBeInTheDocument();
+      });
+    });
+
+    it("shows starting XI player names in lineup section", async () => {
+      setupLineupPlanMocks("wildcard");
+      render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/recommended lineup/i)).toBeInTheDocument();
+      });
+
+      // Haaland is in startingXI but not in captain/transfers, so he's unique in DOM
+      expect(screen.getByText("Haaland")).toBeInTheDocument();
+      expect(screen.getByText("Palmer")).toBeInTheDocument();
+    });
+
+    it("shows bench section with players in order", async () => {
+      setupLineupPlanMocks("wildcard");
+      render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+      await waitFor(() => {
+        // "1. Bench GK" includes the position number prefix
+        expect(screen.getByText(/1\. Bench GK/i)).toBeInTheDocument();
+      });
+    });
+
+    it("shows warning that lineup needs to be submitted after transfers", async () => {
+      setupLineupPlanMocks("wildcard");
+      render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/submit transfers first/i)).toBeInTheDocument();
+      });
+    });
+  });
 });

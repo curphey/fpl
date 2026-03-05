@@ -148,13 +148,27 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Build candidate pools using points model
     // predictPoints expects EnrichedPlayer[] — cast elements as EnrichedPlayer
     // (the model only uses fields present on Player, so this is safe)
-    const pointsPredictions =
-      predictPoints(
-        bootstrap.elements as Parameters<typeof predictPoints>[0],
-        fixtures,
-        gameweek,
-      ) ?? [];
-    const pointsMap = new Map(pointsPredictions.map((p) => [p.player.id, p]));
+
+    // For wildcard, sum predictions across 4 GWs so candidates are ranked by
+    // sustained quality, not just one lucky fixture.
+    // For freehit, only the immediate GW matters (squad reverts after one GW).
+    const gwsToPredict =
+      chipType === "wildcard"
+        ? [gameweek, gameweek + 1, gameweek + 2, gameweek + 3]
+        : [gameweek];
+
+    const gwPredictionMaps = gwsToPredict.map((gw) => {
+      const predictions =
+        predictPoints(
+          bootstrap.elements as Parameters<typeof predictPoints>[0],
+          fixtures,
+          gw,
+        ) ?? [];
+      return new Map(predictions.map((p) => [p.player.id, p]));
+    });
+
+    // pointsMap[0] is still used for predictedNextGW (immediate GW)
+    const pointsMap = gwPredictionMaps[0];
 
     // Rough affordability pre-filter: max individual cost ≤ budget / 11
     const maxIndividualCost = Math.floor(budget / 11);
@@ -178,6 +192,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const pos = POS_MAP[element.element_type];
       if (!pos) continue;
       const pts = pointsMap.get(element.id);
+      const sum4GW = gwPredictionMaps.reduce((sum, map) => {
+        const p = map.get(element.id);
+        return sum + (p?.predictedPoints ?? 0);
+      }, 0);
       candidatesByPos[pos].push({
         id: element.id,
         name: element.web_name,
@@ -185,7 +203,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         position: pos,
         cost: Math.round((element.now_cost / 10) * 10) / 10,
         predictedNextGW: pts ? Math.round(pts.predictedPoints * 10) / 10 : 0,
-        predicted4GW: pts ? Math.round(pts.predictedPoints * 4 * 10) / 10 : 0,
+        predicted4GW: Math.round(sum4GW * 10) / 10,
         form: element.form ?? "0.0",
         upcomingDifficulty: 3,
       });
@@ -215,10 +233,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // Call Claude — NOTE: returns { thinking, result, processingTime }
     const { thinking, result } = await generateChipPlan(chipReq);
-
-    // For Free Hit the squad reverts after one GW, so predicted4GW should reflect
-    // a single-GW prediction. Wildcard squads persist, so use 4 GWs.
-    const ptsMultiplier = chipType === "wildcard" ? 4 : 1;
 
     // Compute transfer pairs: current squad by position → new squad by position
     // Players retained (same ID in both) are no-ops and excluded
@@ -256,20 +270,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         const inElement = playerMap.get(ins[i]);
         const outPts = pointsMap.get(outs[i]);
         const inPts = pointsMap.get(ins[i]);
+        const outSum = gwPredictionMaps.reduce((sum, map) => {
+          const p = map.get(outs[i]);
+          return sum + (p?.predictedPoints ?? 0);
+        }, 0);
+        const inSum = gwPredictionMaps.reduce((sum, map) => {
+          const p = map.get(ins[i]);
+          return sum + (p?.predictedPoints ?? 0);
+        }, 0);
         transfers.push({
           playerOut: {
             id: outs[i],
             name: outElement?.web_name ?? `Player ${outs[i]}`,
-            predicted4GW: outPts
-              ? Math.round(outPts.predictedPoints * ptsMultiplier * 10) / 10
-              : 0,
+            predicted4GW: Math.round(outSum * 10) / 10,
           },
           playerIn: {
             id: ins[i],
             name: inElement?.web_name ?? `Player ${ins[i]}`,
-            predicted4GW: inPts
-              ? Math.round(inPts.predictedPoints * ptsMultiplier * 10) / 10
-              : 0,
+            predicted4GW: Math.round(inSum * 10) / 10,
           },
           pointsGain: 0,
           hitCost: 0,
@@ -287,6 +305,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       },
       transfers,
       substitutions: [],
+      lineupPlan:
+        result.startingXI && result.benchOrder
+          ? {
+              startingXI: result.startingXI.map((id) => ({
+                id,
+                name: playerMap.get(id)?.web_name ?? `Player ${id}`,
+              })),
+              benchOrder: result.benchOrder.map((id) => ({
+                id,
+                name: playerMap.get(id)?.web_name ?? `Player ${id}`,
+              })),
+            }
+          : undefined,
       notes: result.notes,
     };
 

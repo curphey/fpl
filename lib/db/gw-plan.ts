@@ -26,6 +26,11 @@ export interface GwPlanResult {
     playerIn: { id: number; name: string };
     reasoning: string;
   }>;
+  /** Recommended starting XI and bench order from chip plan (wildcard/freehit only) */
+  lineupPlan?: {
+    startingXI: Array<{ id: number; name: string }>;
+    benchOrder: Array<{ id: number; name: string }>;
+  };
   notes: string;
 }
 

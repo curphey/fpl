@@ -453,6 +453,46 @@ export function GwPlanWidget({
             </div>
           )}
 
+          {/* Recommended Lineup (chip plans only) */}
+          {plan.plan.lineupPlan && (
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-fpl-muted">
+                Recommended Lineup
+              </p>
+              <div className="rounded-lg border border-white/10 bg-white/5 p-3 space-y-3">
+                <div>
+                  <p className="mb-1.5 text-xs text-fpl-muted">Starting XI</p>
+                  <div className="flex flex-wrap gap-1">
+                    {plan.plan.lineupPlan.startingXI.map((p) => (
+                      <span
+                        key={p.id}
+                        className="rounded bg-fpl-green/20 px-2 py-0.5 text-xs text-fpl-green"
+                      >
+                        {p.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="mb-1.5 text-xs text-fpl-muted">Bench</p>
+                  <div className="flex flex-wrap gap-1">
+                    {plan.plan.lineupPlan.benchOrder.map((p, i) => (
+                      <span
+                        key={p.id}
+                        className="rounded bg-white/10 px-2 py-0.5 text-xs text-fpl-muted"
+                      >
+                        {i + 1}. {p.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-xs text-yellow-400">
+                  Submit transfers first, then submit the lineup separately.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Notes */}
           {plan.plan.notes && (
             <p className="rounded bg-yellow-500/10 px-3 py-2 text-sm text-yellow-400">

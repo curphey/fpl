@@ -318,4 +318,68 @@ describe("POST /api/gw-plan/chip-plan", () => {
       "wildcard",
     );
   });
+
+  it("calls predictPoints for 4 separate gameweeks when chipType is wildcard", async () => {
+    const { predictPoints } = await import("@/lib/fpl/points-model");
+    const req = makeRequest({
+      sessionId: SESSION_ID,
+      gameweek: 28,
+      chipType: "wildcard",
+    });
+    await POST(req);
+    // Should call predictPoints for GW28, 29, 30, 31 (not just once)
+    const calls = vi.mocked(predictPoints).mock.calls;
+    const calledGws = calls.map((c) => c[2]); // third arg is gwId
+    expect(calledGws).toContain(28);
+    expect(calledGws).toContain(29);
+    expect(calledGws).toContain(30);
+    expect(calledGws).toContain(31);
+  });
+
+  it("calls predictPoints once for freehit (single GW)", async () => {
+    const { predictPoints } = await import("@/lib/fpl/points-model");
+    const req = makeRequest({
+      sessionId: SESSION_ID,
+      gameweek: 28,
+      chipType: "freehit",
+    });
+    await POST(req);
+    // Free hit only needs the immediate GW prediction
+    const calls = vi.mocked(predictPoints).mock.calls;
+    expect(calls).toHaveLength(1);
+    expect(calls[0][2]).toBe(28);
+  });
+
+  it("saves lineupPlan from Claude result for wildcard", async () => {
+    const req = makeRequest({
+      sessionId: SESSION_ID,
+      gameweek: 28,
+      chipType: "wildcard",
+    });
+    await POST(req);
+    const savedPlan = vi.mocked(saveGwPlan).mock.calls[0][2];
+    // IDs must match exactly; names are enriched from playerMap (unknown players get "Player N")
+    expect(savedPlan.lineupPlan?.startingXI.map((p) => p.id)).toEqual(
+      mockChipResult.result.startingXI,
+    );
+    expect(savedPlan.lineupPlan?.benchOrder.map((p) => p.id)).toEqual(
+      mockChipResult.result.benchOrder,
+    );
+  });
+
+  it("saves lineupPlan from Claude result for freehit", async () => {
+    const req = makeRequest({
+      sessionId: SESSION_ID,
+      gameweek: 28,
+      chipType: "freehit",
+    });
+    await POST(req);
+    const savedPlan = vi.mocked(saveGwPlan).mock.calls[0][2];
+    expect(savedPlan.lineupPlan?.startingXI.map((p) => p.id)).toEqual(
+      mockChipResult.result.startingXI,
+    );
+    expect(savedPlan.lineupPlan?.benchOrder.map((p) => p.id)).toEqual(
+      mockChipResult.result.benchOrder,
+    );
+  });
 });

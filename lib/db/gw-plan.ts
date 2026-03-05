@@ -31,6 +31,17 @@ export interface GwPlanResult {
     startingXI: Array<{ id: number; name: string }>;
     benchOrder: Array<{ id: number; name: string }>;
   };
+  /**
+   * Full 15-player squad for chip plans (wildcard/freehit), each player
+   * marked as new (transferred in) or retained (already in squad).
+   * Used for display instead of the artificial swap-pair transfers list.
+   */
+  chipSquad?: {
+    GK: Array<{ id: number; name: string; cost: number; isNew: boolean }>;
+    DEF: Array<{ id: number; name: string; cost: number; isNew: boolean }>;
+    MID: Array<{ id: number; name: string; cost: number; isNew: boolean }>;
+    FWD: Array<{ id: number; name: string; cost: number; isNew: boolean }>;
+  };
   notes: string;
 }
 

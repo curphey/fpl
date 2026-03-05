@@ -1671,6 +1671,156 @@ describe("GwPlanWidget", () => {
       });
     }
 
+    const mockChipSquad = {
+      GK: [
+        { id: 3, name: "Raya", cost: 5.5, isNew: true },
+        { id: 4, name: "Flekken", cost: 4.5, isNew: false },
+      ],
+      DEF: [
+        { id: 5, name: "Alexander-Arnold", cost: 7.0, isNew: true },
+        { id: 6, name: "Pedro Porro", cost: 5.5, isNew: true },
+        { id: 7, name: "Mykolenko", cost: 4.5, isNew: true },
+        { id: 8, name: "Trippier", cost: 6.5, isNew: true },
+        { id: 9, name: "Saliba", cost: 5.5, isNew: false },
+      ],
+      MID: [
+        { id: 10, name: "Salah", cost: 13.0, isNew: true },
+        { id: 11, name: "Saka", cost: 10.5, isNew: true },
+        { id: 12, name: "Palmer", cost: 11.5, isNew: false },
+        { id: 13, name: "Mbeumo", cost: 8.5, isNew: true },
+        { id: 14, name: "Andreas", cost: 5.5, isNew: true },
+      ],
+      FWD: [
+        { id: 15, name: "Watkins", cost: 9.5, isNew: true },
+        { id: 16, name: "Haaland", cost: 14.5, isNew: false },
+        { id: 17, name: "Richarlison", cost: 5.5, isNew: true },
+      ],
+    };
+
+    function setupChipSquadMocks(
+      chipType: "wildcard" | "freehit" = "wildcard",
+    ) {
+      mockFetch.mockImplementation((url: unknown) => {
+        const urlStr = String(url);
+        if (urlStr.includes("fpl-auth/status")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ connected: true, managerId: 123 }),
+          });
+        }
+        if (urlStr.includes("/api/fpl/entry/123/history")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ chips: [] }),
+          });
+        }
+        if (urlStr.includes("/api/gw-plan/predictions")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ predictions: [] }),
+          });
+        }
+        if (urlStr.includes("/api/gw-plan")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              id: "plan1",
+              sessionId: "sess1",
+              gameweek: 28,
+              chipType,
+              plan: {
+                predictedTeamPoints: 75,
+                captain: { playerId: 10, name: "Salah", reasoning: "form" },
+                transfers: [
+                  {
+                    playerOut: {
+                      id: 99,
+                      name: "Calvert-Lewin",
+                      predicted4GW: 10,
+                    },
+                    playerIn: { id: 10, name: "Salah", predicted4GW: 40 },
+                    pointsGain: 0,
+                    hitCost: 0,
+                    reasoning: "MID swap for Wildcard",
+                  },
+                ],
+                substitutions: [],
+                chipSquad: mockChipSquad,
+                notes: "",
+              },
+              thinking: "",
+              generatedAt: "2026-02-25",
+            }),
+          });
+        }
+        return Promise.resolve({
+          ok: false,
+          status: 404,
+          json: async () => ({}),
+        });
+      });
+    }
+
+    it("shows New Squad section for chip plans with chipSquad", async () => {
+      setupChipSquadMocks("wildcard");
+      render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/new squad/i)).toBeInTheDocument();
+      });
+    });
+
+    it("shows all position groups in chip squad display", async () => {
+      setupChipSquadMocks("wildcard");
+      render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/new squad/i)).toBeInTheDocument();
+      });
+
+      // Should show all 4 position section labels
+      expect(screen.getByText("GKP")).toBeInTheDocument();
+      expect(screen.getByText("DEF")).toBeInTheDocument();
+      expect(screen.getByText("MID")).toBeInTheDocument();
+      expect(screen.getByText("FWD")).toBeInTheDocument();
+    });
+
+    it("shows new and retained player counts in chip squad summary", async () => {
+      setupChipSquadMocks("wildcard");
+      render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+      await waitFor(() => {
+        // 4 players are retained (isNew: false), 11 are new
+        expect(screen.getByText(/11 new/i)).toBeInTheDocument();
+        expect(screen.getByText(/4 retained/i)).toBeInTheDocument();
+      });
+    });
+
+    it("shows player names in chip squad", async () => {
+      setupChipSquadMocks("wildcard");
+      render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/new squad/i)).toBeInTheDocument();
+      });
+
+      // Flekken is retained (isNew: false), Alexander-Arnold is new
+      expect(screen.getByText("Flekken")).toBeInTheDocument();
+      expect(screen.getByText("Alexander-Arnold")).toBeInTheDocument();
+    });
+
+    it("does not show artificial swap-pair transfers for chip plans", async () => {
+      setupChipSquadMocks("wildcard");
+      render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/new squad/i)).toBeInTheDocument();
+      });
+
+      // The fake "Calvert-Lewin → Salah" swap pair should not be shown
+      expect(screen.queryByText("Calvert-Lewin")).not.toBeInTheDocument();
+    });
+
     it("shows lineup section when chip plan has lineupPlan", async () => {
       setupLineupPlanMocks("wildcard");
       render(<GwPlanWidget sessionId="sess1" gameweek={28} />);

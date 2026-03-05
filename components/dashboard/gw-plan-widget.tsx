@@ -353,66 +353,123 @@ export function GwPlanWidget({
             </p>
           </div>
 
-          {/* Transfers */}
-          {plan.plan.transfers.length > 0 && (
-            <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-fpl-muted">
-                Transfers
-              </p>
-              <div className="space-y-2">
-                {plan.plan.transfers.map((transfer, idx) => (
-                  <label
-                    key={idx}
-                    className="flex cursor-pointer items-start gap-3 rounded-lg border border-white/10 bg-white/5 p-3 hover:bg-white/10 transition-colors"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedTransfers.has(idx)}
-                      onChange={() => toggleTransfer(idx)}
-                      className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-fpl-green"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className="text-red-400">
-                          {transfer.playerOut.name}
-                        </span>
-                        <span className="text-fpl-muted">&#8594;</span>
-                        <span className="text-fpl-green">
-                          {transfer.playerIn.name}
-                        </span>
-                        <span className="ml-auto flex items-center gap-1.5 text-xs">
-                          {transfer.hitCost > 0 && (
-                            <span className="text-orange-400">
-                              -{transfer.hitCost} hit
+          {/* Chip plan: show full squad by position instead of artificial swap pairs */}
+          {plan.plan.chipSquad ? (
+            (() => {
+              const sq = plan.plan.chipSquad;
+              const allPlayers = [...sq.GK, ...sq.DEF, ...sq.MID, ...sq.FWD];
+              const newCount = allPlayers.filter((p) => p.isNew).length;
+              const retainedCount = allPlayers.length - newCount;
+              const POS_LABELS: Record<string, string> = {
+                GK: "GKP",
+                DEF: "DEF",
+                MID: "MID",
+                FWD: "FWD",
+              };
+              return (
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-fpl-muted">
+                      New Squad
+                    </p>
+                    <span className="text-xs text-fpl-muted">
+                      {newCount} new &middot; {retainedCount} retained
+                    </span>
+                  </div>
+                  <div className="space-y-2 rounded-lg border border-white/10 bg-white/5 p-3">
+                    {(["GK", "DEF", "MID", "FWD"] as const).map((pos) => (
+                      <div key={pos}>
+                        <p className="mb-1 text-xs text-fpl-muted">
+                          {POS_LABELS[pos]}
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {sq[pos].map((p) => (
+                            <span
+                              key={p.id}
+                              className={
+                                p.isNew
+                                  ? "rounded bg-fpl-green/20 px-2 py-0.5 text-xs text-fpl-green"
+                                  : "rounded bg-white/10 px-2 py-0.5 text-xs text-fpl-muted"
+                              }
+                            >
+                              {p.name}
+                              {!p.isNew && (
+                                <span className="ml-1 text-[10px] opacity-60">
+                                  retained
+                                </span>
+                              )}
                             </span>
-                          )}
-                          {transfer.pointsGain > 0 && (
-                            <span className="text-fpl-green">
-                              +{Math.round(transfer.pointsGain)} pts net
-                            </span>
-                          )}
-                        </span>
+                          ))}
+                        </div>
                       </div>
-                      <p className="mt-1 text-xs text-fpl-muted">
-                        {transfer.reasoning}
-                      </p>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
+                    ))}
+                  </div>
+                </div>
+              );
+            })()
+          ) : (
+            <>
+              {/* Normal transfers for non-chip plans */}
+              {plan.plan.transfers.length > 0 && (
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-fpl-muted">
+                    Transfers
+                  </p>
+                  <div className="space-y-2">
+                    {plan.plan.transfers.map((transfer, idx) => (
+                      <label
+                        key={idx}
+                        className="flex cursor-pointer items-start gap-3 rounded-lg border border-white/10 bg-white/5 p-3 hover:bg-white/10 transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedTransfers.has(idx)}
+                          onChange={() => toggleTransfer(idx)}
+                          className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-fpl-green"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="text-red-400">
+                              {transfer.playerOut.name}
+                            </span>
+                            <span className="text-fpl-muted">&#8594;</span>
+                            <span className="text-fpl-green">
+                              {transfer.playerIn.name}
+                            </span>
+                            <span className="ml-auto flex items-center gap-1.5 text-xs">
+                              {transfer.hitCost > 0 && (
+                                <span className="text-orange-400">
+                                  -{transfer.hitCost} hit
+                                </span>
+                              )}
+                              {transfer.pointsGain > 0 && (
+                                <span className="text-fpl-green">
+                                  +{Math.round(transfer.pointsGain)} pts net
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-xs text-fpl-muted">
+                            {transfer.reasoning}
+                          </p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-          {/* No transfers — explicit message */}
-          {plan.plan.transfers.length === 0 && (
-            <div className="rounded-lg border border-white/10 bg-white/5 p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-fpl-muted mb-1">
-                Transfers
-              </p>
-              <p className="text-sm text-fpl-muted">
-                No transfers recommended this gameweek.
-              </p>
-            </div>
+              {plan.plan.transfers.length === 0 && (
+                <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-fpl-muted mb-1">
+                    Transfers
+                  </p>
+                  <p className="text-sm text-fpl-muted">
+                    No transfers recommended this gameweek.
+                  </p>
+                </div>
+              )}
+            </>
           )}
 
           {/* Substitutions */}

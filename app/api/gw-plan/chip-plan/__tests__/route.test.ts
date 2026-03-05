@@ -367,6 +367,63 @@ describe("POST /api/gw-plan/chip-plan", () => {
     );
   });
 
+  it("saves chipSquad with all 15 players and isNew flags for wildcard", async () => {
+    const req = makeRequest({
+      sessionId: SESSION_ID,
+      gameweek: 28,
+      chipType: "wildcard",
+    });
+    await POST(req);
+    const savedPlan = vi.mocked(saveGwPlan).mock.calls[0][2];
+    expect(savedPlan.chipSquad).toBeDefined();
+
+    // New squad players: 3-17 (from mockChipResult). Current squad: 1,2 — no overlap, all new.
+    const allPlayers = [
+      ...(savedPlan.chipSquad?.GK ?? []),
+      ...(savedPlan.chipSquad?.DEF ?? []),
+      ...(savedPlan.chipSquad?.MID ?? []),
+      ...(savedPlan.chipSquad?.FWD ?? []),
+    ];
+    expect(allPlayers).toHaveLength(15);
+    expect(allPlayers.every((p) => p.isNew)).toBe(true);
+    // Each player has id and name
+    expect(allPlayers[0]).toHaveProperty("id");
+    expect(allPlayers[0]).toHaveProperty("name");
+    expect(allPlayers[0]).toHaveProperty("cost");
+  });
+
+  it("marks retained players with isNew=false in chipSquad", async () => {
+    // Add player 3 (GK in new squad) to the current squad picks
+    vi.mocked(fplClient.getManagerPicks).mockResolvedValue({
+      ...mockPicks,
+      picks: [
+        ...mockPicks.picks,
+        {
+          element: 3,
+          position: 3,
+          multiplier: 1,
+          is_captain: false,
+          is_vice_captain: false,
+          selling_price: 45,
+        },
+      ],
+    } as Awaited<ReturnType<typeof fplClient.getManagerPicks>>);
+
+    const req = makeRequest({
+      sessionId: SESSION_ID,
+      gameweek: 28,
+      chipType: "wildcard",
+    });
+    await POST(req);
+    const savedPlan = vi.mocked(saveGwPlan).mock.calls[0][2];
+    const gkPlayers = savedPlan.chipSquad?.GK ?? [];
+    const retainedGk = gkPlayers.find((p) => p.id === 3);
+    expect(retainedGk?.isNew).toBe(false);
+    // Other GK (id 4) is still new
+    const newGk = gkPlayers.find((p) => p.id === 4);
+    expect(newGk?.isNew).toBe(true);
+  });
+
   it("saves lineupPlan from Claude result for freehit", async () => {
     const req = makeRequest({
       sessionId: SESSION_ID,

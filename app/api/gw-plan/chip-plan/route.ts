@@ -255,9 +255,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const allNewIds = new Set(Object.values(newByPos).flat());
 
-    // Chip plan transfers are paired by position index — the pairing is arbitrary
-    // since Claude chose the whole squad at once. These records document which
-    // players were swapped in each position, not necessarily 1:1 exchanges.
+    // Build chipSquad: full 15-player squad with isNew flag for each player.
+    // This is what the UI displays for chip plans (replaces artificial swap pairs).
+    const currentSquadIdSet = new Set(currentSquad.map((p) => p.id));
+    const chipSquad: GwPlanResult["chipSquad"] = {
+      GK: [],
+      DEF: [],
+      MID: [],
+      FWD: [],
+    };
+    for (const pos of ["GK", "DEF", "MID", "FWD"] as const) {
+      chipSquad[pos] = result.squad[pos].map((p) => ({
+        id: p.id,
+        name: playerMap.get(p.id)?.web_name ?? p.name,
+        cost: p.cost,
+        isNew: !currentSquadIdSet.has(p.id),
+      }));
+    }
+
+    // Compute transfer pairs for FPL API submission.
+    // These are the real player swaps (retained players excluded).
     // The actual FPL submission sends all 15 players; these pairs are for display only.
     const transfers: GwPlanResult["transfers"] = [];
     for (const pos of ["GK", "DEF", "MID", "FWD"] as const) {
@@ -305,6 +322,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       },
       transfers,
       substitutions: [],
+      chipSquad,
       lineupPlan:
         result.startingXI && result.benchOrder
           ? {

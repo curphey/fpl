@@ -44,6 +44,11 @@ export function UpcomingFixtures({
         <CardTitle>Upcoming Fixtures</CardTitle>
       </CardHeader>
       <CardContent>
+        <div className="flex items-center justify-between border-b border-fpl-border px-3 py-2 text-xs font-semibold uppercase tracking-wide text-fpl-muted">
+          <span>Home</span>
+          <span>Kick-off</span>
+          <span>Away</span>
+        </div>
         <div>
           {gwFixtures.map((fixture) => {
             const home = teamMap.get(fixture.team_h);

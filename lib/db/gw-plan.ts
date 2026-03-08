@@ -44,6 +44,10 @@ export interface GwPlanResult {
   };
   /** Predicted points for the current squad over the same period (for chip plan comparison) */
   currentSquadPredictedPoints?: number;
+  /** Recommended formation e.g. "4-3-3", "3-5-2" */
+  formation?: string;
+  /** Why this formation was chosen */
+  formationReasoning?: string;
   notes: string;
 }
 

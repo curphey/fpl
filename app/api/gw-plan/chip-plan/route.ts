@@ -363,14 +363,32 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       lineupPlan:
         result.startingXI && result.benchOrder
           ? {
-              startingXI: result.startingXI.map((id) => ({
-                id,
-                name: playerMap.get(id)?.web_name ?? `Player ${id}`,
-              })),
-              benchOrder: result.benchOrder.map((id) => ({
-                id,
-                name: playerMap.get(id)?.web_name ?? `Player ${id}`,
-              })),
+              startingXI: result.startingXI.map((id) => {
+                const el = playerMap.get(id);
+                const pts = pointsMap.get(id);
+                return {
+                  id,
+                  name: el?.web_name ?? `Player ${id}`,
+                  teamCode: el?.team_code ?? 1,
+                  elementType: el?.element_type ?? 1,
+                  predictedPts: pts
+                    ? Math.round(pts.predictedPoints)
+                    : 0,
+                };
+              }),
+              benchOrder: result.benchOrder.map((id) => {
+                const el = playerMap.get(id);
+                const pts = pointsMap.get(id);
+                return {
+                  id,
+                  name: el?.web_name ?? `Player ${id}`,
+                  teamCode: el?.team_code ?? 1,
+                  elementType: el?.element_type ?? 1,
+                  predictedPts: pts
+                    ? Math.round(pts.predictedPoints)
+                    : 0,
+                };
+              }),
             }
           : undefined,
       currentSquadPredictedPoints: Math.round(currentSquadPredictedPoints),

@@ -1585,23 +1585,23 @@ describe("GwPlanWidget", () => {
   describe("Lineup plan display (chip plans)", () => {
     const mockLineupPlan = {
       startingXI: [
-        { id: 10, name: "Salah" },
-        { id: 11, name: "Haaland" },
-        { id: 12, name: "Palmer" },
-        { id: 13, name: "Saka" },
-        { id: 14, name: "Watkins" },
-        { id: 5, name: "Alexander-Arnold" },
-        { id: 6, name: "Pedro Porro" },
-        { id: 7, name: "Mykolenko" },
-        { id: 8, name: "Trippier" },
-        { id: 3, name: "Raya" },
-        { id: 15, name: "Nkunku" },
+        { id: 3, name: "Raya", teamCode: 3, elementType: 1, predictedPts: 4 },
+        { id: 5, name: "Alexander-Arnold", teamCode: 14, elementType: 2, predictedPts: 5 },
+        { id: 6, name: "Pedro Porro", teamCode: 6, elementType: 2, predictedPts: 4 },
+        { id: 7, name: "Mykolenko", teamCode: 11, elementType: 2, predictedPts: 3 },
+        { id: 8, name: "Trippier", teamCode: 4, elementType: 2, predictedPts: 3 },
+        { id: 10, name: "Salah", teamCode: 14, elementType: 3, predictedPts: 8 },
+        { id: 12, name: "Palmer", teamCode: 8, elementType: 3, predictedPts: 7 },
+        { id: 13, name: "Saka", teamCode: 3, elementType: 3, predictedPts: 6 },
+        { id: 15, name: "Nkunku", teamCode: 8, elementType: 3, predictedPts: 5 },
+        { id: 11, name: "Haaland", teamCode: 43, elementType: 4, predictedPts: 7 },
+        { id: 14, name: "Watkins", teamCode: 7, elementType: 4, predictedPts: 5 },
       ],
       benchOrder: [
-        { id: 9, name: "Bench GK" },
-        { id: 4, name: "Bench DEF" },
-        { id: 16, name: "Bench MID" },
-        { id: 17, name: "Bench FWD" },
+        { id: 9, name: "Bench GK", teamCode: 31, elementType: 1, predictedPts: 2 },
+        { id: 4, name: "Bench DEF", teamCode: 6, elementType: 2, predictedPts: 3 },
+        { id: 16, name: "Bench MID", teamCode: 20, elementType: 3, predictedPts: 2 },
+        { id: 17, name: "Bench FWD", teamCode: 36, elementType: 4, predictedPts: 2 },
       ],
     };
 
@@ -1761,64 +1761,19 @@ describe("GwPlanWidget", () => {
       });
     }
 
-    it("shows New Squad section for chip plans with chipSquad", async () => {
+    it("hides transfers section for chip plans with chipSquad", async () => {
       setupChipSquadMocks("wildcard");
       render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
 
       await waitFor(() => {
-        expect(screen.getByText(/new squad/i)).toBeInTheDocument();
-      });
-    });
-
-    it("shows all position groups in chip squad display", async () => {
-      setupChipSquadMocks("wildcard");
-      render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
-
-      await waitFor(() => {
-        expect(screen.getByText(/new squad/i)).toBeInTheDocument();
-      });
-
-      // Should show all 4 position section labels
-      expect(screen.getByText("GKP")).toBeInTheDocument();
-      expect(screen.getByText("DEF")).toBeInTheDocument();
-      expect(screen.getByText("MID")).toBeInTheDocument();
-      expect(screen.getByText("FWD")).toBeInTheDocument();
-    });
-
-    it("shows new and retained player counts in chip squad summary", async () => {
-      setupChipSquadMocks("wildcard");
-      render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
-
-      await waitFor(() => {
-        // 4 players are retained (isNew: false), 11 are new
-        expect(screen.getByText(/11 new/i)).toBeInTheDocument();
-        expect(screen.getByText(/4 retained/i)).toBeInTheDocument();
-      });
-    });
-
-    it("shows player names in chip squad", async () => {
-      setupChipSquadMocks("wildcard");
-      render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
-
-      await waitFor(() => {
-        expect(screen.getByText(/new squad/i)).toBeInTheDocument();
-      });
-
-      // Flekken is retained (isNew: false), Alexander-Arnold is new
-      expect(screen.getByText("Flekken")).toBeInTheDocument();
-      expect(screen.getByText("Alexander-Arnold")).toBeInTheDocument();
-    });
-
-    it("does not show artificial swap-pair transfers for chip plans", async () => {
-      setupChipSquadMocks("wildcard");
-      render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
-
-      await waitFor(() => {
-        expect(screen.getByText(/new squad/i)).toBeInTheDocument();
+        // Plan loaded — captain pick is always shown
+        expect(screen.getByText("Salah")).toBeInTheDocument();
       });
 
       // The fake "Calvert-Lewin → Salah" swap pair should not be shown
       expect(screen.queryByText("Calvert-Lewin")).not.toBeInTheDocument();
+      // "Transfers" heading should not be present for chip plans
+      expect(screen.queryByText("Transfers")).not.toBeInTheDocument();
     });
 
     it("shows lineup section when chip plan has lineupPlan", async () => {
@@ -1830,7 +1785,7 @@ describe("GwPlanWidget", () => {
       });
     });
 
-    it("shows starting XI player names in lineup section", async () => {
+    it("shows starting XI player names in pitch view", async () => {
       setupLineupPlanMocks("wildcard");
       render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
 
@@ -1838,28 +1793,37 @@ describe("GwPlanWidget", () => {
         expect(screen.getByText(/recommended lineup/i)).toBeInTheDocument();
       });
 
-      // Haaland is in startingXI but not in captain/transfers, so he's unique in DOM
       expect(screen.getByText("Haaland")).toBeInTheDocument();
       expect(screen.getByText("Palmer")).toBeInTheDocument();
     });
 
-    it("shows bench section with players in order", async () => {
+    it("shows bench section with position label and numbered order", async () => {
       setupLineupPlanMocks("wildcard");
       render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
 
       await waitFor(() => {
-        // "1. Bench GK" includes the position number prefix
-        expect(screen.getByText(/1\. Bench GK/i)).toBeInTheDocument();
+        expect(screen.getByText(/recommended lineup/i)).toBeInTheDocument();
       });
+
+      // First bench player shows position label (GKP for elementType 1)
+      expect(screen.getByText("GKP")).toBeInTheDocument();
+      // Bench player names are rendered
+      expect(screen.getByText("Bench GK")).toBeInTheDocument();
+      expect(screen.getByText("Bench DEF")).toBeInTheDocument();
     });
 
-    it("shows warning that lineup needs to be submitted after transfers", async () => {
+    it("shows predicted points for players in pitch view", async () => {
       setupLineupPlanMocks("wildcard");
       render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
 
       await waitFor(() => {
-        expect(screen.getByText(/submit transfers first/i)).toBeInTheDocument();
+        expect(screen.getByText(/recommended lineup/i)).toBeInTheDocument();
       });
+
+      // Salah has predictedPts: 8
+      expect(screen.getByText("8 pts")).toBeInTheDocument();
+      // Multiple players have predictedPts: 7 (Haaland, Palmer)
+      expect(screen.getAllByText("7 pts").length).toBeGreaterThanOrEqual(1);
     });
 
     describe("Score comparison for chip plans", () => {

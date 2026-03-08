@@ -282,16 +282,30 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Generate plan via Claude
     const { thinking, plan } = await generateGwPlan(gwPlanRequest);
 
-    // Enrich lineupPlan player names from playerMap (parser only has placeholder names)
+    // Enrich lineupPlan with player names, team codes, positions, and predicted points
     if (plan.lineupPlan) {
-      plan.lineupPlan.startingXI = plan.lineupPlan.startingXI.map((p) => ({
-        id: p.id,
-        name: playerMap.get(p.id)?.web_name ?? `Player ${p.id}`,
-      }));
-      plan.lineupPlan.benchOrder = plan.lineupPlan.benchOrder.map((p) => ({
-        id: p.id,
-        name: playerMap.get(p.id)?.web_name ?? `Player ${p.id}`,
-      }));
+      plan.lineupPlan.startingXI = plan.lineupPlan.startingXI.map((p) => {
+        const player = playerMap.get(p.id);
+        const pts = pointsMap.get(p.id);
+        return {
+          id: p.id,
+          name: player?.web_name ?? `Player ${p.id}`,
+          teamCode: player?.team_code ?? 1,
+          elementType: player?.element_type ?? 1,
+          predictedPts: pts ? Math.round(pts.predictedPoints) : 0,
+        };
+      });
+      plan.lineupPlan.benchOrder = plan.lineupPlan.benchOrder.map((p) => {
+        const player = playerMap.get(p.id);
+        const pts = pointsMap.get(p.id);
+        return {
+          id: p.id,
+          name: player?.web_name ?? `Player ${p.id}`,
+          teamCode: player?.team_code ?? 1,
+          elementType: player?.element_type ?? 1,
+          predictedPts: pts ? Math.round(pts.predictedPoints) : 0,
+        };
+      });
     }
 
     // Persist plan to DB

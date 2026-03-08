@@ -26,10 +26,22 @@ export interface GwPlanResult {
     playerIn: { id: number; name: string };
     reasoning: string;
   }>;
-  /** Recommended starting XI and bench order from chip plan (wildcard/freehit only) */
+  /** Recommended starting XI and bench order */
   lineupPlan?: {
-    startingXI: Array<{ id: number; name: string }>;
-    benchOrder: Array<{ id: number; name: string }>;
+    startingXI: Array<{
+      id: number;
+      name: string;
+      teamCode?: number;
+      elementType?: number;
+      predictedPts?: number;
+    }>;
+    benchOrder: Array<{
+      id: number;
+      name: string;
+      teamCode?: number;
+      elementType?: number;
+      predictedPts?: number;
+    }>;
   };
   /**
    * Full 15-player squad for chip plans (wildcard/freehit), each player

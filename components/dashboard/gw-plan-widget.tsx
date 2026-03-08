@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { GwPlan, TransferPrediction } from "@/lib/db/gw-plan";
 import { TransferTracker } from "./transfer-tracker";
 import { SubmitPlanModal } from "./submit-plan-modal";
+import { PlanPitchView } from "./plan-pitch-view";
 
 interface GwPlanWidgetProps {
   sessionId: string;
@@ -436,63 +437,9 @@ export function GwPlanWidget({
             </div>
           )}
 
-          {/* Chip plan: show full squad by position instead of artificial swap pairs */}
-          {plan.plan.chipSquad ? (
-            (() => {
-              const sq = plan.plan.chipSquad;
-              const allPlayers = [...sq.GK, ...sq.DEF, ...sq.MID, ...sq.FWD];
-              const newCount = allPlayers.filter((p) => p.isNew).length;
-              const retainedCount = allPlayers.length - newCount;
-              const POS_LABELS: Record<string, string> = {
-                GK: "GKP",
-                DEF: "DEF",
-                MID: "MID",
-                FWD: "FWD",
-              };
-              return (
-                <div>
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-fpl-muted">
-                      New Squad
-                    </p>
-                    <span className="text-xs text-fpl-muted">
-                      {newCount} new &middot; {retainedCount} retained
-                    </span>
-                  </div>
-                  <div className="space-y-2 rounded-lg border border-white/10 bg-white/5 p-3">
-                    {(["GK", "DEF", "MID", "FWD"] as const).map((pos) => (
-                      <div key={pos}>
-                        <p className="mb-1 text-xs text-fpl-muted">
-                          {POS_LABELS[pos]}
-                        </p>
-                        <div className="flex flex-wrap gap-1">
-                          {sq[pos].map((p) => (
-                            <span
-                              key={p.id}
-                              className={
-                                p.isNew
-                                  ? "rounded bg-fpl-green/20 px-2 py-0.5 text-xs text-fpl-green"
-                                  : "rounded bg-white/10 px-2 py-0.5 text-xs text-fpl-muted"
-                              }
-                            >
-                              {p.name}
-                              {!p.isNew && (
-                                <span className="ml-1 text-[10px] opacity-60">
-                                  retained
-                                </span>
-                              )}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })()
-          ) : (
+          {/* Transfers (non-chip plans only) */}
+          {!plan.plan.chipSquad && (
             <>
-              {/* Normal transfers for non-chip plans */}
               {plan.plan.transfers.length > 0 && (
                 <div>
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-fpl-muted">
@@ -555,83 +502,60 @@ export function GwPlanWidget({
             </>
           )}
 
-          {/* Substitutions */}
-          {(plan.plan.substitutions?.length ?? 0) > 0 && (
-            <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-fpl-muted">
-                Substitutions
-              </p>
-              <div className="space-y-2">
-                {(plan.plan.substitutions ?? []).map((sub, idx) => (
-                  <label
-                    key={idx}
-                    className="flex cursor-pointer items-start gap-3 rounded-lg border border-white/10 bg-white/5 p-3 hover:bg-white/10 transition-colors"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedSubstitutions.has(idx)}
-                      onChange={() => toggleSubstitution(idx)}
-                      className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-fpl-green"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className="text-red-400">
-                          {sub.playerOut.name}
-                        </span>
-                        <span className="text-fpl-muted">&#8594;</span>
-                        <span className="text-fpl-green">
-                          {sub.playerIn.name}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-xs text-fpl-muted">
-                        {sub.reasoning}
-                      </p>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Recommended Lineup (chip plans only) */}
-          {plan.plan.lineupPlan && (
-            <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-fpl-muted">
-                Recommended Lineup
-              </p>
-              <div className="rounded-lg border border-white/10 bg-white/5 p-3 space-y-3">
-                <div>
-                  <p className="mb-1.5 text-xs text-fpl-muted">Starting XI</p>
-                  <div className="flex flex-wrap gap-1">
-                    {plan.plan.lineupPlan.startingXI.map((p) => (
-                      <span
-                        key={p.id}
-                        className="rounded bg-fpl-green/20 px-2 py-0.5 text-xs text-fpl-green"
-                      >
-                        {p.name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p className="mb-1.5 text-xs text-fpl-muted">Bench</p>
-                  <div className="flex flex-wrap gap-1">
-                    {plan.plan.lineupPlan.benchOrder.map((p, i) => (
-                      <span
-                        key={p.id}
-                        className="rounded bg-white/10 px-2 py-0.5 text-xs text-fpl-muted"
-                      >
-                        {i + 1}. {p.name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <p className="text-xs text-yellow-400">
-                  Submit transfers first, then submit the lineup separately.
+          {/* Substitutions (non-chip plans only) */}
+          {!plan.plan.chipSquad &&
+            (plan.plan.substitutions?.length ?? 0) > 0 && (
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-fpl-muted">
+                  Substitutions
                 </p>
+                <div className="space-y-2">
+                  {(plan.plan.substitutions ?? []).map((sub, idx) => (
+                    <label
+                      key={idx}
+                      className="flex cursor-pointer items-start gap-3 rounded-lg border border-white/10 bg-white/5 p-3 hover:bg-white/10 transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedSubstitutions.has(idx)}
+                        onChange={() => toggleSubstitution(idx)}
+                        className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-fpl-green"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="text-red-400">
+                            {sub.playerOut.name}
+                          </span>
+                          <span className="text-fpl-muted">&#8594;</span>
+                          <span className="text-fpl-green">
+                            {sub.playerIn.name}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-fpl-muted">
+                          {sub.reasoning}
+                        </p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+
+          {/* Pitch view — shown for both chip and regular plans when lineup data is enriched */}
+          {plan.plan.lineupPlan &&
+            plan.plan.lineupPlan.startingXI.length > 0 &&
+            plan.plan.lineupPlan.startingXI[0].teamCode != null && (
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-fpl-muted">
+                  Recommended Lineup
+                </p>
+                <PlanPitchView
+                  startingXI={plan.plan.lineupPlan.startingXI}
+                  benchOrder={plan.plan.lineupPlan.benchOrder}
+                  captainId={plan.plan.captain.playerId}
+                />
+              </div>
+            )}
 
           {/* Notes */}
           {plan.plan.notes && (

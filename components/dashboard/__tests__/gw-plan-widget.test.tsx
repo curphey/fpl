@@ -1861,5 +1861,152 @@ describe("GwPlanWidget", () => {
         expect(screen.getByText(/submit transfers first/i)).toBeInTheDocument();
       });
     });
+
+    describe("Score comparison for chip plans", () => {
+      function setupChipSquadWithComparisonMocks(
+        opts: {
+          chipType?: "wildcard" | "freehit";
+          currentSquadPredictedPoints?: number;
+          predictedTeamPoints?: number;
+        } = {},
+      ) {
+        const {
+          chipType: ct = "wildcard",
+          currentSquadPredictedPoints,
+          predictedTeamPoints = 207,
+        } = opts;
+        mockFetch.mockImplementation((url: unknown) => {
+          const urlStr = String(url);
+          if (urlStr.includes("fpl-auth/status")) {
+            return Promise.resolve({
+              ok: true,
+              json: async () => ({ connected: true, managerId: 123 }),
+            });
+          }
+          if (urlStr.includes("/api/fpl/entry/123/history")) {
+            return Promise.resolve({
+              ok: true,
+              json: async () => ({ chips: [] }),
+            });
+          }
+          if (urlStr.includes("/api/gw-plan/predictions")) {
+            return Promise.resolve({
+              ok: true,
+              json: async () => ({ predictions: [] }),
+            });
+          }
+          if (urlStr.includes("/api/gw-plan")) {
+            const planData: Record<string, unknown> = {
+              predictedTeamPoints,
+              captain: {
+                playerId: 10,
+                name: "Salah",
+                reasoning: "form",
+              },
+              transfers: [
+                {
+                  playerOut: {
+                    id: 99,
+                    name: "Calvert-Lewin",
+                    predicted4GW: 10,
+                  },
+                  playerIn: { id: 10, name: "Salah", predicted4GW: 40 },
+                  pointsGain: 0,
+                  hitCost: 0,
+                  reasoning: "MID swap for Wildcard",
+                },
+              ],
+              substitutions: [],
+              chipSquad: mockChipSquad,
+              notes: "",
+            };
+            if (currentSquadPredictedPoints !== undefined) {
+              planData.currentSquadPredictedPoints =
+                currentSquadPredictedPoints;
+            }
+            return Promise.resolve({
+              ok: true,
+              json: async () => ({
+                id: "plan1",
+                sessionId: "sess1",
+                gameweek: 28,
+                chipType: ct,
+                plan: planData,
+                thinking: "",
+                generatedAt: "2026-02-25",
+              }),
+            });
+          }
+          return Promise.resolve({
+            ok: false,
+            status: 404,
+            json: async () => ({}),
+          });
+        });
+      }
+
+      it("shows score comparison when chip plan has currentSquadPredictedPoints", async () => {
+        setupChipSquadWithComparisonMocks({
+          chipType: "wildcard",
+          currentSquadPredictedPoints: 180,
+          predictedTeamPoints: 207,
+        });
+        render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+        await waitFor(() => {
+          expect(screen.getByText(/current squad:/i)).toBeInTheDocument();
+        });
+
+        // Current squad score
+        expect(screen.getByText("180")).toBeInTheDocument();
+        // Chip squad score
+        expect(screen.getByText("207")).toBeInTheDocument();
+        // Improvement delta: 207 - 180 = 27
+        expect(screen.getByText(/\+27 pts/)).toBeInTheDocument();
+      });
+
+      it("shows 'over 4 gameweeks' label for wildcard", async () => {
+        setupChipSquadWithComparisonMocks({
+          chipType: "wildcard",
+          currentSquadPredictedPoints: 180,
+          predictedTeamPoints: 207,
+        });
+        render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+        await waitFor(() => {
+          expect(screen.getByText(/over 4 gameweeks/i)).toBeInTheDocument();
+        });
+      });
+
+      it("shows 'this gameweek' label for free hit", async () => {
+        setupChipSquadWithComparisonMocks({
+          chipType: "freehit",
+          currentSquadPredictedPoints: 45,
+          predictedTeamPoints: 62,
+        });
+        render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+        await waitFor(() => {
+          expect(screen.getByText(/this gameweek/i)).toBeInTheDocument();
+        });
+      });
+
+      it("shows regular score display when currentSquadPredictedPoints is not set", async () => {
+        setupChipSquadWithComparisonMocks({
+          chipType: "wildcard",
+          predictedTeamPoints: 75,
+        });
+        render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+        await waitFor(() => {
+          expect(screen.getByText(/predicted team score/i)).toBeInTheDocument();
+        });
+
+        // Should show the single score, not the comparison
+        expect(screen.getByText("75")).toBeInTheDocument();
+        expect(screen.queryByText(/current squad:/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/improvement:/i)).not.toBeInTheDocument();
+      });
+    });
   });
 });

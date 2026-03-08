@@ -113,6 +113,7 @@ export function GwPlanWidget({
         if (res.ok) {
           const data = (await res.json()) as GwPlan;
           setPlan(data);
+          if (data.chipType) setChipType(data.chipType);
           setSelectedTransfers(new Set(data.plan.transfers.map((_, i) => i)));
           setSelectedSubstitutions(
             new Set((data.plan.substitutions ?? []).map((_, i) => i)),
@@ -335,10 +336,61 @@ export function GwPlanWidget({
           {/* Predicted team score */}
           <div className="flex items-center gap-3">
             <div>
-              <p className="text-xs text-fpl-muted">Predicted Team Score</p>
-              <p className="text-2xl font-bold text-fpl-green">
-                {Math.round(plan.plan.predictedTeamPoints)}
-              </p>
+              {chipType && plan.plan.currentSquadPredictedPoints != null ? (
+                <>
+                  <p className="text-xs text-fpl-muted">
+                    Predicted Team Score{" "}
+                    <span className="opacity-60">
+                      (
+                      {chipType === "wildcard"
+                        ? "over 4 gameweeks"
+                        : "this gameweek"}
+                      )
+                    </span>
+                  </p>
+                  <div className="mt-1 flex items-baseline gap-4">
+                    <div>
+                      <p className="text-xs text-fpl-muted">Current squad:</p>
+                      <p className="text-lg font-semibold text-fpl-muted">
+                        {Math.round(plan.plan.currentSquadPredictedPoints)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-fpl-muted">
+                        {chipType === "wildcard" ? "Wildcard" : "Free Hit"}{" "}
+                        squad:
+                      </p>
+                      <p className="text-2xl font-bold text-fpl-green">
+                        {Math.round(plan.plan.predictedTeamPoints)}
+                      </p>
+                    </div>
+                    {(() => {
+                      const delta = Math.round(
+                        plan.plan.predictedTeamPoints -
+                          plan.plan.currentSquadPredictedPoints,
+                      );
+                      return (
+                        <div>
+                          <p className="text-xs text-fpl-muted">Improvement:</p>
+                          <p
+                            className={`text-lg font-bold ${delta >= 0 ? "text-fpl-green" : "text-red-400"}`}
+                          >
+                            {delta >= 0 ? "+" : ""}
+                            {delta} pts
+                          </p>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs text-fpl-muted">Predicted Team Score</p>
+                  <p className="text-2xl font-bold text-fpl-green">
+                    {Math.round(plan.plan.predictedTeamPoints)}
+                  </p>
+                </>
+              )}
             </div>
           </div>
 

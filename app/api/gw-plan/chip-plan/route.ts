@@ -322,8 +322,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
     }
 
+    // Calculate chip squad predicted points using the same points model
+    // as the current squad (apples-to-apples comparison across same GWs).
+    // Claude's predictedTeamPoints is a single-GW estimate — unreliable for comparison.
+    const allChipSquadIds = Object.values(newByPos).flat();
+    const chipSquadPredictedPoints = allChipSquadIds.reduce(
+      (squadSum, playerId) => {
+        const playerGwSum = gwPredictionMaps.reduce((gwSum, map) => {
+          const p = map.get(playerId);
+          return gwSum + (p?.predictedPoints ?? 0);
+        }, 0);
+        return squadSum + playerGwSum;
+      },
+      0,
+    );
+
     const gwPlanResult: GwPlanResult = {
-      predictedTeamPoints: result.predictedTeamPoints,
+      predictedTeamPoints: Math.round(chipSquadPredictedPoints),
       captain: {
         playerId: result.captain.playerId,
         name: result.captain.name,

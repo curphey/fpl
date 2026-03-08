@@ -91,7 +91,7 @@ export default function DashboardPage() {
           />
         )}
         <KeyStatsOverview data={bootstrap} />
-        <div className="grid gap-6 xl:grid-cols-2">
+        <div className="grid items-start gap-6 xl:grid-cols-2">
           <TopPlayersTable players={enriched} />
           {fixtures && (
             <UpcomingFixtures

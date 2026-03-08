@@ -63,6 +63,8 @@ export interface ChipPlanRawResult {
   startingXI: number[]; // 11 player IDs
   benchOrder: number[]; // 4 player IDs, GK bench last
   captain: { playerId: number; name: string; reasoning: string };
+  formation?: string;
+  formationReasoning?: string;
   notes: string;
 }
 
@@ -146,6 +148,8 @@ Respond with JSON matching this schema exactly:
     "name": "<string>",
     "reasoning": "<1-2 sentence explanation>"
   },
+  "formation": "<DEF-MID-FWD formation e.g. '4-3-3', '3-5-2'>",
+  "formationReasoning": "<1-2 sentence explanation of why this formation suits the upcoming fixtures>",
   "notes": "<any additional strategic notes>"
 }`;
 }
@@ -160,6 +164,8 @@ const EMPTY_RESULT: ChipPlanRawResult = {
   startingXI: [],
   benchOrder: [],
   captain: { playerId: 0, name: "Unknown", reasoning: "Parse error" },
+  formation: undefined,
+  formationReasoning: undefined,
   notes: "Parse error — see raw response",
 };
 
@@ -184,6 +190,8 @@ export function parseChipPlanResult(text: string): ChipPlanRawResult {
         name: "Unknown",
         reasoning: "",
       },
+      formation: parsed.formation ?? undefined,
+      formationReasoning: parsed.formationReasoning ?? undefined,
       notes: parsed.notes ?? "",
     };
   } catch {

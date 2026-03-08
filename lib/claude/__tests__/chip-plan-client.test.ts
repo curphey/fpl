@@ -55,6 +55,12 @@ describe("buildChipPlanPrompt", () => {
     expect(prompt).toContain("FREE HIT");
     expect(prompt).toContain("single gameweek");
   });
+
+  it("prompt schema includes formation and formationReasoning", () => {
+    const prompt = buildChipPlanPrompt(BASE_REQ);
+    expect(prompt).toContain('"formation"');
+    expect(prompt).toContain('"formationReasoning"');
+  });
 });
 
 describe("parseChipPlanResult", () => {
@@ -106,5 +112,35 @@ describe("parseChipPlanResult", () => {
     const result = parseChipPlanResult("not json at all");
     expect(result.predictedTeamPoints).toBe(0);
     expect(result.squad.GK).toHaveLength(0);
+  });
+
+  it("extracts formation and formationReasoning from response", () => {
+    const raw = JSON.stringify({
+      predictedTeamPoints: 65,
+      squad: { GK: [], DEF: [], MID: [], FWD: [] },
+      startingXI: [],
+      benchOrder: [],
+      captain: { playerId: 1, name: "Salah", reasoning: "test" },
+      formation: "4-3-3",
+      formationReasoning: "Strong midfield coverage with attacking width",
+      notes: "",
+    });
+    const result = parseChipPlanResult(raw);
+    expect(result.formation).toBe("4-3-3");
+    expect(result.formationReasoning).toBe("Strong midfield coverage with attacking width");
+  });
+
+  it("defaults formation fields to undefined when absent", () => {
+    const raw = JSON.stringify({
+      predictedTeamPoints: 65,
+      squad: { GK: [], DEF: [], MID: [], FWD: [] },
+      startingXI: [],
+      benchOrder: [],
+      captain: { playerId: 1, name: "Salah", reasoning: "test" },
+      notes: "",
+    });
+    const result = parseChipPlanResult(raw);
+    expect(result.formation).toBeUndefined();
+    expect(result.formationReasoning).toBeUndefined();
   });
 });

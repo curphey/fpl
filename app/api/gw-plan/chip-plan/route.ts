@@ -167,6 +167,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return new Map(predictions.map((p) => [p.player.id, p]));
     });
 
+    // Calculate current squad's predicted points for comparison
+    const currentSquadPredictedPoints = picks.picks.reduce((squadSum, pick) => {
+      const playerGwSum = gwPredictionMaps.reduce((gwSum, map) => {
+        const p = map.get(pick.element);
+        return gwSum + (p?.predictedPoints ?? 0);
+      }, 0);
+      return squadSum + playerGwSum;
+    }, 0);
+
     // pointsMap[0] is still used for predictedNextGW (immediate GW)
     const pointsMap = gwPredictionMaps[0];
 
@@ -336,6 +345,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
               })),
             }
           : undefined,
+      currentSquadPredictedPoints: Math.round(currentSquadPredictedPoints),
       notes: result.notes,
     };
 

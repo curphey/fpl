@@ -4,7 +4,7 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ./data:/app/data  # SQLite persistence
+      - /Users/Tim/Apps/fpl/data:/app/data  # SQLite persistence
     env_file:
       - path: .env
         required: false

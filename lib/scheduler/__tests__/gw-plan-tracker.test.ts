@@ -108,7 +108,7 @@ describe("trackGwPlanPredictions", () => {
     expect(mockUpdateActuals).not.toHaveBeenCalled();
   });
 
-  it("fetches element summary for each active prediction", async () => {
+  it("fetches both playerIn and playerOut summaries and computes net gain", async () => {
     mockGetActive.mockReturnValue([
       {
         id: "pred1",
@@ -128,20 +128,35 @@ describe("trackGwPlanPredictions", () => {
         updatedAt: "2026-01-01",
       },
     ]);
-    mockGetElementSummary.mockResolvedValue({
-      history: [
-        { round: 26, total_points: 8 },
-        { round: 27, total_points: 6 },
-      ],
-    } as never);
+
+    // playerIn (Salah): 8 in GW26, 6 in GW27
+    // playerOut (Saka): 3 in GW26, 4 in GW27
+    // Net: GW26 = 8-3 = 5, GW27 = 6-4 = 2, total = 7
+    mockGetElementSummary.mockImplementation((id: number) => {
+      if (id === 200) {
+        return Promise.resolve({
+          history: [
+            { round: 26, total_points: 8 },
+            { round: 27, total_points: 6 },
+          ],
+        }) as never;
+      }
+      return Promise.resolve({
+        history: [
+          { round: 26, total_points: 3 },
+          { round: 27, total_points: 4 },
+        ],
+      }) as never;
+    });
 
     await trackGwPlanPredictions(28);
 
     expect(mockGetElementSummary).toHaveBeenCalledWith(200);
+    expect(mockGetElementSummary).toHaveBeenCalledWith(100);
     expect(mockUpdateActuals).toHaveBeenCalledWith(
       "pred1",
-      { "26": 8, "27": 6 },
-      14,
+      { "26": 5, "27": 2 },
+      7,
       "on_track",
       null,
     );
@@ -167,19 +182,33 @@ describe("trackGwPlanPredictions", () => {
         updatedAt: "2026-01-01",
       },
     ]);
-    mockGetElementSummary.mockResolvedValue({
-      history: [
-        { round: 26, total_points: 1 },
-        { round: 27, total_points: 0 },
-      ],
-    } as never);
+
+    // playerIn (Flop): 1 in GW26, 0 in GW27
+    // playerOut (Saka): 5 in GW26, 6 in GW27
+    // Net: GW26 = 1-5 = -4, GW27 = 0-6 = -6, total = -10
+    mockGetElementSummary.mockImplementation((id: number) => {
+      if (id === 300) {
+        return Promise.resolve({
+          history: [
+            { round: 26, total_points: 1 },
+            { round: 27, total_points: 0 },
+          ],
+        }) as never;
+      }
+      return Promise.resolve({
+        history: [
+          { round: 26, total_points: 5 },
+          { round: 27, total_points: 6 },
+        ],
+      }) as never;
+    });
 
     await trackGwPlanPredictions(28);
 
     expect(mockUpdateActuals).toHaveBeenCalledWith(
       "pred2",
-      { "26": 1, "27": 0 },
-      1,
+      { "26": -4, "27": -6 },
+      -10,
       "miss",
       expect.any(String),
     );

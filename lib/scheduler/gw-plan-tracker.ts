@@ -154,14 +154,31 @@ export async function trackGwPlanPredictions(currentGw: number): Promise<void> {
 
   for (const prediction of predictions) {
     try {
-      // Fetch player's actual points history from FPL API
-      const summary = await fplClient.getElementSummary(prediction.playerInId);
+      // Fetch both players' actual points history from FPL API
+      const [summaryIn, summaryOut] = await Promise.all([
+        fplClient.getElementSummary(prediction.playerInId),
+        fplClient.getElementSummary(prediction.playerOutId),
+      ]);
 
-      // Build gwActuals: only include rounds after the transfer was made and up to currentGw
+      const inPtsByGw = new Map(
+        summaryIn.history.map((e) => [e.round, e.total_points]),
+      );
+      const outPtsByGw = new Map(
+        summaryOut.history.map((e) => [e.round, e.total_points]),
+      );
+
+      // Build gwActuals: net gain per GW (playerIn - playerOut)
       const gwActuals: Record<string, number> = {};
-      for (const entry of summary.history) {
-        if (entry.round > prediction.gameweekMade && entry.round <= currentGw) {
-          gwActuals[String(entry.round)] = entry.total_points;
+      for (
+        let gw = prediction.gameweekMade + 1;
+        gw <= currentGw;
+        gw++
+      ) {
+        const inPts = inPtsByGw.get(gw);
+        const outPts = outPtsByGw.get(gw);
+        // Only include GWs where at least one player has data
+        if (inPts !== undefined || outPts !== undefined) {
+          gwActuals[String(gw)] = (inPts ?? 0) - (outPts ?? 0);
         }
       }
 

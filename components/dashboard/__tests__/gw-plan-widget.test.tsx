@@ -1868,12 +1868,16 @@ describe("GwPlanWidget", () => {
           chipType?: "wildcard" | "freehit";
           currentSquadPredictedPoints?: number;
           predictedTeamPoints?: number;
+          predictedNextGwPoints?: number;
+          currentSquadNextGwPoints?: number;
         } = {},
       ) {
         const {
           chipType: ct = "wildcard",
           currentSquadPredictedPoints,
           predictedTeamPoints = 207,
+          predictedNextGwPoints,
+          currentSquadNextGwPoints,
         } = opts;
         mockFetch.mockImplementation((url: unknown) => {
           const urlStr = String(url);
@@ -1923,6 +1927,12 @@ describe("GwPlanWidget", () => {
             if (currentSquadPredictedPoints !== undefined) {
               planData.currentSquadPredictedPoints =
                 currentSquadPredictedPoints;
+            }
+            if (predictedNextGwPoints !== undefined) {
+              planData.predictedNextGwPoints = predictedNextGwPoints;
+            }
+            if (currentSquadNextGwPoints !== undefined) {
+              planData.currentSquadNextGwPoints = currentSquadNextGwPoints;
             }
             return Promise.resolve({
               ok: true,
@@ -1989,6 +1999,46 @@ describe("GwPlanWidget", () => {
         await waitFor(() => {
           expect(screen.getByText(/this gameweek/i)).toBeInTheDocument();
         });
+      });
+
+      it("shows single-GW predicted score for wildcard plans", async () => {
+        setupChipSquadWithComparisonMocks({
+          chipType: "wildcard",
+          currentSquadPredictedPoints: 180,
+          predictedTeamPoints: 207,
+          predictedNextGwPoints: 65,
+        });
+        render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+        await waitFor(() => {
+          expect(
+            screen.getByText(/GW28 Predicted Score/i),
+          ).toBeInTheDocument();
+        });
+
+        // Single-GW score should be displayed
+        expect(screen.getByText("65")).toBeInTheDocument();
+        // 4-GW comparison should also be displayed
+        expect(screen.getByText(/4-Gameweek Comparison/i)).toBeInTheDocument();
+      });
+
+      it("does not show single-GW score for free hit plans", async () => {
+        setupChipSquadWithComparisonMocks({
+          chipType: "freehit",
+          currentSquadPredictedPoints: 45,
+          predictedTeamPoints: 62,
+          predictedNextGwPoints: 62,
+        });
+        render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+        await waitFor(() => {
+          expect(screen.getByText(/this gameweek/i)).toBeInTheDocument();
+        });
+
+        // Free hit already shows single-GW via the main score — no separate GW line
+        expect(
+          screen.queryByText(/GW28 Predicted Score/i),
+        ).not.toBeInTheDocument();
       });
 
       it("shows regular score display when currentSquadPredictedPoints is not set", async () => {

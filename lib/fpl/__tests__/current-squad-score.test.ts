@@ -50,4 +50,33 @@ describe("current squad score calculation", () => {
     // Only player 1 contributes: 5+6=11, player 99 contributes 0
     expect(total).toBe(11);
   });
+
+  it("computes single-GW score using only the first prediction map", () => {
+    const mockPlayers = [
+      { id: 1, predictedPoints: 5.0 },
+      { id: 2, predictedPoints: 4.0 },
+      { id: 3, predictedPoints: 6.0 },
+    ];
+
+    const gwPredictionMaps = [
+      new Map(mockPlayers.map((p) => [p.id, p])),
+      new Map(
+        mockPlayers.map((p) => [
+          p.id,
+          { ...p, predictedPoints: p.predictedPoints + 1 },
+        ]),
+      ),
+    ];
+
+    // Single-GW: use only pointsMap (gwPredictionMaps[0])
+    const pointsMap = gwPredictionMaps[0];
+    const squadIds = [1, 2, 3];
+    const singleGwTotal = squadIds.reduce((sum, playerId) => {
+      const p = pointsMap.get(playerId);
+      return sum + (p?.predictedPoints ?? 0);
+    }, 0);
+
+    // Only GW1: 5+4+6=15 (not 33 which is the 4-GW total)
+    expect(singleGwTotal).toBe(15);
+  });
 });

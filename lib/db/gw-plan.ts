@@ -44,6 +44,10 @@ export interface GwPlanResult {
   };
   /** Predicted points for the current squad over the same period (for chip plan comparison) */
   currentSquadPredictedPoints?: number;
+  /** Chip squad's predicted score for the immediate gameweek only */
+  predictedNextGwPoints?: number;
+  /** Current squad's predicted score for the immediate gameweek only */
+  currentSquadNextGwPoints?: number;
   /** Recommended formation e.g. "4-3-3", "3-5-2" */
   formation?: string;
   /** Why this formation was chosen */

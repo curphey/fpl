@@ -337,6 +337,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       0,
     );
 
+    // Single-GW predictions (immediate gameweek only) for display alongside multi-GW comparison
+    const chipSquadNextGwPoints = allChipSquadIds.reduce(
+      (sum, playerId) => {
+        const p = pointsMap.get(playerId);
+        return sum + (p?.predictedPoints ?? 0);
+      },
+      0,
+    );
+    const currentSquadNextGwPoints = picks.picks.reduce((sum, pick) => {
+      const p = pointsMap.get(pick.element);
+      return sum + (p?.predictedPoints ?? 0);
+    }, 0);
+
     const gwPlanResult: GwPlanResult = {
       predictedTeamPoints: Math.round(chipSquadPredictedPoints),
       captain: {
@@ -361,6 +374,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             }
           : undefined,
       currentSquadPredictedPoints: Math.round(currentSquadPredictedPoints),
+      predictedNextGwPoints: Math.round(chipSquadNextGwPoints),
+      currentSquadNextGwPoints: Math.round(currentSquadNextGwPoints),
       formation: result.formation,
       formationReasoning: result.formationReasoning,
       notes: result.notes,

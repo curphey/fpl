@@ -338,8 +338,22 @@ export function GwPlanWidget({
             <div>
               {chipType && plan.plan.currentSquadPredictedPoints != null ? (
                 <>
+                  {/* Single-GW score for wildcards (immediate gameweek) */}
+                  {chipType === "wildcard" &&
+                    plan.plan.predictedNextGwPoints != null && (
+                      <div className="mb-3">
+                        <p className="text-xs text-fpl-muted">
+                          GW{gameweek} Predicted Score
+                        </p>
+                        <p className="text-2xl font-bold text-fpl-green">
+                          {plan.plan.predictedNextGwPoints}
+                        </p>
+                      </div>
+                    )}
                   <p className="text-xs text-fpl-muted">
-                    Predicted Team Score{" "}
+                    {chipType === "wildcard"
+                      ? "4-Gameweek Comparison"
+                      : "Predicted Team Score"}{" "}
                     <span className="opacity-60">
                       (
                       {chipType === "wildcard"

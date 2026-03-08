@@ -2009,4 +2009,126 @@ describe("GwPlanWidget", () => {
       });
     });
   });
+
+  describe("Formation display", () => {
+    it("shows formation badge and reasoning when plan has formation", async () => {
+      mockFetch.mockImplementation((url: unknown) => {
+        const urlStr = String(url);
+        if (urlStr.includes("fpl-auth/status")) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({ connected: false }),
+          });
+        }
+        if (
+          urlStr.includes("/api/gw-plan") &&
+          !urlStr.includes("chip-plan") &&
+          !urlStr.includes("predictions")
+        ) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              id: "plan-1",
+              sessionId: "sess1",
+              gameweek: 28,
+              plan: {
+                predictedTeamPoints: 62,
+                captain: {
+                  playerId: 1,
+                  name: "Salah",
+                  reasoning: "Good fixtures",
+                },
+                transfers: [],
+                substitutions: [],
+                formation: "4-3-3",
+                formationReasoning: "Balanced approach with strong midfield",
+                notes: "",
+              },
+              thinking: "",
+              generatedAt: new Date().toISOString(),
+            }),
+          });
+        }
+        if (urlStr.includes("predictions")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ predictions: [] }),
+          });
+        }
+        return Promise.resolve({
+          ok: false,
+          status: 404,
+          json: async () => ({}),
+        });
+      });
+
+      render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+      await waitFor(() => {
+        expect(screen.getByText("4-3-3")).toBeInTheDocument();
+        expect(
+          screen.getByText("Balanced approach with strong midfield"),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("does not show formation section when formation is absent", async () => {
+      mockFetch.mockImplementation((url: unknown) => {
+        const urlStr = String(url);
+        if (urlStr.includes("fpl-auth/status")) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({ connected: false }),
+          });
+        }
+        if (
+          urlStr.includes("/api/gw-plan") &&
+          !urlStr.includes("chip-plan") &&
+          !urlStr.includes("predictions")
+        ) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              id: "plan-1",
+              sessionId: "sess1",
+              gameweek: 28,
+              plan: {
+                predictedTeamPoints: 62,
+                captain: {
+                  playerId: 1,
+                  name: "Salah",
+                  reasoning: "Good fixtures",
+                },
+                transfers: [],
+                substitutions: [],
+                notes: "",
+              },
+              thinking: "",
+              generatedAt: new Date().toISOString(),
+            }),
+          });
+        }
+        if (urlStr.includes("predictions")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ predictions: [] }),
+          });
+        }
+        return Promise.resolve({
+          ok: false,
+          status: 404,
+          json: async () => ({}),
+        });
+      });
+
+      render(<GwPlanWidget sessionId="sess1" gameweek={28} />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Salah")).toBeInTheDocument(); // plan loaded
+      });
+      expect(screen.queryByText("Formation")).not.toBeInTheDocument();
+    });
+  });
 });

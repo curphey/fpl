@@ -405,6 +405,23 @@ export function GwPlanWidget({
             </p>
           </div>
 
+          {/* Formation */}
+          {plan.plan.formation && (
+            <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-fpl-muted">
+                Formation
+              </p>
+              <p className="text-lg font-bold text-white">
+                {plan.plan.formation}
+              </p>
+              {plan.plan.formationReasoning && (
+                <p className="mt-1 text-sm text-fpl-muted">
+                  {plan.plan.formationReasoning}
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Chip plan: show full squad by position instead of artificial swap pairs */}
           {plan.plan.chipSquad ? (
             (() => {

@@ -92,6 +92,7 @@ Key principles:
 7. Substitutions: Review the starting XI and bench. If a bench outfield player has higher predicted points than a starting outfield player AND the substitution would not break the minimum formation (at least 3 DEF, 2 MID, 1 FWD must remain on the pitch), recommend swapping them. A bench GK can only replace a starting GK. Output these as structured substitutions with clear reasoning. If no swap is beneficial or no valid swap exists, output an empty substitutions array.
 8. Reasoning language: Frame ALL reasoning in terms of predicted future performance — upcoming fixtures, predicted points, form trends. Do NOT make definitive claims about past results. Use language like "difficult upcoming fixtures", "lower predicted output", or "stronger projected returns" rather than "underperforming badly" or "poor run of form". The manager can see their own history; your job is to explain the forward-looking case.
 9. Point values in text: Always round point values to whole numbers when writing reasoning or notes text. FPL scores are integers. Write "19 points" not "19.2 points", "6 points" not "5.6 points", "4 points" not "3.8 points".
+10. Formation and lineup: After considering transfers and substitutions, recommend the optimal formation (e.g. 4-3-3, 3-5-2) and provide the final starting XI and bench order. The formation must have at least 1 GK, 3 DEF, 2 MID, 1 FWD in the starting XI. Explain why the formation suits the upcoming fixtures.
 
 Always respond with valid JSON matching the expected schema.`;
 
@@ -178,6 +179,12 @@ Respond with JSON matching this schema exactly:
       "reasoning": "<1-2 sentence explanation>"
     }
   ],
+  "formation": "<DEF-MID-FWD formation e.g. '4-3-3', '3-5-2'>",
+  "formationReasoning": "<1-2 sentence explanation of why this formation>",
+  "lineupPlan": {
+    "startingXI": [<11 player IDs from squad AFTER transfers and substitutions>],
+    "benchOrder": [<4 player IDs — bench GK LAST>]
+  },
   "notes": "<any additional strategic notes, chip suggestions, or warnings>"
 }`;
 }
@@ -223,6 +230,24 @@ export function parseGwPlanResult(text: string): GwPlanResult {
           reasoning: s.reasoning,
         }),
       ),
+      formation: parsed.formation ?? undefined,
+      formationReasoning: parsed.formationReasoning ?? undefined,
+      lineupPlan: parsed.lineupPlan
+        ? {
+            startingXI: (parsed.lineupPlan.startingXI ?? []).map(
+              (id: number) => ({
+                id,
+                name: `Player ${id}`,
+              }),
+            ),
+            benchOrder: (parsed.lineupPlan.benchOrder ?? []).map(
+              (id: number) => ({
+                id,
+                name: `Player ${id}`,
+              }),
+            ),
+          }
+        : undefined,
       notes: parsed.notes ?? "",
     };
   } catch {
@@ -235,6 +260,8 @@ export function parseGwPlanResult(text: string): GwPlanResult {
       },
       transfers: [],
       substitutions: [],
+      formation: undefined,
+      formationReasoning: undefined,
       notes: "Parse error — see raw response",
     };
   }

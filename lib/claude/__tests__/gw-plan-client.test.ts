@@ -164,6 +164,19 @@ describe("buildGwPlanPrompt", () => {
     const prompt = buildGwPlanPrompt(baseRequest);
     expect(prompt).toContain('"substitutions"');
   });
+
+  it("includes formation and formationReasoning in JSON schema", () => {
+    const prompt = buildGwPlanPrompt(baseRequest);
+    expect(prompt).toContain('"formation"');
+    expect(prompt).toContain('"formationReasoning"');
+  });
+
+  it("includes lineupPlan in JSON schema", () => {
+    const prompt = buildGwPlanPrompt(baseRequest);
+    expect(prompt).toContain('"lineupPlan"');
+    expect(prompt).toContain('"startingXI"');
+    expect(prompt).toContain('"benchOrder"');
+  });
 });
 
 describe("GW plan prompt — substitutions schema", () => {
@@ -211,6 +224,11 @@ describe("GW_PLAN_SYSTEM_PROMPT", () => {
 
   it("includes bench/substitution analysis instruction", () => {
     expect(GW_PLAN_SYSTEM_PROMPT).toMatch(/bench/i);
+  });
+
+  it("instructs Claude to recommend a formation", () => {
+    expect(GW_PLAN_SYSTEM_PROMPT).toContain("formation");
+    expect(GW_PLAN_SYSTEM_PROMPT).toContain("starting XI");
   });
 });
 
@@ -338,5 +356,42 @@ describe("parseGwPlanResult", () => {
 
     const result = parseGwPlanResult(raw);
     expect(result.substitutions).toEqual([]);
+  });
+
+  it("extracts formation, formationReasoning and lineupPlan", () => {
+    const json = JSON.stringify({
+      predictedTeamPoints: 62,
+      captain: { playerId: 1, name: "Salah", reasoning: "good fixtures" },
+      transfers: [],
+      substitutions: [],
+      formation: "4-4-2",
+      formationReasoning: "Balanced approach suits mixed fixtures",
+      lineupPlan: {
+        startingXI: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+        benchOrder: [12, 13, 14, 15],
+      },
+      notes: "",
+    });
+    const result = parseGwPlanResult(json);
+    expect(result.formation).toBe("4-4-2");
+    expect(result.formationReasoning).toBe(
+      "Balanced approach suits mixed fixtures",
+    );
+    expect(result.lineupPlan?.startingXI).toHaveLength(11);
+    expect(result.lineupPlan?.startingXI[0].id).toBe(1);
+    expect(result.lineupPlan?.benchOrder).toHaveLength(4);
+  });
+
+  it("defaults formation and lineupPlan to undefined when absent", () => {
+    const json = JSON.stringify({
+      predictedTeamPoints: 55,
+      captain: { playerId: 1, name: "Salah", reasoning: "" },
+      transfers: [],
+      notes: "",
+    });
+    const result = parseGwPlanResult(json);
+    expect(result.formation).toBeUndefined();
+    expect(result.formationReasoning).toBeUndefined();
+    expect(result.lineupPlan).toBeUndefined();
   });
 });

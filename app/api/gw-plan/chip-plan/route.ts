@@ -346,6 +346,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             }
           : undefined,
       currentSquadPredictedPoints: Math.round(currentSquadPredictedPoints),
+      formation: result.formation,
+      formationReasoning: result.formationReasoning,
       notes: result.notes,
     };
 

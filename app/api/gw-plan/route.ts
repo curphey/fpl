@@ -282,6 +282,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Generate plan via Claude
     const { thinking, plan } = await generateGwPlan(gwPlanRequest);
 
+    // Enrich lineupPlan player names from playerMap (parser only has placeholder names)
+    if (plan.lineupPlan) {
+      plan.lineupPlan.startingXI = plan.lineupPlan.startingXI.map((p) => ({
+        id: p.id,
+        name: playerMap.get(p.id)?.web_name ?? `Player ${p.id}`,
+      }));
+      plan.lineupPlan.benchOrder = plan.lineupPlan.benchOrder.map((p) => ({
+        id: p.id,
+        name: playerMap.get(p.id)?.web_name ?? `Player ${p.id}`,
+      }));
+    }
+
     // Persist plan to DB
     const saved = saveGwPlan(sessionId, gameweek, plan, thinking);
 

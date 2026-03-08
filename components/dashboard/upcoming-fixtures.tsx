@@ -44,14 +44,14 @@ export function UpcomingFixtures({
         <CardTitle>Upcoming Fixtures</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-2">
+        <div>
           {gwFixtures.map((fixture) => {
             const home = teamMap.get(fixture.team_h);
             const away = teamMap.get(fixture.team_a);
             return (
               <div
                 key={fixture.id}
-                className="flex items-center justify-between rounded-md border border-fpl-border/50 px-3 py-2"
+                className="flex items-center justify-between border-b border-fpl-border/50 px-3 py-2 transition-colors hover:bg-fpl-card-hover"
               >
                 <div className="flex items-center gap-2 text-sm">
                   <span

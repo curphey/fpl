@@ -42,6 +42,8 @@ export interface GwPlanResult {
     MID: Array<{ id: number; name: string; cost: number; isNew: boolean }>;
     FWD: Array<{ id: number; name: string; cost: number; isNew: boolean }>;
   };
+  /** Predicted points for the current squad over the same period (for chip plan comparison) */
+  currentSquadPredictedPoints?: number;
   notes: string;
 }
 

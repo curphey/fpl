@@ -638,8 +638,9 @@ export function GwPlanWidget({
           {/* Transfer tracker */}
           <TransferTracker predictions={predictions} />
 
-          {/* Submit to FPL button — shown when transfers or substitutions are selected */}
+          {/* Submit to FPL button — shown when transfers or substitutions are selected (not for chip plans) */}
           {fplConnected &&
+            !plan.plan.chipSquad &&
             (selectedCount > 0 || selectedSubstitutions.size > 0) && (
               <button
                 onClick={() => setShowSubmitModal(true)}
@@ -658,7 +659,7 @@ export function GwPlanWidget({
             >
               Regenerate Plan
             </button>
-            {fplConnected && availableChips.wildcard && (
+            {fplConnected && availableChips.wildcard && chipType !== "wildcard" && (
               <button
                 onClick={() => void generateChip("wildcard")}
                 disabled={loading}
@@ -667,7 +668,7 @@ export function GwPlanWidget({
                 Wildcard
               </button>
             )}
-            {fplConnected && availableChips.freehit && (
+            {fplConnected && availableChips.freehit && chipType !== "freehit" && (
               <button
                 onClick={() => void generateChip("freehit")}
                 disabled={loading}

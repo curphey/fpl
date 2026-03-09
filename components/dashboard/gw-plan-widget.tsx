@@ -39,6 +39,9 @@ export function GwPlanWidget({
   const [selectedSubstitutions, setSelectedSubstitutions] = useState<
     Set<number>
   >(new Set());
+  const [lineupSubmitting, setLineupSubmitting] = useState(false);
+  const [lineupSubmitted, setLineupSubmitted] = useState(false);
+  const [lineupError, setLineupError] = useState<string | null>(null);
 
   const fetchPredictions = useCallback(async () => {
     try {
@@ -554,9 +557,74 @@ export function GwPlanWidget({
                   benchOrder={plan.plan.lineupPlan.benchOrder}
                   captainId={plan.plan.captain.playerId}
                 />
-                <p className="mt-2 rounded bg-amber-500/10 px-3 py-2 text-xs text-amber-400">
-                  Lineup and captain must be set manually on the FPL site/app after submitting transfers.
-                </p>
+                {fplConnected && !lineupSubmitted && (
+                  <button
+                    onClick={() => {
+                      void (async () => {
+                        if (!plan?.plan.lineupPlan) return;
+                        setLineupSubmitting(true);
+                        setLineupError(null);
+                        try {
+                          const res = await fetch("/api/gw-plan/submit-lineup", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              sessionId,
+                              planId: plan.id,
+                              confirm: true,
+                              startingXI: plan.plan.lineupPlan.startingXI.map(
+                                (p) => p.id,
+                              ),
+                              benchOrder: plan.plan.lineupPlan.benchOrder.map(
+                                (p) => p.id,
+                              ),
+                              captainId: plan.plan.captain.playerId,
+                            }),
+                          });
+                          const json = (await res.json()) as {
+                            submitted?: boolean;
+                            error?: string;
+                          };
+                          if (!res.ok || !json.submitted) {
+                            setLineupError(
+                              json.error ?? "Failed to submit lineup",
+                            );
+                          } else {
+                            setLineupSubmitted(true);
+                            void queryClient.invalidateQueries({
+                              queryKey: ["manager-picks"],
+                            });
+                          }
+                        } catch {
+                          setLineupError("Network error submitting lineup");
+                        } finally {
+                          setLineupSubmitting(false);
+                        }
+                      })();
+                    }}
+                    disabled={lineupSubmitting}
+                    className="mt-2 w-full rounded-lg border border-fpl-cyan/40 bg-fpl-cyan/10 px-4 py-2 text-sm font-semibold text-fpl-cyan transition-colors hover:bg-fpl-cyan/20 disabled:opacity-50"
+                  >
+                    {lineupSubmitting
+                      ? "Submitting lineup..."
+                      : `Submit Lineup & Captain (${plan.plan.captain.name}) ▶`}
+                  </button>
+                )}
+                {lineupSubmitted && (
+                  <p className="mt-2 rounded bg-green-500/10 px-3 py-2 text-xs text-green-400">
+                    Lineup and captain submitted to FPL &#10003;
+                  </p>
+                )}
+                {lineupError && (
+                  <p className="mt-2 rounded bg-red-500/10 px-3 py-2 text-xs text-red-400">
+                    {lineupError}
+                  </p>
+                )}
+                {!fplConnected && (
+                  <p className="mt-2 rounded bg-amber-500/10 px-3 py-2 text-xs text-amber-400">
+                    Connect your FPL account in Settings to submit lineup directly.
+                  </p>
+                )}
               </div>
             )}
 

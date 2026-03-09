@@ -32,7 +32,8 @@ function PlanPlayerCard({
   const isGK = (player.elementType ?? 0) === 1;
   const teamCode = player.teamCode ?? 1;
   const kitUrl = getKitUrl(teamCode, isGK);
-  const pts = player.predictedPts ?? 0;
+  const basePts = player.predictedPts ?? 0;
+  const pts = isCaptain ? basePts * 2 : basePts;
 
   return (
     <div

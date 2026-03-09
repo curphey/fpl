@@ -1820,8 +1820,8 @@ describe("GwPlanWidget", () => {
         expect(screen.getByText(/recommended lineup/i)).toBeInTheDocument();
       });
 
-      // Salah has predictedPts: 8
-      expect(screen.getByText("8 pts")).toBeInTheDocument();
+      // Salah (captain) has predictedPts: 8, doubled to 16
+      expect(screen.getByText("16 pts")).toBeInTheDocument();
       // Multiple players have predictedPts: 7 (Haaland, Palmer)
       expect(screen.getAllByText("7 pts").length).toBeGreaterThanOrEqual(1);
     });

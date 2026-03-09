@@ -554,6 +554,9 @@ export function GwPlanWidget({
                   benchOrder={plan.plan.lineupPlan.benchOrder}
                   captainId={plan.plan.captain.playerId}
                 />
+                <p className="mt-2 rounded bg-amber-500/10 px-3 py-2 text-xs text-amber-400">
+                  Lineup and captain must be set manually on the FPL site/app after submitting transfers.
+                </p>
               </div>
             )}
 

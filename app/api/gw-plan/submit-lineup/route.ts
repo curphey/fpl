@@ -147,6 +147,19 @@ async function handleFullLineup(
     return typeA - typeB;
   });
 
+  // FPL requires position 12 = bench GK, positions 13-15 = outfield bench.
+  // Ensure the GK is always first in the bench ordering.
+  const benchGkIndex = benchOrder.findIndex(
+    (id) => (elementTypeMap.get(id) ?? 0) === 1,
+  );
+  const sortedBench =
+    benchGkIndex > 0
+      ? [
+          benchOrder[benchGkIndex],
+          ...benchOrder.filter((_, i) => i !== benchGkIndex),
+        ]
+      : [...benchOrder];
+
   // Build picks array
   const updatedPicks = [
     ...sortedStarters.map((id, i) => ({
@@ -156,7 +169,7 @@ async function handleFullLineup(
       is_vice_captain: false,
       multiplier: id === captainId ? 2 : 1,
     })),
-    ...benchOrder.map((id, i) => ({
+    ...sortedBench.map((id, i) => ({
       element: id,
       position: 12 + i,
       is_captain: false,

@@ -1,10 +1,10 @@
 # Multi-stage production build for FPL Insights
-FROM node:20-alpine AS deps
+FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev
 
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
@@ -12,10 +12,16 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+
+# Strip npm from the runtime image — the app runs via `node server.js`
+# and never invokes npm at runtime. Keeping the bundled npm on disk
+# ships its transitive vulnerable deps (tar, sigstore, brace-expansion,
+# ip-address, picomatch) into the production image with no benefit.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
